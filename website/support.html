@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Support — Need2Done</title>
+  <meta name="description" content="Get support for Need2Done. We're here to help with your orders, deliveries, and any issues. Contact us on WhatsApp anytime.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .inner-page { padding: 140px 0 80px; min-height: 100vh; position: relative; z-index: 1; }
+    .page-hero { text-align: center; margin-bottom: 64px; }
+    .page-hero h1 { font-size: 2.8rem; font-weight: 800; margin-bottom: 16px; }
+    .page-hero p { color: var(--text-secondary); font-size: 1.05rem; max-width: 520px; margin: 0 auto; }
+    .support-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 60px; }
+    .support-card {
+      padding: 36px 28px; border-radius: var(--radius-lg);
+      background: var(--bg-card); border: 1px solid var(--border-subtle);
+      text-align: center; transition: transform .3s, border-color .3s;
+    }
+    .support-card:hover { transform: translateY(-4px); border-color: rgba(168,85,247,.3); }
+    .support-card .s-icon { font-size: 2.4rem; margin-bottom: 16px; }
+    .support-card h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 10px; }
+    .support-card p { font-size: .88rem; color: var(--text-secondary); line-height: 1.65; margin-bottom: 20px; }
+    .support-card a {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 22px; border-radius: 50px; font-size: .85rem; font-weight: 600;
+      background: var(--gradient-main); color: #fff; transition: box-shadow .3s;
+    }
+    .support-card a:hover { box-shadow: 0 8px 24px rgba(0,229,255,.25); }
+    .faq-section h2 { font-size: 1.8rem; font-weight: 700; margin-bottom: 32px; text-align: center; }
+    .faq-list { display: flex; flex-direction: column; gap: 16px; max-width: 720px; margin: 0 auto; }
+    .faq-item {
+      padding: 24px 28px; border-radius: var(--radius-md);
+      background: var(--bg-card); border: 1px solid var(--border-subtle); cursor: pointer;
+    }
+    .faq-q { font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+    .faq-a { color: var(--text-secondary); font-size: .9rem; line-height: 1.65; margin-top: 12px; display: none; }
+    .faq-item.open .faq-a { display: block; }
+    .faq-item.open .faq-arrow { transform: rotate(180deg); }
+    .faq-arrow { transition: transform .3s; }
+    @media(max-width:768px){ .support-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="bg-orbs"><div class="orb"></div><div class="orb"></div><div class="orb"></div></div>
+  <nav class="navbar" id="navbar">
+    <div class="container">
+      <a href="index.html" class="nav-logo">
+        <div class="logo-icon">N2D</div>
+        <div class="logo-text"><span>Need2Done</span></div>
+      </a>
+      <div class="nav-links">
+        <a href="index.html#features">Features</a>
+        <a href="index.html#services">Services</a>
+        <a href="index.html#pricing">Pricing</a>
+        <a href="contact.html" class="nav-cta">Contact Us</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="inner-page">
+    <div class="container">
+      <div class="page-hero reveal">
+        <div class="section-badge">🛟 Support</div>
+        <h1>How Can We <span class="gradient-text">Help?</span></h1>
+        <p>We're available on WhatsApp, email, and phone. Pick the fastest option for you.</p>
+      </div>
+
+      <div class="support-grid">
+        <div class="support-card reveal">
+          <div class="s-icon">💬</div>
+          <h3>WhatsApp Support</h3>
+          <p>Fastest response. Chat with our support team directly on WhatsApp — usually replies within 5 minutes.</p>
+          <a href="https://wa.me/917981072623?text=Hi, I need support" target="_blank">Message Us</a>
+        </div>
+        <div class="support-card reveal">
+          <div class="s-icon">📞</div>
+          <h3>Call Us</h3>
+          <p>Prefer to talk? Give us a call during business hours (9 AM – 9 PM, Mon–Sat).</p>
+          <a href="tel:+917981072623">+91 79810 72623</a>
+        </div>
+        <div class="support-card reveal">
+          <div class="s-icon">📋</div>
+          <h3>Help Center</h3>
+          <p>Find answers to common questions about orders, deliveries, pricing, and more.</p>
+          <a href="help.html">Browse FAQs</a>
+        </div>
+      </div>
+
+      <div class="faq-section reveal">
+        <h2>Frequently Asked <span class="gradient-text">Questions</span></h2>
+        <div class="faq-list">
+          <div class="faq-item">
+            <div class="faq-q">How do I place an order? <span class="faq-arrow">▼</span></div>
+            <div class="faq-a">Simply send "Hi" to our WhatsApp number (+91 79810 72623). Our bot will guide you through picking a service (Task, Ride, or AnyWork) and collecting your details.</div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-q">What areas do you serve? <span class="faq-arrow">▼</span></div>
+            <div class="faq-a">We currently serve Bhongir, Telangana (508116) and surrounding areas. We're expanding rapidly — contact us to check availability in your area.</div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-q">How long does delivery take? <span class="faq-arrow">▼</span></div>
+            <div class="faq-a">Average delivery time is 15–20 minutes within Bhongir. This depends on distance, agent availability, and order complexity.</div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-q">How do I track my order? <span class="faq-arrow">▼</span></div>
+            <div class="faq-a">Once an agent accepts your order, you'll receive a live tracking link on WhatsApp. Click it to watch your delivery in real-time on a map.</div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-q">What if there's a problem with my order? <span class="faq-arrow">▼</span></div>
+            <div class="faq-a">Message us on WhatsApp immediately with your order details. We'll resolve it as quickly as possible — most issues are sorted within 30 minutes.</div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-q">How do I pay? <span class="faq-arrow">▼</span></div>
+            <div class="faq-a">We currently accept cash on delivery. UPI and other digital payment options are coming soon.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-bottom">
+        <p>© 2026 Need2Done. Bhongir, Telangana 508116. All rights reserved.</p>
+        <div class="footer-socials">
+          <a href="index.html">🏠 Home</a>
+          <a href="contact.html">📬 Contact</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+  <script>
+    document.querySelectorAll('.faq-item').forEach(item => {
+      item.addEventListener('click', () => item.classList.toggle('open'));
+    });
+    window.addEventListener('scroll', () => document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 50));
+    document.querySelectorAll('.reveal').forEach(el => {
+      new IntersectionObserver(([e]) => { if(e.isIntersecting){ el.classList.add('active'); } }, {threshold:.15}).observe(el);
+    });
+  </script>
+</body>
+</html>

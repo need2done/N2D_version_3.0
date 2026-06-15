@@ -1,0 +1,63 @@
+# ==========================================
+# Need2Done .gitignore
+# ==========================================
+
+# Dependencies
+node_modules/
+backend/node_modules/
+admin-dashboard/node_modules/
+
+# Python Virtual Environments
+N2D_whatsapp_bot/venv/
+N2D_whatsapp_bot/venv_n2d/
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment (SENSITIVE — never commit!)
+.env
+
+# Logs
+*.log
+N2D_whatsapp_bot/logs/
+N2D_whatsapp_bot/bot.log
+backend/out.log
+
+# Build outputs
+admin-dashboard/dist/
+
+# Ngrok (Windows binary)
+ngrok.exe
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Flutter
+tracking-app/build/
+tracking-app/.dart_tool/
+tracking-app/.flutter-plugins
+tracking-app/.flutter-plugins-dependencies
+
+# Uploads
+N2D_whatsapp_bot/uploads/
+
+# Scratch / Test files
+scratch/
+
+# Sibling/backup folders and zips (should never be committed)
+../Need2Done_1/
+../Need2Done_1.zip
+../Need2Done*.zip
+*.zip
+
+# Sensitive Keys
+AWS_KEY/
+*.pem

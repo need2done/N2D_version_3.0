@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GramioGO Live Tracking</title>
+
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+    <meta http-equiv="Pragma" content="no-cache"/>
+    <meta http-equiv="Expires" content="0"/>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css"/>
+
+    <style>
+        body { margin:0; font-family: Arial; background:#f5f5f5; }
+        #map { height: 90vh; }
+
+        .info {
+            padding:12px;
+            background:white;
+            box-shadow:0 2px 8px rgba(0,0,0,0.1);
+            font-weight:bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="info">
+    <strong>GramioGO Live Tracking</strong>
+    <div id="statusText">Loading...</div>
+    <div id="etaText"></div>
+</div>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+
+<script>
+
+const token = window.location.pathname.split("/").pop();
+
+const map = L.map('map').setView([20.5937, 78.9629], 13);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap'
+}).addTo(map);
+
+let helperMarker = null;
+let customerMarker = null;
+let routingControl = null;
+
+let currentLat = null;
+let currentLng = null;
+
+/* ===========================
+   Vehicle Icon
+=========================== */
+const vehicleIcon = L.icon({
+    iconUrl: "https://cdn-icons-png.flaticon.com/512/743/743922.png",
+    iconSize: [40, 40],
+    iconAnchor: [20, 20]
+});
+
+/* ===========================
+   Safe Number Check
+=========================== */
+function isValidNumber(val) {
+    return val !== null && val !== undefined && !isNaN(val);
+}
+
+/* ===========================
+   Animate Marker Smoothly
+=========================== */
+function animateMarker(toLat, toLng) {
+
+    if (!helperMarker || currentLat === null || currentLng === null) return;
+
+    const fromLat = currentLat;
+    const fromLng = currentLng;
+
+    const frames = 60;
+    let step = 0;
+
+    function animate() {
+        step++;
+
+        const lat = fromLat + (toLat - fromLat) * (step / frames);
+        const lng = fromLng + (toLng - fromLng) * (step / frames);
+
+        helperMarker.setLatLng([lat, lng]);
+        map.panTo([lat, lng], { animate:true });
+
+        if (step < frames) {
+            requestAnimationFrame(animate);
+        } else {
+            currentLat = toLat;
+            currentLng = toLng;
+        }
+    }
+
+    animate();
+}
+
+/* ===========================
+   Fetch Tracking
+=========================== */
+async function fetchTracking() {
+
+    try {
+
+        const response = await fetch(`/api/tracking/${token}?t=` + Date.now());
+        const data = await response.json();
+
+        if (!data || !data.helper || !data.customer) {
+            document.getElementById("statusText").innerText = "Waiting for GPS...";
+            return;
+        }
+
+        const hLat = parseFloat(data.helper.lat);
+        const hLng = parseFloat(data.helper.lng);
+        const cLat = parseFloat(data.customer.lat);
+        const cLng = parseFloat(data.customer.lng);
+
+        if (!isValidNumber(hLat) || !isValidNumber(hLng) ||
+            !isValidNumber(cLat) || !isValidNumber(cLng)) {
+
+            document.getElementById("statusText").innerText = "Location unavailable";
+            return;
+        }
+
+        document.getElementById("statusText").innerText =
+            `Helper: ${data.helper.name} | ${data.order_status}`;
+
+        /* ===============================
+           INIT MARKERS
+        ================================ */
+        if (!helperMarker) {
+
+            helperMarker = L.marker([hLat, hLng], { icon: vehicleIcon }).addTo(map);
+            customerMarker = L.marker([cLat, cLng]).addTo(map);
+
+            currentLat = hLat;
+            currentLng = hLng;
+
+            map.fitBounds([
+                [hLat, hLng],
+                [cLat, cLng]
+            ]);
+
+        } else {
+
+            if (hLat !== currentLat || hLng !== currentLng) {
+                animateMarker(hLat, hLng);
+            }
+        }
+
+        /* ===============================
+           ROUTE CONTROL
+        ================================ */
+        if (!routingControl) {
+
+            routingControl = L.Routing.control({
+                waypoints: [
+                    L.latLng(hLat, hLng),
+                    L.latLng(cLat, cLng)
+                ],
+                router: L.Routing.osrmv1({
+                    serviceUrl: "https://router.project-osrm.org/route/v1"
+                }),
+                routeWhileDragging: false,
+                draggableWaypoints: false,
+                addWaypoints: false,
+                createMarker: () => null,
+                lineOptions: {
+                    styles: [
+                        {color:'#00BFFF', weight:8, opacity:0.4},
+                        {color:'#0044FF', weight:4, opacity:1}
+                    ]
+                }
+            }).addTo(map);
+
+            routingControl.on('routesfound', function(e) {
+
+                const route = e.routes[0];
+                const distance = (route.summary.totalDistance / 1000).toFixed(2);
+                const time = (route.summary.totalTime / 60).toFixed(0);
+
+                document.getElementById("etaText").innerText =
+                    `Distance: ${distance} km | ETA: ${time} mins`;
+            });
+
+        } else {
+
+            routingControl.setWaypoints([
+                L.latLng(hLat, hLng),
+                L.latLng(cLat, cLng)
+            ]);
+        }
+
+    } catch (err) {
+        console.error("Tracking error:", err);
+    }
+}
+
+setInterval(fetchTracking, 3000);
+fetchTracking();
+
+</script>
+
+</body>
+</html>

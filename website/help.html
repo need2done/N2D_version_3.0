@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Help Center — Need2Done</title>
+  <meta name="description" content="Need2Done Help Center — answers to all your questions about orders, delivery, tracking, and pricing in Bhongir, Telangana.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .inner-page { padding: 140px 0 80px; min-height: 100vh; position: relative; z-index: 1; }
+    .page-hero { text-align: center; margin-bottom: 64px; }
+    .page-hero h1 { font-size: 2.8rem; font-weight: 800; margin-bottom: 16px; }
+    .page-hero p { color: var(--text-secondary); font-size: 1.05rem; max-width: 520px; margin: 0 auto; }
+    .help-cats { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; margin-bottom: 56px; }
+    .help-cat {
+      padding: 28px; border-radius: var(--radius-md); text-align: center;
+      background: var(--bg-card); border: 1px solid var(--border-subtle);
+      transition: transform .3s, border-color .3s; cursor: pointer;
+    }
+    .help-cat:hover { transform: translateY(-4px); border-color: rgba(0,229,255,.3); }
+    .help-cat .hc-icon { font-size: 2rem; margin-bottom: 12px; }
+    .help-cat h3 { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
+    .help-cat p { font-size: .82rem; color: var(--text-secondary); }
+    .help-section { max-width: 760px; margin: 0 auto; }
+    .help-section h2 { font-size: 1.6rem; font-weight: 700; margin: 48px 0 24px; display: flex; align-items: center; gap: 12px; }
+    .help-article {
+      padding: 22px 26px; border-radius: var(--radius-md);
+      background: var(--bg-card); border: 1px solid var(--border-subtle);
+      margin-bottom: 14px; cursor: pointer;
+    }
+    .help-article summary { font-weight: 600; font-size: .95rem; list-style: none; display: flex; justify-content: space-between; align-items: center; }
+    .help-article summary::after { content: '▼'; transition: transform .3s; font-size: .75rem; color: var(--text-secondary); }
+    .help-article[open] summary::after { transform: rotate(180deg); }
+    .help-article p { color: var(--text-secondary); font-size: .9rem; line-height: 1.7; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border-subtle); }
+    .still-need { text-align: center; margin-top: 64px; padding: 48px; border-radius: var(--radius-lg); background: var(--bg-card); border: 1px solid var(--border-subtle); }
+    .still-need h3 { font-size: 1.5rem; font-weight: 700; margin-bottom: 12px; }
+    .still-need p { color: var(--text-secondary); margin-bottom: 24px; }
+    @media(max-width:768px){ .help-cats { grid-template-columns: 1fr 1fr; } }
+    @media(max-width:480px){ .help-cats { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="bg-orbs"><div class="orb"></div><div class="orb"></div><div class="orb"></div></div>
+  <nav class="navbar" id="navbar">
+    <div class="container">
+      <a href="index.html" class="nav-logo">
+        <div class="logo-icon">N2D</div>
+        <div class="logo-text"><span>Need2Done</span></div>
+      </a>
+      <div class="nav-links">
+        <a href="index.html#features">Features</a>
+        <a href="index.html#services">Services</a>
+        <a href="support.html">Support</a>
+        <a href="contact.html" class="nav-cta">Contact Us</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="inner-page">
+    <div class="container">
+      <div class="page-hero reveal">
+        <div class="section-badge">📚 Help Center</div>
+        <h1>How Can We <span class="gradient-text">Help You?</span></h1>
+        <p>Everything you need to know about Need2Done — from placing your first order to tracking live delivery.</p>
+      </div>
+
+      <div class="help-cats reveal">
+        <div class="help-cat"><div class="hc-icon">📦</div><h3>Orders</h3><p>Placing, modifying & cancelling</p></div>
+        <div class="help-cat"><div class="hc-icon">📍</div><h3>Tracking</h3><p>Live GPS & delivery updates</p></div>
+        <div class="help-cat"><div class="hc-icon">💳</div><h3>Pricing</h3><p>Fares, fees & payment</p></div>
+        <div class="help-cat"><div class="hc-icon">🏍️</div><h3>Delivery</h3><p>Agents, timings & zones</p></div>
+        <div class="help-cat"><div class="hc-icon">🔒</div><h3>Safety</h3><p>OTP, verification & security</p></div>
+        <div class="help-cat"><div class="hc-icon">📞</div><h3>Contact</h3><p>Reach our support team</p></div>
+      </div>
+
+      <div class="help-section">
+        <h2>📦 Orders</h2>
+        <details class="help-article reveal">
+          <summary>How do I place an order on Need2Done?</summary>
+          <p>Send "Hi" to our WhatsApp number <strong>+91 79810 72623</strong>. Our AI bot will respond with a menu — choose Task, Ride, or AnyWork. Follow the prompts to provide pickup location, items, or destination. Confirm the price and your order goes live instantly.</p>
+        </details>
+        <details class="help-article reveal">
+          <summary>Can I cancel my order after placing it?</summary>
+          <p>Yes — you can cancel before an agent accepts your order. Once an agent has accepted and is on the way, cancellation may incur a small fee. Message us on WhatsApp to initiate a cancellation.</p>
+        </details>
+        <details class="help-article reveal">
+          <summary>What services does Need2Done offer?</summary>
+          <p><strong>Task Delivery</strong> — Pick up items from shops and deliver to you. <strong>Ride</strong> — Book a quick ride to your destination. <strong>AnyWork</strong> — Custom errands like document delivery, key handoff, and more.</p>
+        </details>
+
+        <h2>📍 Tracking</h2>
+        <details class="help-article reveal">
+          <summary>How do I track my order in real-time?</summary>
+          <p>Once an agent accepts your order, you'll receive a unique tracking link on WhatsApp. Click it to open the live map — you'll see your agent's exact GPS location, estimated arrival time, and route — updated every few seconds.</p>
+        </details>
+        <details class="help-article reveal">
+          <summary>My tracking link isn't working — what do I do?</summary>
+          <p>Try refreshing the page or copying the link into your browser. If the issue persists, message us on WhatsApp with your order ID and we'll send you a fresh tracking link immediately.</p>
+        </details>
+
+        <h2>💳 Pricing</h2>
+        <details class="help-article reveal">
+          <summary>How is the delivery fare calculated?</summary>
+          <p>Fares consist of a <strong>base fare</strong> (₹29–₹49 depending on service type) plus a <strong>per-km charge</strong> for distances beyond the included range. The full breakdown is shown to you before you confirm — no surprises.</p>
+        </details>
+        <details class="help-article reveal">
+          <summary>Are there any hidden charges?</summary>
+          <p>No. What you see at confirmation is exactly what you pay. There are no hidden platform fees, surge surprises, or cancellation charges if cancelled before agent pickup.</p>
+        </details>
+        <details class="help-article reveal">
+          <summary>What payment methods are accepted?</summary>
+          <p>We currently accept <strong>Cash on Delivery</strong>. UPI, Google Pay, and PhonePe support is coming soon. You'll be notified on WhatsApp when digital payments go live.</p>
+        </details>
+
+        <h2>🔒 Safety</h2>
+        <details class="help-article reveal">
+          <summary>What is the OTP verification?</summary>
+          <p>Every delivery is secured with a one-time password (OTP). When your agent arrives, they'll ask for the OTP you received on WhatsApp — this confirms you've received your order and releases payment to the agent.</p>
+        </details>
+        <details class="help-article reveal">
+          <summary>Are the delivery agents verified?</summary>
+          <p>Yes. All Need2Done agents are manually verified with ID proof and background checks before being onboarded. You can also view agent name and contact number once they accept your order.</p>
+        </details>
+
+        <div class="still-need reveal">
+          <h3>Still need help?</h3>
+          <p>Our support team is available 9 AM – 9 PM, 7 days a week. WhatsApp is the fastest way to reach us.</p>
+          <a href="https://wa.me/917981072623?text=Hi, I need help" target="_blank" class="btn-primary">
+            💬 Chat on WhatsApp
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-bottom">
+        <p>© 2026 Need2Done. Bhongir, Telangana 508116. All rights reserved.</p>
+        <div class="footer-socials">
+          <a href="index.html">🏠 Home</a>
+          <a href="contact.html">📬 Contact</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+  <script>
+    window.addEventListener('scroll', () => document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 50));
+    document.querySelectorAll('.reveal').forEach(el => {
+      new IntersectionObserver(([e]) => { if(e.isIntersecting) el.classList.add('active'); }, {threshold:.1}).observe(el);
+    });
+  </script>
+</body>
+</html>

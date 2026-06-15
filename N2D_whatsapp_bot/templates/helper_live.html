@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GramioGO Helper Live Tracking</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 30px;
+            background: #f4f6f9;
+        }
+
+        h2 {
+            color: #2c3e50;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            max-width: 400px;
+            margin: auto;
+        }
+
+        .status {
+            margin-top: 15px;
+            font-size: 16px;
+        }
+
+        .live { color: green; font-weight: bold; }
+        .idle { color: orange; font-weight: bold; }
+        .error { color: red; font-weight: bold; }
+
+        .small {
+            font-size: 13px;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>🛵 GramioGO Live Tracking</h2>
+    <p>Please keep this page open while delivering.</p>
+
+    <div id="gpsStatus" class="status">Initializing GPS...</div>
+    <div id="movementStatus" class="status"></div>
+    <div id="speedStatus" class="status small"></div>
+</div>
+
+<script>
+
+const helperId = Number("{{ helper_id }}");
+const orderId  = Number("{{ order_id }}");
+
+let lastLat = null;
+let lastLng = null;
+let lastTime = null;
+
+let sendInterval = 3000; // 3 seconds
+let latestPosition = null;
+
+/* =========================================================
+   SEND LOCATION TO BACKEND
+========================================================= */
+async function sendLocation(lat, lng) {
+
+    try {
+        await fetch("/api/update-location", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                helper_id: helperId,
+                order_id: orderId,
+                lat: lat,
+                lng: lng
+            })
+        });
+
+    } catch (err) {
+        console.error("Location send error:", err);
+    }
+}
+
+/* =========================================================
+   DISTANCE CALCULATION (meters)
+========================================================= */
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371e3;
+    const φ1 = lat1 * Math.PI/180;
+    const φ2 = lat2 * Math.PI/180;
+    const Δφ = (lat2-lat1) * Math.PI/180;
+    const Δλ = (lon2-lon1) * Math.PI/180;
+
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ/2) * Math.sin(Δλ/2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+/* =========================================================
+   HANDLE GPS UPDATE
+========================================================= */
+function handlePosition(position) {
+
+    const lat = position.coords.latitude;
+    const lng = position.coords.longitude;
+    const now = Date.now();
+
+    latestPosition = { lat, lng };
+
+    document.getElementById("gpsStatus").innerHTML =
+        `<span class="live">📡 GPS Active</span><br>${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+
+    // Movement detection
+    if (lastLat !== null && lastLng !== null) {
+
+        const distance = calculateDistance(lastLat, lastLng, lat, lng);
+        const timeDiff = (now - lastTime) / 1000;
+
+        let speedKmh = 0;
+        if (timeDiff > 0) {
+            speedKmh = (distance / timeDiff) * 3.6;
+        }
+
+        if (distance < 3) {
+            document.getElementById("movementStatus").innerHTML =
+                `<span class="idle">🟡 Idle</span>`;
+        } else {
+            document.getElementById("movementStatus").innerHTML =
+                `<span class="live">🟢 Moving</span>`;
+        }
+
+        document.getElementById("speedStatus").innerText =
+            `Speed: ${speedKmh.toFixed(1)} km/h`;
+
+    }
+
+    lastLat = lat;
+    lastLng = lng;
+    lastTime = now;
+}
+
+/* =========================================================
+   START GPS WATCH
+========================================================= */
+function startTracking() {
+
+    if (location.protocol !== "https:" && location.hostname !== "localhost") {
+        document.getElementById("gpsStatus").innerHTML =
+            `<span class="error">⚠ GPS requires HTTPS</span>`;
+        return;
+    }
+
+    if (!navigator.geolocation) {
+        document.getElementById("gpsStatus").innerHTML =
+            `<span class="error">❌ GPS not supported</span>`;
+        return;
+    }
+
+    navigator.geolocation.watchPosition(
+        handlePosition,
+        error => {
+            document.getElementById("gpsStatus").innerHTML =
+                `<span class="error">❌ ${error.message}</span>`;
+        },
+        {
+            enableHighAccuracy: true,
+            maximumAge: 0,
+            timeout: 10000
+        }
+    );
+
+    // Send every 3 seconds
+    setInterval(() => {
+        if (latestPosition) {
+            sendLocation(latestPosition.lat, latestPosition.lng);
+        }
+    }, sendInterval);
+}
+
+startTracking();
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — Need2Done</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .inner-page { padding: 140px 0 80px; min-height: 100vh; position: relative; z-index: 1; }
+    .page-hero { text-align: center; margin-bottom: 56px; }
+    .page-hero h1 { font-size: 2.6rem; font-weight: 800; margin-bottom: 14px; }
+    .page-hero .meta { font-size: .85rem; color: var(--text-secondary); }
+    .policy-body { max-width: 760px; margin: 0 auto; }
+    .policy-body h2 { font-size: 1.2rem; font-weight: 700; margin: 36px 0 12px; color: var(--accent-cyan); }
+    .policy-body p, .policy-body li { font-size: .93rem; color: var(--text-secondary); line-height: 1.8; margin-bottom: 10px; }
+    .policy-body ul { padding-left: 20px; }
+    .policy-body ul li { list-style: disc; }
+    .highlight-box { padding: 20px 24px; border-radius: var(--radius-md); background: rgba(0,229,255,.05); border: 1px solid rgba(0,229,255,.15); margin: 24px 0; font-size: .9rem; color: var(--text-secondary); line-height: 1.7; }
+  </style>
+</head>
+<body>
+  <div class="bg-orbs"><div class="orb"></div><div class="orb"></div><div class="orb"></div></div>
+  <nav class="navbar" id="navbar">
+    <div class="container">
+      <a href="index.html" class="nav-logo"><div class="logo-icon">N2D</div><div class="logo-text"><span>Need2Done</span></div></a>
+      <div class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="support.html">Support</a>
+        <a href="contact.html" class="nav-cta">Contact Us</a>
+      </div>
+    </div>
+  </nav>
+  <div class="inner-page">
+    <div class="container">
+      <div class="page-hero reveal">
+        <div class="section-badge">🔒 Legal</div>
+        <h1>Privacy <span class="gradient-text">Policy</span></h1>
+        <p class="meta">Last updated: May 2026 · Need2Done, Bhongir, Telangana 508116</p>
+      </div>
+      <div class="policy-body">
+        <div class="highlight-box reveal">Your privacy matters to us. This policy explains what data we collect, why we collect it, and how we protect it. We do not sell your personal information to third parties.</div>
+        <h2>1. Information We Collect</h2>
+        <p>When you use Need2Done through WhatsApp, we may collect:</p>
+        <ul>
+          <li>Your WhatsApp phone number and display name</li>
+          <li>Order details — pickup/drop locations, item descriptions, voice notes</li>
+          <li>Approximate GPS coordinates shared during service</li>
+          <li>Messages exchanged with our WhatsApp bot</li>
+          <li>Transaction history and order status</li>
+        </ul>
+        <h2>2. How We Use Your Information</h2>
+        <ul>
+          <li>Process and fulfill your delivery or ride requests</li>
+          <li>Match you with the nearest available delivery agent</li>
+          <li>Send real-time updates, tracking links, and OTP codes via WhatsApp</li>
+          <li>Resolve disputes and provide customer support</li>
+          <li>Improve our service quality and agent performance</li>
+        </ul>
+        <h2>3. Data Sharing</h2>
+        <p>We share your information only in limited circumstances: with your assigned delivery agent (name & address), via Meta's WhatsApp Business API, or if required by law. We never sell your data.</p>
+        <h2>4. Data Security</h2>
+        <p>We use encrypted database storage, OTP-secured handoffs, access controls, and regular security audits to protect your data.</p>
+        <h2>5. Data Retention</h2>
+        <p>We retain order history for up to 12 months. You may request deletion at any time by contacting us on WhatsApp.</p>
+        <h2>6. Your Rights</h2>
+        <p>You can request access, correction, or deletion of your data. To exercise these rights, message us on WhatsApp at +91 79810 72623.</p>
+        <h2>7. Contact Us</h2>
+        <ul>
+          <li>📱 WhatsApp: <a href="https://wa.me/917981072623" style="color:var(--accent-cyan)">+91 79810 72623</a></li>
+          <li>📍 Need2Done, Bhongir, Telangana 508116, India</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-bottom">
+        <p>© 2026 Need2Done. Bhongir, Telangana 508116. All rights reserved.</p>
+        <div class="footer-socials"><a href="index.html">🏠 Home</a><a href="terms.html">Terms</a></div>
+      </div>
+    </div>
+  </footer>
+  <script>
+    window.addEventListener('scroll', () => document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 50));
+    document.querySelectorAll('.reveal').forEach(el => new IntersectionObserver(([e]) => { if(e.isIntersecting) el.classList.add('active'); }, {threshold:.1}).observe(el));
+  </script>
+</body>
+</html>

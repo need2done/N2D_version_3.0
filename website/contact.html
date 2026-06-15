@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contact Us — Need2Done</title>
+  <meta name="description" content="Contact Need2Done in Bhongir, Telangana. Reach us via WhatsApp, phone, or our contact form for support, partnerships, or agent inquiries.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .inner-page { padding: 140px 0 80px; min-height: 100vh; position: relative; z-index: 1; }
+    .page-hero { text-align: center; margin-bottom: 64px; }
+    .page-hero h1 { font-size: 2.8rem; font-weight: 800; margin-bottom: 16px; }
+    .contact-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: start; }
+    .contact-info { display: flex; flex-direction: column; gap: 24px; }
+    .contact-card {
+      display: flex; align-items: flex-start; gap: 20px;
+      padding: 28px; border-radius: var(--radius-md);
+      background: var(--bg-card); border: 1px solid var(--border-subtle);
+      transition: border-color .3s, transform .3s;
+    }
+    .contact-card:hover { border-color: rgba(0,229,255,.3); transform: translateX(4px); }
+    .contact-card .cc-icon { font-size: 1.8rem; min-width: 40px; }
+    .contact-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
+    .contact-card p { font-size: .88rem; color: var(--text-secondary); line-height: 1.6; }
+    .contact-card a { color: var(--accent-cyan); font-weight: 600; }
+    .contact-form-box {
+      padding: 40px 36px; border-radius: var(--radius-lg);
+      background: var(--bg-card); border: 1px solid var(--border-subtle);
+    }
+    .contact-form-box h3 { font-size: 1.4rem; font-weight: 700; margin-bottom: 8px; }
+    .contact-form-box .form-sub { font-size: .88rem; color: var(--text-secondary); margin-bottom: 28px; }
+    .form-group { margin-bottom: 20px; }
+    .form-group label { display: block; font-size: .85rem; font-weight: 600; margin-bottom: 8px; color: var(--text-secondary); }
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%; padding: 12px 16px; border-radius: var(--radius-sm);
+      background: rgba(255,255,255,.04); border: 1px solid var(--border-subtle);
+      color: var(--text-primary); font-family: 'Inter', sans-serif; font-size: .9rem;
+      transition: border-color .3s; outline: none;
+    }
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: var(--accent-purple); }
+    .form-group textarea { resize: vertical; min-height: 120px; }
+    .form-group select option { background: #0c0e1a; }
+    .form-submit { width: 100%; padding: 14px; border-radius: 50px; font-weight: 700; font-size: .95rem; border: none; cursor: pointer; background: var(--gradient-main); color: #fff; transition: transform .3s, box-shadow .3s; }
+    .form-submit:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,229,255,.3); }
+    .success-msg { display: none; text-align: center; padding: 20px; border-radius: var(--radius-md); background: rgba(37,211,102,.1); border: 1px solid rgba(37,211,102,.3); color: var(--accent-green); font-weight: 600; margin-top: 16px; }
+    @media(max-width:768px){ .contact-layout { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="bg-orbs"><div class="orb"></div><div class="orb"></div><div class="orb"></div></div>
+  <nav class="navbar" id="navbar">
+    <div class="container">
+      <a href="index.html" class="nav-logo"><div class="logo-icon">N2D</div><div class="logo-text"><span>Need2Done</span></div></a>
+      <div class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="index.html#services">Services</a>
+        <a href="support.html">Support</a>
+        <a href="https://wa.me/917981072623?text=Hi" target="_blank" class="nav-cta">WhatsApp</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="inner-page">
+    <div class="container">
+      <div class="page-hero reveal">
+        <div class="section-badge">📬 Contact</div>
+        <h1>Get In <span class="gradient-text">Touch</span></h1>
+        <p style="color:var(--text-secondary);max-width:480px;margin:0 auto;">Have a question, partnership idea, or want to become an agent? We'd love to hear from you.</p>
+      </div>
+
+      <div class="contact-layout">
+        <div class="contact-info reveal">
+          <div class="contact-card">
+            <div class="cc-icon">💬</div>
+            <div>
+              <h3>WhatsApp (Fastest)</h3>
+              <p>Message us directly for instant support, order help, or any query. We typically reply within 5 minutes.</p>
+              <a href="https://wa.me/917981072623" target="_blank">+91 79810 72623</a>
+            </div>
+          </div>
+          <div class="contact-card">
+            <div class="cc-icon">📞</div>
+            <div>
+              <h3>Phone</h3>
+              <p>Available Monday–Saturday, 9 AM – 9 PM IST. For urgent issues, WhatsApp is faster.</p>
+              <a href="tel:+917981072623">+91 79810 72623</a>
+            </div>
+          </div>
+          <div class="contact-card">
+            <div class="cc-icon">📍</div>
+            <div>
+              <h3>Location</h3>
+              <p>We're based in Bhongir, Telangana. Currently serving Bhongir town and surrounding areas within 15 km.</p>
+              <a href="https://maps.google.com/?q=Bhongir,Telangana,508116" target="_blank">Bhongir, Telangana 508116</a>
+            </div>
+          </div>
+          <div class="contact-card">
+            <div class="cc-icon">🏍️</div>
+            <div>
+              <h3>Become a Delivery Agent</h3>
+              <p>Want to earn by delivering in Bhongir? We're always looking for reliable agents to join our network.</p>
+              <a href="https://wa.me/917981072623?text=Hi, I want to become a delivery agent" target="_blank">Apply on WhatsApp</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="contact-form-box reveal">
+          <h3>Send a Message</h3>
+          <p class="form-sub">Fill in the form and we'll get back to you on WhatsApp within 24 hours.</p>
+          <form id="contactForm" onsubmit="handleSubmit(event)">
+            <div class="form-group">
+              <label for="cf-name">Your Name</label>
+              <input type="text" id="cf-name" placeholder="Rahul Kumar" required>
+            </div>
+            <div class="form-group">
+              <label for="cf-phone">WhatsApp Number</label>
+              <input type="tel" id="cf-phone" placeholder="+91 98765 43210" required>
+            </div>
+            <div class="form-group">
+              <label for="cf-type">What's this about?</label>
+              <select id="cf-type">
+                <option value="support">Order Support</option>
+                <option value="agent">Become an Agent</option>
+                <option value="partnership">Business Partnership</option>
+                <option value="feedback">Feedback / Suggestion</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="cf-msg">Message</label>
+              <textarea id="cf-msg" placeholder="Tell us how we can help..." required></textarea>
+            </div>
+            <button type="submit" class="form-submit">Send Message →</button>
+            <div class="success-msg" id="successMsg">✓ Message received! We'll reach you on WhatsApp shortly.</div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-bottom">
+        <p>© 2026 Need2Done. Bhongir, Telangana 508116. All rights reserved.</p>
+        <div class="footer-socials">
+          <a href="index.html">🏠 Home</a>
+          <a href="privacy.html">Privacy</a>
+          <a href="terms.html">Terms</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+  <script>
+    window.addEventListener('scroll', () => document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 50));
+    document.querySelectorAll('.reveal').forEach(el => new IntersectionObserver(([e]) => { if(e.isIntersecting) el.classList.add('active'); }, {threshold:.1}).observe(el));
+
+    function handleSubmit(e) {
+      e.preventDefault();
+      const name = document.getElementById('cf-name').value;
+      const phone = document.getElementById('cf-phone').value;
+      const type = document.getElementById('cf-type').value;
+      const msg = document.getElementById('cf-msg').value;
+      const waMsg = encodeURIComponent(`Hi Need2Done,\n\nName: ${name}\nPhone: ${phone}\nType: ${type}\n\nMessage: ${msg}`);
+      window.open(`https://wa.me/917981072623?text=${waMsg}`, '_blank');
+      document.getElementById('successMsg').style.display = 'block';
+      document.getElementById('contactForm').reset();
+    }
+  </script>
+</body>
+</html>
