@@ -62,7 +62,7 @@ echo "🚀 Starting Node.js Backend on port 5000..."
 
 # --- Launch with nohup (survives SSH disconnect) ---
 # The .env is loaded by server.js using dotenv ({ path: '../.env' })
-nohup node "$BACKEND_DIR/server.js" >> "$LOG_FILE" 2>&1 &
+cd "$BACKEND_DIR" && nohup node server.js >> "$LOG_FILE" 2>&1 &
 
 # --- Save PID for management ---
 echo $! > "$PID_FILE"
