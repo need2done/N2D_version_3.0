@@ -20,7 +20,7 @@
 set -e
 
 # --- Paths ---
-APP_DIR="/home/ubuntu/Need2Done"
+APP_DIR="/need2done/app"
 BACKEND_DIR="$APP_DIR/backend"
 LOG_DIR="$APP_DIR/logs"
 LOG_FILE="$LOG_DIR/backend.log"

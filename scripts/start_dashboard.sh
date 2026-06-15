@@ -22,7 +22,7 @@
 set -e
 
 # --- Paths ---
-APP_DIR="/home/ubuntu/Need2Done"
+APP_DIR="/need2done/app"
 DASHBOARD_DIR="$APP_DIR/admin-dashboard"
 LOG_DIR="$APP_DIR/logs"
 LOG_FILE="$LOG_DIR/dashboard_build.log"

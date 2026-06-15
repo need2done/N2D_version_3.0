@@ -9,7 +9,7 @@
 #   ./scripts/status.sh
 # ==========================================================
 
-APP_DIR="/home/ubuntu/Need2Done"
+APP_DIR="/need2done/app"
 LOG_DIR="$APP_DIR/logs"
 
 echo "=========================================="
