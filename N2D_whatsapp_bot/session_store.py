@@ -155,7 +155,7 @@ def start_confirming(user_id: str) -> bool:
     user_id = str(user_id)
     with _lock:
         session = _sessions.get(user_id)
-        if session and session.get("stage") == "IN_CASE" and session.get("case_state") == "SUMMARY":
+        if session and session.get("stage") == "IN_CASE" and session.get("case_state") in ("SUMMARY", "CONFIRM_RIDE"):
             session["case_state"] = "CONFIRMING"
             return True
         return False

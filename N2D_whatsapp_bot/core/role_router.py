@@ -230,6 +230,11 @@ def route_message(
                     reset_session(user)
                     send_message(user, "⚠️ Session expired. Please start again.")
                     return
+            elif btn_id.startswith("RIDE_"):
+                if session.get("stage") != "IN_CASE" or session.get("service") != 4:
+                    reset_session(user)
+                    send_message(user, "⚠️ Session expired. Please start again.")
+                    return
             elif btn_id.startswith("C1_") or btn_id.startswith("AW_") or btn_id in ("EDIT_ITEMS", "EDIT_LOCATION", "EDIT_COST"):
                 if session.get("stage") != "IN_CASE" or session.get("service") not in (1, 3, 5):
                     reset_session(user)
