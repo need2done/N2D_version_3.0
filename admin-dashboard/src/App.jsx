@@ -98,7 +98,7 @@ const DashboardLayout = () => {
 
 function App() {
     return (
-        <BrowserRouter>
+        <BrowserRouter basename="/admin">
             <Routes>
                 {/* Public Route */}
                 <Route path="/login" element={<Login />} />
