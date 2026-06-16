@@ -130,15 +130,72 @@ def handle(session: dict, text: str, raw: dict):
         # ITEM TEXT
         # =================================================
         if state == "ITEM_TEXT":
-            if is_anywork:
-                if not text or len(text.strip()) < 2:
-                    return "❌ Please enter valid details."
-                data.setdefault("items", []).append(text.strip())
-            else:
-                if not is_valid_item_text(text):
+            # Handle document/PDF in text mode
+            if raw.get("type") == "document" or text == "DOCUMENT":
+                if is_anywork:
+                    doc = raw.get("document", {})
+                    media_id = doc.get("id")
+                    filename = doc.get("filename", "document.pdf")
+                    if media_id:
+                        # Verify PDF mime type
+                        mime_type = doc.get("mime_type", "")
+                        is_pdf = (filename or "").lower().endswith(".pdf") or "pdf" in (mime_type or "").lower()
+                        if not is_pdf:
+                            return "❌ Unsupported document format. Please upload a PDF file."
+                        
+                        data.setdefault("images", []).append(media_id)
+                        data.setdefault("items", []).append(f"📄 Attached document: {filename}")
+                        session["case_state"] = "ADD_MORE"
+                        send_reply_buttons(
+                            to=user,
+                            body=f"📄 Document '{filename}' attached to task.\n\n➕ Do you want to add more details?",
+                            buttons=[
+                                {"id": "C1_ADD_YES", "title": "Yes"},
+                                {"id": "C1_ADD_NO",  "title": "No"}
+                            ]
+                        )
+                        return None
+                else:
+                    return "❌ PDF or document format is not supported. Please upload a clear image/photo of your grocery list."
+
+            # Handle image in text mode
+            if raw.get("type") == "image" or text == "IMAGE":
+                media_id = raw.get("image", {}).get("id")
+                if media_id:
+                    data.setdefault("images", []).append(media_id)
+                    label = "📸 Attached task photo" if is_anywork else "📸 Attached grocery list photo"
+                    data.setdefault("items", []).append(label)
+                    session["case_state"] = "ADD_MORE"
+                    prompt = "➕ Do you want to add more task details?" if is_anywork else "➕ Do you want to add more items?"
+                    send_reply_buttons(
+                        to=user,
+                        body=f"📸 Photo attached successfully.\n\n{prompt}",
+                        buttons=[
+                            {"id": "C1_ADD_YES", "title": "Yes"},
+                            {"id": "C1_ADD_NO",  "title": "No"}
+                        ]
+                    )
+                    return None
+
+            if not is_valid_item_text(text):
+                if is_anywork:
+                    return "❌ Please enter valid task details. Emojis, numbers, or special characters only are not accepted."
+                else:
                     return "❌ Please enter valid item names (e.g. Milk 2, Eggs 6). Emojis or numbers only are not accepted."
+
+            if is_anywork:
+                # Run restricted task policy check
+                is_allowed, reply_msg, warning = check_anywork_policy(text)
+                if not is_allowed:
+                    return reply_msg
+                if warning:
+                    data.setdefault("warnings", []).append(warning)
                 
-                # Truncate very long messages to 1000 characters to prevent database/display issues (GROCERY-I-009)
+                # Truncate to 2000 characters for AnyWork (WORK-D-004)
+                safe_text = text.strip()[:2000]
+                data.setdefault("items", []).append(safe_text)
+            else:
+                # Truncate very long messages to 1000 characters for groceries
                 safe_text = text.strip()[:1000]
                 data.setdefault("items", []).append(safe_text)
                 data["items"] = merge_items_list(data["items"])
@@ -161,8 +218,32 @@ def handle(session: dict, text: str, raw: dict):
         # ITEM IMAGE
         # =================================================
         if state == "ITEM_IMAGE":
-            if raw.get("type") == "document":
-                return "❌ PDF or document format is not supported. Please upload a clear image/photo of your grocery list."
+            if raw.get("type") == "document" or text == "DOCUMENT":
+                if is_anywork:
+                    doc = raw.get("document", {})
+                    media_id = doc.get("id")
+                    filename = doc.get("filename", "document.pdf")
+                    if media_id:
+                        # Verify PDF mime type
+                        mime_type = doc.get("mime_type", "")
+                        is_pdf = (filename or "").lower().endswith(".pdf") or "pdf" in (mime_type or "").lower()
+                        if not is_pdf:
+                            return "❌ Unsupported document format. Please upload a PDF file."
+                        
+                        data.setdefault("images", []).append(media_id)
+                        data.setdefault("items", []).append(f"📄 Attached document: {filename}")
+                        session["case_state"] = "ADD_MORE"
+                        send_reply_buttons(
+                            to=user,
+                            body=f"📄 Document '{filename}' attached to task.\n\n➕ Do you want to add more details?",
+                            buttons=[
+                                {"id": "C1_ADD_YES", "title": "Yes"},
+                                {"id": "C1_ADD_NO",  "title": "No"}
+                            ]
+                        )
+                        return None
+                else:
+                    return "❌ PDF or document format is not supported. Please upload a clear image/photo of your grocery list."
 
             if raw.get("type") != "image":
                 return "❌ Please upload an image."
@@ -452,13 +533,16 @@ def handle(session: dict, text: str, raw: dict):
         # =================================================
         # COST (Groceries only)
         # =================================================
+        # =================================================
+        # COST (Groceries only)
+        # =================================================
         if state == "COST":
             btn = _btn_id(raw)
             if btn == "C1_SKIP_COST":
                 data["cost"] = "TBD"
             else:
-                if not text or not text.isdigit() or int(text) <= 0:
-                    return "❌ Please enter a valid positive numeric amount (e.g. 500) or use the Skip button."
+                if not text or not text.isdigit() or int(text) <= 0 or int(text) > 50000:
+                    return "❌ Please enter a valid positive numeric amount between 1 and 50000, or use the Skip button."
                 data["cost"] = text.strip()
 
             session["case_state"] = "SUMMARY"
@@ -492,7 +576,7 @@ def handle(session: dict, text: str, raw: dict):
             if btn == "C1_EDIT":
                 session["case_state"] = "EDIT_MENU"
                 edit_buttons = [
-                    {"id": "EDIT_ITEMS", "title": "🛍️ Edit Items"},
+                    {"id": "EDIT_ITEMS", "title": "🛍️ Edit Details" if is_anywork else "🛍️ Edit Items"},
                     {"id": "EDIT_LOCATION", "title": "📍 Edit Location"}
                 ]
                 if not is_anywork:
@@ -518,22 +602,34 @@ def handle(session: dict, text: str, raw: dict):
             btn = _btn_id(raw)
             if btn == "EDIT_ITEMS":
                 session["case_state"] = "EDIT_ITEMS_MENU"
+                prompt_body = "📝 *How would you like to edit your task details?*" if is_anywork else "🛍️ *How would you like to edit your items?*"
+                add_title = "➕ Add Details" if is_anywork else "➕ Add Items"
+                replace_title = "🔄 Replace Details" if is_anywork else "🔄 Replace Items"
                 send_reply_buttons(
                     to=user,
-                    body="🛍️ *How would you like to edit your items?*",
+                    body=prompt_body,
                     buttons=[
-                        {"id": "EDIT_ITEMS_ADD", "title": "➕ Add Items"},
-                        {"id": "EDIT_ITEMS_REPLACE", "title": "🔄 Replace Items"},
+                        {"id": "EDIT_ITEMS_ADD", "title": add_title},
+                        {"id": "EDIT_ITEMS_REPLACE", "title": replace_title},
                         {"id": "EDIT_ITEMS_BACK", "title": "🔙 Back"}
                     ]
                 )
                 return None
             elif btn == "EDIT_LOCATION":
-                session["latitude"] = None
-                session["longitude"] = None
-                session["edit_mode"] = "LOCATION"
-                session["case_state"] = "LOCATION"
-                return "📍 Please share your new location using the WhatsApp location feature."
+                if is_anywork and data.get("anywork_type") == "PICK_DROP":
+                    session["pickup_latitude"] = None
+                    session["pickup_longitude"] = None
+                    session["latitude"] = None
+                    session["longitude"] = None
+                    session["edit_mode"] = "LOCATION"
+                    session["case_state"] = "LOCATION_PICKUP"
+                    return "📍 Please share the updated PICKUP location using the WhatsApp location feature."
+                else:
+                    session["latitude"] = None
+                    session["longitude"] = None
+                    session["edit_mode"] = "LOCATION"
+                    session["case_state"] = "LOCATION"
+                    return "📍 Please share your new location using the WhatsApp location feature."
             elif btn == "EDIT_COST" and not is_anywork:
                 session["edit_mode"] = "COST"
                 session["case_state"] = "COST"
@@ -719,6 +815,10 @@ def _summary(session: dict) -> str:
             "_(Final amount will be updated after completion)_\n\n"
         )
 
+    # Show warnings if any
+    if s.get("warnings"):
+        body += "\n⚠️ *Warnings:*\n" + "\n".join(f"• {w}" for w in s["warnings"]) + "\n\n"
+
     body += "✅ *Please confirm your order:*"
     return body
 
@@ -842,3 +942,34 @@ def merge_items_list(items_list: list) -> list:
     
     result.extend(non_parsed)
     return result
+
+from typing import Tuple
+
+def check_anywork_policy(text: str) -> Tuple[bool, str, str]:
+    t = (text or "").strip().lower()
+    
+    # 1. Alcohol check
+    alcohol_keywords = {"alcohol", "liquor", "beer", "wine", "whiskey", "vodka", "rum", "gin", "brandy"}
+    if any(k in t for k in alcohol_keywords):
+        return False, "❌ Reject: We cannot deliver alcohol or restricted substances due to regulatory compliance.", ""
+        
+    # 2. Cigarettes check
+    tobacco_keywords = {"cigarette", "cigarettes", "smoke", "tobacco", "cigar", "cigars"}
+    if any(k in t for k in tobacco_keywords):
+        return False, "❌ Reject: We cannot purchase or deliver tobacco products/cigarettes.", ""
+        
+    # 3. Medicine check
+    medicine_keywords = {"medicine", "medicines", "prescription", "tablet", "tablets", "capsule", "capsules", "pharma", "pharmacy"}
+    if any(k in t for k in medicine_keywords):
+        return False, "💊 *Dedicated Medicines Service*\n\nFor ordering medicines, please use our dedicated *Medicines Service*.\n\nType *Hi* to return to the main menu and select Medicines.", ""
+        
+    # 4. Money transfer check
+    money_keywords = {"transfer money", "send money", "deposit cash", "gpay", "phonepe", "paytm", "money transfer", "cash deposit"}
+    if any(k in t for k in money_keywords):
+        return False, "❌ Reject: We do not support money transfers, cash deposits, or financial transactions.", ""
+        
+    # 5. Passport check
+    if "passport" in t:
+        return True, "", "⚠️ Warning: Passport pickup is subject to strict manual review and verification."
+        
+    return True, "", ""
