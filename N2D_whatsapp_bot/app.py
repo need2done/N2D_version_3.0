@@ -192,6 +192,10 @@ async def webhook(request: Request):
                         text = "IMAGE"
                     elif msg_type == "location":
                         text = "LOCATION"
+                    elif msg_type == "document":
+                        text = "DOCUMENT"
+                    elif msg_type in ("audio", "voice"):
+                        text = "AUDIO"
                     
                     logger.info(f"Routing message from {from_number} (type: {msg_type}, text: {text})")
                     route_message(from_number, text, msg)
