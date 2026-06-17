@@ -31,7 +31,7 @@ from db.order_repo import (
     complete_order
 )
 
-from config import ADMIN_NUMBER, HELPER_CHARGE, PLATFORM_FEE
+from config import ADMIN_NUMBER, HELPER_CHARGE, PLATFORM_FEE, get_service_pricing
 
 
 # =================================================
@@ -171,13 +171,14 @@ def handle_admin_interactive(payload: Dict[str, Any]):
 
                 return
 
+            pricing_svc = get_service_pricing(order.get("service"))
             total = (
                 float(order["bill_amount"])
-                + HELPER_CHARGE
-                + PLATFORM_FEE
+                + pricing_svc["helper_charge"]
+                + pricing_svc["platform_fee"]
             )
 
-            if not mark_payment_generated(order["order_id"], total):
+            if not mark_payment_generated(order["order_id"], total, platform_fee=pricing_svc["platform_fee"], helper_charge=pricing_svc["helper_charge"]):
 
                 send_message(
                     ADMIN_NUMBER,

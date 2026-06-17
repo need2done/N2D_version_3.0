@@ -280,8 +280,6 @@ router.post('/:id/assign', async (req, res) => {
 // ==========================================
 router.post('/:id/verify-items', async (req, res) => {
     try {
-        const HELPER_CHARGE = parseFloat(process.env.HELPER_CHARGE || '20');
-        const PLATFORM_FEE = parseFloat(process.env.PLATFORM_FEE || '5');
         const UPI_ID = process.env.UPI_ID || '';
 
         // Get order details
@@ -296,6 +294,28 @@ router.post('/:id/verify-items', async (req, res) => {
 
         if (orders.length === 0) return res.status(404).json({ success: false, error: 'Order not found' });
         const order = orders[0];
+
+        const service = order.service || 'General';
+        let helperChargeKey = 'HELPER_CHARGE';
+        let platformFeeKey = 'PLATFORM_FEE';
+
+        const svcLower = service.toLowerCase();
+        if (svcLower.includes('groceries')) {
+            helperChargeKey = 'HELPER_CHARGE_GROCERIES';
+            platformFeeKey = 'PLATFORM_FEE_GROCERIES';
+        } else if (svcLower.includes('medicine')) {
+            helperChargeKey = 'HELPER_CHARGE_MEDICINES';
+            platformFeeKey = 'PLATFORM_FEE_MEDICINES';
+        } else if (svcLower.includes('anywork') || svcLower.includes('any work')) {
+            helperChargeKey = 'HELPER_CHARGE_ANYWORK';
+            platformFeeKey = 'PLATFORM_FEE_ANYWORK';
+        } else if (svcLower.includes('ride')) {
+            helperChargeKey = 'HELPER_CHARGE_RIDE';
+            platformFeeKey = 'PLATFORM_FEE_RIDE';
+        }
+
+        const HELPER_CHARGE = parseFloat(process.env[helperChargeKey] || process.env.HELPER_CHARGE || '20');
+        const PLATFORM_FEE = parseFloat(process.env[platformFeeKey] || process.env.PLATFORM_FEE || '5');
 
         if (order.status !== 'ITEM_PHOTO_UPLOADED') {
             return res.status(400).json({ success: false, error: `Order not in verifiable state (current: ${order.status})` });

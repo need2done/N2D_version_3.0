@@ -53,7 +53,7 @@ from db.order_repo import (
 )
 
 
-from config import ADMIN_NUMBER, HELPER_CHARGE, PLATFORM_FEE, UPI_ID, ANYWORK_BASE_FEE
+from config import ADMIN_NUMBER, HELPER_CHARGE, PLATFORM_FEE, UPI_ID, ANYWORK_BASE_FEE, get_service_pricing
 
 
 # =================================================
@@ -629,8 +629,14 @@ Share this with helper."""
                 bill_amt = ANYWORK_BASE_FEE if is_anywork else active.get("bill_amount", 0)
                 
                 # Use dynamic charges from the database (which already includes surge and distance logic)
-                dynamic_h_charge = float(active.get("helper_charge", HELPER_CHARGE))
-                dynamic_p_fee = float(active.get("platform_fee", PLATFORM_FEE))
+                pricing_svc = get_service_pricing(active.get("service"))
+                fallback_hc = pricing_svc["helper_charge"]
+                fallback_pf = pricing_svc["platform_fee"]
+                db_hc = active.get("helper_charge")
+                db_pf = active.get("platform_fee")
+                
+                dynamic_h_charge = float(db_hc if db_hc is not None else fallback_hc)
+                dynamic_p_fee = float(db_pf if db_pf is not None else fallback_pf)
 
                 # Apply active discounts
                 from config import get_live_pricing
@@ -824,11 +830,13 @@ Share this with helper."""
                             payment_msg += f"🎁 Discount: -₹{payload_data['breakdown_discount']}\n"
                         payment_msg += f"📋 Platform : +₹{payload_data['breakdown_platform']}\n"
                     else:
-                        base_fare = max(0, float(fare) - PLATFORM_FEE)
-                        payment_msg += f"🚕 Base Fare: ₹{base_fare}\n📋 Platform : +₹{PLATFORM_FEE}\n"
+                        ride_pf = get_service_pricing("Ride")["platform_fee"]
+                        base_fare = max(0, float(fare) - ride_pf)
+                        payment_msg += f"🚕 Base Fare: ₹{base_fare}\n📋 Platform : +₹{ride_pf}\n"
                 except:
-                    base_fare = max(0, float(fare) - PLATFORM_FEE)
-                    payment_msg += f"🚕 Base Fare: ₹{base_fare}\n📋 Platform : +₹{PLATFORM_FEE}\n"
+                    ride_pf = get_service_pricing("Ride")["platform_fee"]
+                    base_fare = max(0, float(fare) - ride_pf)
+                    payment_msg += f"🚕 Base Fare: ₹{base_fare}\n📋 Platform : +₹{ride_pf}\n"
 
                 payment_msg += (
                     f"━━━━━━━━━━━━━━━\n"

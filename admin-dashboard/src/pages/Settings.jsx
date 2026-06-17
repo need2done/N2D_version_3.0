@@ -24,6 +24,23 @@ export default function Settings() {
     });
 
     const [pricingSubTab, setPricingSubTab] = useState('global');
+    const [selectedModule, setSelectedModule] = useState('helper');
+
+    const getModuleKeys = (module) => {
+        switch (module) {
+            case 'ride':
+                return { hc: 'HELPER_CHARGE_RIDE', pf: 'PLATFORM_FEE_RIDE' };
+            case 'medicine':
+                return { hc: 'HELPER_CHARGE_MEDICINES', pf: 'PLATFORM_FEE_MEDICINES' };
+            case 'anywork':
+                return { hc: 'HELPER_CHARGE_ANYWORK', pf: 'PLATFORM_FEE_ANYWORK' };
+            case 'groceries':
+                return { hc: 'HELPER_CHARGE_GROCERIES', pf: 'PLATFORM_FEE_GROCERIES' };
+            case 'helper':
+            default:
+                return { hc: 'HELPER_CHARGE', pf: 'PLATFORM_FEE' };
+        }
+    };
 
     // Agents State
     const [agents, setAgents] = useState([]);
@@ -421,24 +438,48 @@ export default function Settings() {
                             <p className="text-secondary mb-4">Adjust operational parameters and platform toggles.</p>
 
                             <div className="grid-2-col">
+                                <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                                    <label style={{ fontSize: '0.95rem', fontWeight: '700', marginBottom: '0.5rem', display: 'block' }}>Select Module / Service</label>
+                                    <select
+                                        className="form-control"
+                                        style={{
+                                            border: '2px solid var(--primary)',
+                                            background: 'rgba(59, 130, 246, 0.04)',
+                                            fontWeight: '600',
+                                            fontSize: '1rem',
+                                            padding: '0.85rem 1.25rem',
+                                            cursor: 'pointer'
+                                        }}
+                                        value={selectedModule}
+                                        onChange={(e) => setSelectedModule(e.target.value)}
+                                    >
+                                        <option value="helper">Default / Helper (Global)</option>
+                                        <option value="ride">Ride Service</option>
+                                        <option value="medicine">Medicine Service</option>
+                                        <option value="anywork">AnyWork Service</option>
+                                        <option value="groceries">Groceries Service</option>
+                                    </select>
+                                </div>
                                 <div className="form-group">
-                                    <label>Helper Charge (₹)</label>
+                                    <label>Helper Charge (₹) - {selectedModule.toUpperCase()}</label>
                                     <input
                                         type="number"
                                         className="form-control"
-                                        name="HELPER_CHARGE"
-                                        value={envSettings.HELPER_CHARGE || ''}
+                                        name={getModuleKeys(selectedModule).hc}
+                                        value={envSettings[getModuleKeys(selectedModule).hc] || ''}
                                         onChange={handleEnvChange}
+                                        placeholder={selectedModule === 'helper' ? 'e.g. 20' : `Falls back to ${envSettings.HELPER_CHARGE || '20'}`}
                                     />
                                 </div>
                                 <div className="form-group">
-                                    <label>Platform Fee (₹)</label>
+                                    <label>Platform Fee (₹) - {selectedModule.toUpperCase()}</label>
                                     <input
                                         type="number"
                                         className="form-control"
-                                        name="PLATFORM_FEE"
-                                        value={envSettings.PLATFORM_FEE || ''}
+                                        name={getModuleKeys(selectedModule).pf}
+                                        value={envSettings[getModuleKeys(selectedModule).pf] || ''}
                                         onChange={handleEnvChange}
+                                        placeholder={selectedModule === 'helper' ? 'e.g. 5' : `Falls back to ${envSettings.PLATFORM_FEE || '5'}`}
                                     />
                                 </div>
                                 <div className="form-group">

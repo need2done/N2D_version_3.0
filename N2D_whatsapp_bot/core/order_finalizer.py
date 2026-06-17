@@ -265,11 +265,13 @@ def finalize_order(session: dict) -> str | None:
                 h_charge = round(total_bill - p_fee, 2) + surge_bonus
             else:
                 # For tasks, calculate distance-based pricing using the nearest helper
-                from config import PLATFORM_FEE as PF, HELPER_CHARGE as HC
+                from config import get_service_pricing
+                pricing_svc = get_service_pricing(service_name(service_id))
                 
                 # Default to base charges
-                p_fee = PF
-                h_charge = HC
+                p_fee = pricing_svc["platform_fee"]
+                base_hc = pricing_svc["helper_charge"]
+                h_charge = base_hc
                 
                 # Check if it is AnyWork (service_id = 3 or 5)
                 is_anywork = service_id in (3, 5)
@@ -285,8 +287,8 @@ def finalize_order(session: dict) -> str | None:
                         
                         route_dist = haversine(p_lat, p_lng, d_lat, d_lng)
                         
-                        # Dynamic pricing: Base Helper Fee (HC = 20) + (Route Distance * ₹12/km)
-                        h_charge = round(HC + (route_dist * 12.0), 2)
+                        # Dynamic pricing: Base Helper Fee + (Route Distance * ₹12/km)
+                        h_charge = round(base_hc + (route_dist * 12.0), 2)
                         
                         # Cap the helper charge for a standard errand at ₹250
                         h_charge = min(h_charge, 250.0)
@@ -305,9 +307,9 @@ def finalize_order(session: dict) -> str | None:
                         if temp_helpers:
                             nearest_dist = temp_helpers[0].get('distance', 0)
                             # Add ₹10 per km after the first 2km, or just a small per-km increment
-                            # h_charge = round(HC + (max(0, nearest_dist - 2) * 10), 2)
+                            # h_charge = round(base_hc + (max(0, nearest_dist - 2) * 10), 2)
                             # To keep it simple but dynamic:
-                            h_charge = round(HC + (nearest_dist * 5), 2)
+                            h_charge = round(base_hc + (nearest_dist * 5), 2)
                             # Ensure h_charge doesn't get too crazy
                             h_charge = min(h_charge, 200) 
                             

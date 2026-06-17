@@ -163,6 +163,43 @@ def get_live_pricing():
         "PLATFORM_FEE": safe_float(env_vars.get("PLATFORM_FEE", os.getenv("PLATFORM_FEE", "5")), 5)
     }
 
+def get_service_pricing(service_name_str: str) -> dict:
+    """Fetches helper charge and platform fee for a specific service dynamically from .env to reflect Admin changes instantly."""
+    env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+    env_vars = dotenv_values(env_path)
+    
+    def safe_float(val, default):
+        try:
+            if val is None or str(val).strip() == "": return float(default)
+            return float(val)
+        except (ValueError, TypeError):
+            return float(default)
+
+    svc_lower = (service_name_str or "").lower()
+    
+    # Defaults
+    default_hc = safe_float(env_vars.get("HELPER_CHARGE", os.getenv("HELPER_CHARGE", "20")), 20)
+    default_pf = safe_float(env_vars.get("PLATFORM_FEE", os.getenv("PLATFORM_FEE", "5")), 5)
+    
+    if "groceries" in svc_lower:
+        hc = safe_float(env_vars.get("HELPER_CHARGE_GROCERIES"), default_hc)
+        pf = safe_float(env_vars.get("PLATFORM_FEE_GROCERIES"), default_pf)
+    elif "medicine" in svc_lower:
+        hc = safe_float(env_vars.get("HELPER_CHARGE_MEDICINES"), default_hc)
+        pf = safe_float(env_vars.get("PLATFORM_FEE_MEDICINES"), default_pf)
+    elif "anywork" in svc_lower or "any work" in svc_lower:
+        hc = safe_float(env_vars.get("HELPER_CHARGE_ANYWORK"), default_hc)
+        pf = safe_float(env_vars.get("PLATFORM_FEE_ANYWORK"), default_pf)
+    elif "ride" in svc_lower:
+        hc = safe_float(env_vars.get("HELPER_CHARGE_RIDE"), default_hc)
+        pf = safe_float(env_vars.get("PLATFORM_FEE_RIDE"), default_pf)
+    else:
+        hc = default_hc
+        pf = default_pf
+        
+    return {"helper_charge": hc, "platform_fee": pf}
+
+
 
 # =================================================
 # PAYMENT CONFIG
