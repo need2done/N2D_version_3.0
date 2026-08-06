@@ -72,8 +72,13 @@ def get_db():
             raise Exception("MySQL connection failed")
 
         # Ensure UTF8
-        cursor = db.cursor()
+        cursor = db.cursor(buffered=True)
         cursor.execute("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci")
+        try:
+            if cursor.with_rows:
+                cursor.fetchall()
+        except Exception:
+            pass
         cursor.close()
 
         return db   #  DIRECT RETURN (IMPORTANT)

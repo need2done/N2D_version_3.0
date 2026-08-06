@@ -27,6 +27,8 @@ from db.mysql_conn import get_db
 from cases.case1_type import handle as case1
 from cases.case4_medicine import handle as case4
 from cases.case_ride import handle as case_ride
+from cases.case7_veg_fruits import handle as case7
+from cases.case10_home_services import handle as case10
 
 
 # =================================================
@@ -60,9 +62,13 @@ def route(
         # SERVICE ROUTING
         # -------------------------------------------------
 
+        # 7 = Vegetables & Fruits Service
+        if service == 7:
+            return case7(session, text, raw)
+
         # 1 = Groceries Service
         if service == 1:
-            return case1(session, text, raw)
+            return case7(session, text, raw)
 
         # 2 = Medicines Service
         if service == 2:
@@ -80,6 +86,14 @@ def route(
         # Handles Parcel, Errands, custom tasks
         if service == 5:
             return case1(session, text, raw)
+
+        # 9 = Food Service
+        if service == 9:
+            return case7(session, text, raw)
+            
+        # 10 = Home Services
+        if service == 10:
+            return case10(session, text, raw)
 
         # 6 = Support
         if service == 6:

@@ -136,6 +136,12 @@ def is_duplicate_message(msg_id: str) -> bool:
 # ============================================================
 # WHATSAPP WEBHOOK
 # ============================================================
+import asyncio
+from background_jobs import check_home_service_timers
+
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(check_home_service_timers())
 
 @app.api_route("/webhook", methods=["GET", "POST"])
 async def webhook(request: Request):
@@ -196,9 +202,14 @@ async def webhook(request: Request):
                         text = "DOCUMENT"
                     elif msg_type in ("audio", "voice"):
                         text = "AUDIO"
+
+                    profile_name = ""
+                    contacts = value.get("contacts", [])
+                    if contacts:
+                        profile_name = contacts[0].get("profile", {}).get("name", "")
                     
                     logger.info(f"Routing message from {from_number} (type: {msg_type}, text: {text})")
-                    route_message(from_number, text, msg)
+                    route_message(from_number, text, msg, profile_name)
 
     except Exception:
         logger.error("FATAL ERROR IN WEBHOOK HANDLER")
@@ -288,3 +299,31 @@ async def notify_surge(payload: SurgePayload):
     except Exception as e:
         logger.error(f"Error sending surge notifications: {str(e)}")
         raise HTTPException(status_code=500, detail="Server error")
+
+class InternalWebhookPayload(BaseModel):
+    event: str
+    orderId: str
+    customerId: str
+    serviceName: str
+    bookingDate: str
+    bookingSlot: str
+    amount: float
+
+@app.post('/webhook/internal')
+async def internal_webhook(payload: InternalWebhookPayload):
+    if payload.event == 'HOME_SERVICE_BOOKED':
+        from whatsapp_client import send_reply_buttons
+        from config import TRACKING_BASE_URL
+        msg = f'''🎉 *Booking Confirmed!*
+
+📦 *Booking ID*: {payload.orderId}
+🏠 *Service*: {payload.serviceName}
+📅 *Date*: {payload.bookingDate}
+⏰ *Time*: {payload.bookingSlot}
+💰 *Amount*: ₹{payload.amount}
+
+Status: 🔍 Searching for Helper'''
+        btn = [{'id': f'TRACK_ORDER_{payload.orderId}', 'title': '📍 Track Booking'}, {'id': f'MANAGE_BOOKING_{payload.orderId}', 'title': '✏️ Manage Booking'}]
+        send_reply_buttons(payload.customerId, msg, btn)
+        return {'success': True}
+    return {'success': False, 'error': 'Unknown event'}

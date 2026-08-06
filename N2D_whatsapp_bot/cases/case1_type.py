@@ -48,7 +48,14 @@ def handle(session: dict, text: str, raw: dict):
                 buttons = [
                     {"id": "C1_ITEM_TEXT",  "title": "✍️ Type task"},
                     {"id": "C1_ITEM_IMAGE", "title": "📸 Upload photo"},
-                    {"id": "C1_SKIP_TASK",  "title": "⏭️ Skip / No details"},
+                ]
+            elif service_id == 9:
+                header = "⚡ *N2D Food Service* 🍔"
+                desc = "Order meals and food from your favorite restaurants."
+                prompt = "🍔 *How would you like to add food items?*"
+                buttons = [
+                    {"id": "C1_ITEM_TEXT",  "title": "✍️ Type items"},
+                    {"id": "C1_ITEM_IMAGE", "title": "📸 Upload photo"},
                 ]
             else:
                 header = "⚡ *N2D Groceries Service* 🛒"
@@ -91,8 +98,8 @@ def handle(session: dict, text: str, raw: dict):
                         to=user,
                         body="🛠️ *Does your task require moving items between two locations?*",
                         buttons=[
-                            {"id": "AW_TYPE_PICK_DROP", "title": "🚚 Yes (Pick & Drop)"},
-                            {"id": "AW_TYPE_SINGLE",    "title": "📍 No (Single Location)"}
+                            {"id": "AW_TYPE_PICK_DROP", "title": "🚚 Pick & Drop"},
+                            {"id": "AW_TYPE_SINGLE",    "title": "📍 Single Location"}
                         ]
                     )
                     return None
@@ -277,14 +284,99 @@ def handle(session: dict, text: str, raw: dict):
                 data.setdefault("items", []).append(label)
                 msg_body = "📸 Photo uploaded successfully."
 
-            session["case_state"] = "ADD_MORE"
+            if is_anywork:
+                img_count = len(data.get("images", []))
+                if img_count < 3:
+                    session["case_state"] = "ANYWORK_ASK_MORE_IMAGES"
+                    send_reply_buttons(
+                        to=user,
+                        body=f"{msg_body}\n\n➕ Do you want to upload another photo? ({img_count}/3 uploaded)",
+                        buttons=[
+                            {"id": "C1_IMAGE_YES", "title": "Yes"},
+                            {"id": "C1_IMAGE_NO",  "title": "No"}
+                        ]
+                    )
+                else:
+                    session["case_state"] = "ANYWORK_ASK_DESC"
+                    send_reply_buttons(
+                        to=user,
+                        body=f"{msg_body} (Max 3 photos uploaded)\n\n📝 *Do you want to add a text description to this task?*",
+                        buttons=[
+                            {"id": "C1_DESC_YES", "title": "Yes"},
+                            {"id": "C1_DESC_NO",  "title": "No"}
+                        ]
+                    )
+            else:
+                session["case_state"] = "ADD_MORE"
+                send_reply_buttons(
+                    to=user,
+                    body=f"{msg_body}\n\n➕ Do you want to add more?",
+                    buttons=[
+                        {"id": "C1_ADD_YES", "title": "Yes"},
+                        {"id": "C1_ADD_NO",  "title": "No"}
+                    ]
+                )
+            return None
 
+        # =================================================
+        # ANYWORK ASK MORE IMAGES
+        # =================================================
+        if state == "ANYWORK_ASK_MORE_IMAGES":
+            btn = _btn_id(raw)
+            if btn == "C1_IMAGE_YES":
+                session["case_state"] = "ITEM_IMAGE"
+                return "📸 Please upload your next photo."
+            elif btn == "C1_IMAGE_NO":
+                session["case_state"] = "ANYWORK_ASK_DESC"
+                send_reply_buttons(
+                    to=user,
+                    body="📝 *Do you want to add a text description to this task?*",
+                    buttons=[
+                        {"id": "C1_DESC_YES", "title": "Yes"},
+                        {"id": "C1_DESC_NO",  "title": "No"}
+                    ]
+                )
+                return None
+            return "❌ Please select 'Yes' or 'No' using the buttons above."
+
+        # =================================================
+        # ANYWORK ASK DESC
+        # =================================================
+        if state == "ANYWORK_ASK_DESC":
+            btn = _btn_id(raw)
+            if btn == "C1_DESC_YES":
+                session["case_state"] = "ITEM_DESC_INPUT"
+                return "✍️ Please type your task description now."
+            elif btn == "C1_DESC_NO":
+                session["case_state"] = "ANYWORK_TYPE"
+                send_reply_buttons(
+                    to=user,
+                    body="🛠️ *Does your task require moving items between two locations?*",
+                    buttons=[
+                        {"id": "AW_TYPE_PICK_DROP", "title": "🚚 Pick & Drop"},
+                        {"id": "AW_TYPE_SINGLE",    "title": "📍 Single Location"}
+                    ]
+                )
+                return None
+            return "❌ Please select 'Yes' or 'No' using the buttons above."
+
+        # =================================================
+        # ITEM DESC INPUT
+        # =================================================
+        if state == "ITEM_DESC_INPUT":
+            if not text or text.upper() in ("YES", "NO", "DOCUMENT", "IMAGE", "LOCATION"):
+                return "❌ Please type a valid text description for your task."
+            
+            data["description"] = text
+            data.setdefault("items", []).append(f"📝 Description: {text}")
+            
+            session["case_state"] = "ANYWORK_TYPE"
             send_reply_buttons(
                 to=user,
-                body=f"{msg_body}\n\n➕ Do you want to add more?",
+                body="🛠️ *Does your task require moving items between two locations?*",
                 buttons=[
-                    {"id": "C1_ADD_YES", "title": "Yes"},
-                    {"id": "C1_ADD_NO",  "title": "No"}
+                    {"id": "AW_TYPE_PICK_DROP", "title": "🚚 Pick & Drop"},
+                    {"id": "AW_TYPE_SINGLE",    "title": "📍 Single Location"}
                 ]
             )
             return None
@@ -338,8 +430,8 @@ def handle(session: dict, text: str, raw: dict):
                         to=user,
                         body="🛠️ *Does your task require moving items between two locations?*",
                         buttons=[
-                            {"id": "AW_TYPE_PICK_DROP", "title": "🚚 Yes (Pick & Drop)"},
-                            {"id": "AW_TYPE_SINGLE",    "title": "📍 No (Single Location)"}
+                            {"id": "AW_TYPE_PICK_DROP", "title": "🚚 Pick & Drop"},
+                            {"id": "AW_TYPE_SINGLE",    "title": "📍 Single Location"}
                         ]
                     )
                     return None
@@ -373,18 +465,25 @@ def handle(session: dict, text: str, raw: dict):
                 loc = raw.get("location", {})
                 lat = loc.get("latitude")
                 lng = loc.get("longitude")
+                name = loc.get("name")
+                address = loc.get("address")
 
                 if lat is None or lng is None:
                     return "❌ Invalid location. Please resend."
 
                 session["pickup_latitude"] = lat
                 session["pickup_longitude"] = lng
-                data["pickup_location"] = to_map_link(lat, lng)
+                data["pickup_location"] = to_map_link(lat, lng, name=name, address=address)
 
                 session["case_state"] = "LOCATION_DROP"
-                return "🏁 Please share the *DROP-OFF* location using the WhatsApp location feature."
+                return "🏁 Please share the *DROP-OFF* location using the WhatsApp location feature or type your address."
 
-            return "📍 Please share the *PICKUP* location using the WhatsApp location feature."
+            if text and text.upper() != "LOCATION":
+                data["pickup_location"] = text
+                session["case_state"] = "LOCATION_DROP"
+                return "🏁 Please share the *DROP-OFF* location using the WhatsApp location feature or type your address."
+
+            return "📍 Please share the *PICKUP* location using WhatsApp location pin or type your local address."
 
         # =================================================
         # LOCATION DROP
@@ -394,13 +493,15 @@ def handle(session: dict, text: str, raw: dict):
                 loc = raw.get("location", {})
                 lat = loc.get("latitude")
                 lng = loc.get("longitude")
+                name = loc.get("name")
+                address = loc.get("address")
 
                 if lat is None or lng is None:
                     return "❌ Invalid location. Please resend."
 
                 session["latitude"] = lat
                 session["longitude"] = lng
-                data["location"] = to_map_link(lat, lng)
+                data["location"] = to_map_link(lat, lng, name=name, address=address)
 
                 # Store coordinates in data for payload sync
                 data["pickup_lat"] = session.get("pickup_latitude")
@@ -422,7 +523,22 @@ def handle(session: dict, text: str, raw: dict):
                 )
                 return None
 
-            return "🏁 Please share the *DROP-OFF* location using the WhatsApp location feature."
+            if text and text.upper() != "LOCATION":
+                data["location"] = text
+                data["cost"] = "TBD"
+                session["case_state"] = "SUMMARY"
+                send_reply_buttons(
+                    to=user,
+                    body=_summary(session),
+                    buttons=[
+                        {"id": "C1_CONFIRM", "title": "✅ Confirm"},
+                        {"id": "C1_EDIT",    "title": "✏️ Edit"},
+                        {"id": "C1_CANCEL",  "title": "❌ Cancel"}
+                    ]
+                )
+                return None
+
+            return "🏁 Please share the *DROP-OFF* location using WhatsApp location pin or type your local address."
 
         # =================================================
         # LOCATION
@@ -433,7 +549,7 @@ def handle(session: dict, text: str, raw: dict):
             if session.get("latitude") and session.get("longitude"):
                 lat = session["latitude"]
                 lng = session["longitude"]
-                data["location"] = to_map_link(lat, lng)
+                data["location"] = to_map_link(lat, lng, name=session.get("location_name"), address=session.get("location_address"))
 
                 if session.get("edit_mode") == "LOCATION":
                     session["case_state"] = "SUMMARY"
@@ -449,9 +565,10 @@ def handle(session: dict, text: str, raw: dict):
                     )
                     return None
 
-                # AnyWork → skip cost step, go straight to summary
-                if is_anywork:
-                    data["cost"] = "TBD"
+                # AnyWork or Food Service → skip cost step, go straight to summary
+                if is_anywork or service_id == 9:
+                    if is_anywork:
+                        data["cost"] = "TBD"
                     session["case_state"] = "SUMMARY"
                     send_reply_buttons(
                         to=user,
@@ -575,12 +692,17 @@ def handle(session: dict, text: str, raw: dict):
 
             if btn == "C1_EDIT":
                 session["case_state"] = "EDIT_MENU"
-                edit_buttons = [
-                    {"id": "EDIT_ITEMS", "title": "🛍️ Edit Details" if is_anywork else "🛍️ Edit Items"},
-                    {"id": "EDIT_LOCATION", "title": "📍 Edit Location"}
-                ]
-                if not is_anywork:
-                    edit_buttons.append({"id": "EDIT_COST", "title": "💰 Edit Cash"})
+                if service_id == 9:
+                    edit_buttons = [
+                        {"id": "EDIT_LOCATION", "title": "📍 Edit Location"}
+                    ]
+                else:
+                    edit_buttons = [
+                        {"id": "EDIT_ITEMS", "title": "🛍️ Edit Details" if is_anywork else "🛍️ Edit Items"},
+                        {"id": "EDIT_LOCATION", "title": "📍 Edit Location"}
+                    ]
+                    if not is_anywork:
+                        edit_buttons.append({"id": "EDIT_COST", "title": "💰 Edit Cash"})
                 
                 send_reply_buttons(
                     to=user,
@@ -742,6 +864,10 @@ def _summary(session: dict) -> str:
         header = "🛠️ *Order Summary - AnyWork*"
         label  = "📝 *Task Details:*"
         cost_label = None  # AnyWork hides cost from summary
+    elif service_id == 9:
+        header = f"🍔 *Order Summary - Food Service*"
+        label  = f"🏪 *Restaurant:* {s.get('restaurant', 'N/A')}\n\n🍔 *Items Ordered:*"
+        cost_label = "Grand Total"
     else:
         header = "🛒 *Order Summary - Groceries*"
         label  = "🛍️ *Items to Buy:*"
@@ -780,6 +906,17 @@ def _summary(session: dict) -> str:
                     )
                 except Exception:
                     pass
+            if not pricing_text:
+                base_fee = 25.0
+                platform_fee = 5.0
+                total_est = base_fee + platform_fee
+                pricing_text = (
+                    f"💰 *Estimated Fare Breakdown:*\n"
+                    f"• Service Base: ₹{base_fee:.1f}\n"
+                    f"• Platform Fee: ₹{platform_fee:.1f}\n"
+                    f"• Distance Delivery: ₹12/km (computed upon assignment)\n"
+                    f"👉 *Estimated Base Fare:* *₹{total_est:.1f}*\n\n"
+                )
         else:
             loc_label = "Work Location"
             loc_text = f"📍 *{loc_label}:*\n{s.get('location', 'Shared via WhatsApp')}\n"

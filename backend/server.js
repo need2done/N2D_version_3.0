@@ -2,17 +2,44 @@ require('dotenv').config({ path: '../.env' });
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 
+
+
+const { apiRateLimiter } = require('./middleware/rateLimiter');
 
 const app = express();
+app.set('trust proxy', 1); // Trust first proxy (Nginx)
 
-// ==========================================
-// TODO[ENV_CHANGE]: CORS ORIGIN
-// Update allowed origins for production domain.
-// ==========================================
+// Set secure allowed origins
+const defaultOrigins = 'https://need2done.in,https://www.need2done.in,http://localhost:3000,http://localhost:5000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5000,http://127.0.0.1:5173';
+let allowedOrigins = (process.env.CORS_ORIGIN || defaultOrigins).split(',').map(o => o.trim());
+
+// Disallow wildcard origin '*' in production
+if (process.env.NODE_ENV === 'production') {
+    allowedOrigins = allowedOrigins.filter(o => o !== '*');
+    if (allowedOrigins.length === 0) {
+        allowedOrigins = ['https://need2done.in', 'https://www.need2done.in'];
+    }
+}
+
 app.use(cors({
-    origin: process.env.CORS_ORIGIN || '*'
+    origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps, curl, direct navigation, or bot webhooks)
+        if (!origin || allowedOrigins.includes(origin) || (process.env.NODE_ENV !== 'production' && (allowedOrigins.includes('*') || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)))) {
+            return callback(null, true);
+        }
+        return callback(null, false);
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Internal-Secret']
 }));
+
+
+
+// Apply general API rate limiting
+app.use('/api/', apiRateLimiter);
 
 // Simple Logger (Top Level)
 app.use((req, res, next) => {
@@ -21,6 +48,7 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json());
+
 
 const axios = require('axios');
 
@@ -77,6 +105,24 @@ const analyticsRoutes = require('./routes/analytics');
 const supportRoutes = require('./routes/support');
 const authRoutes = require('./routes/auth');
 const settingsRoutes = require('./routes/settings');
+const productsRoutes = require('./routes/products');
+const cartsRoutes = require('./routes/carts');
+const categoriesRoutes = require('./routes/categories');
+const inventoryRoutes = require('./routes/inventory');
+const offersRoutes = require('./routes/offers');
+const vendorsRoutes = require('./routes/vendors');
+const walletRoutes = require('./routes/wallet');
+const homeServicesRoutes = require('./routes/homeServices');
+const fruitsVegetablesRoutes = require('./routes/fruitsVegetables');
+const rideRoutes = require('./routes/ride');
+
+
+// Groceries Backend Routers
+const groceryCategoryRoutes = require('../modules/N2D_GROCERIES_CS_Dashboard/backend/src/routes/categoryRoutes');
+const groceryProductRoutes = require('../modules/N2D_GROCERIES_CS_Dashboard/backend/src/routes/productRoutes');
+const grocerySearchRoutes = require('../modules/N2D_GROCERIES_CS_Dashboard/backend/src/routes/searchRoutes');
+const groceryCartRoutes = require('../modules/N2D_GROCERIES_CS_Dashboard/backend/src/routes/cartRoutes');
+const groceryAdminRoutes = require('../modules/N2D_GROCERIES_CS_Dashboard/backend/src/routes/adminRoutes');
 
 // app.use('/api/webhook/whatsapp', whatsappRoutes);
 app.use('/api/orders', orderRoutes);
@@ -88,6 +134,33 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/products', productsRoutes);
+app.use('/api/carts', cartsRoutes);
+app.use('/api/categories', categoriesRoutes);
+app.use('/api/inventory', inventoryRoutes);
+app.use('/api/offers', offersRoutes);
+app.use('/api/vendors', vendorsRoutes);
+app.use('/api/wallet', walletRoutes);
+app.use('/api/home-services', homeServicesRoutes);
+app.use('/api/fruits-vegetables', fruitsVegetablesRoutes);
+app.use('/api/ride', rideRoutes);
+
+
+// Groceries Backend Routes
+app.use('/api/groceries/categories', groceryCategoryRoutes);
+app.use('/api/groceries/products', groceryProductRoutes);
+app.use('/api/groceries/search', grocerySearchRoutes);
+app.use('/api/groceries/cart', groceryCartRoutes);
+app.use('/api/groceries/admin', groceryAdminRoutes);
+
+// Food Admin Routes
+const foodAdminRoutes = require('./routes/foodAdmin');
+app.use('/api/food/admin', foodAdminRoutes);
+
+// Razorpay Payment Routes
+const paymentRoutes = require('./routes/payments');
+app.use('/api/payments', paymentRoutes);
+
 
 
 // Health check
@@ -224,7 +297,60 @@ app.get('/track/:token', (req, res) => {
 });
 
 app.use('/track', express.static(path.resolve(__dirname, 'public', 'tracking')));
+app.get(/^\/Vegetables.*/, (req, res) => {
+    const targetUrl = req.url.replace(/^\/Vegetables%20%26%20Fruits/, '/vegetables-fruits');
+    res.redirect(targetUrl);
+});
 
+// Groceries Dashboard SPA
+app.use('/groceries', express.static(path.resolve(__dirname, '../website/groceries'), { extensions: ['html'] }));
+app.get(/^\/groceries.*/, (req, res) => {
+    res.sendFile('index.html', { root: path.resolve(__dirname, '../website/groceries') });
+});
+
+// Vegetables & Fruits Dashboard SPA
+app.use('/vegetables-fruits', express.static(path.resolve(__dirname, '../website/vegetables-fruits'), { extensions: ['html'] }));
+app.get(/^\/vegetables-fruits.*/, (req, res) => {
+    res.sendFile('index.html', { root: path.resolve(__dirname, '../website/vegetables-fruits') });
+});
+
+// Food Dashboard SPA
+app.get(/^\/food\/food\/(.*)/, (req, res) => {
+    res.redirect('/food/' + req.params[0]);
+});
+app.use('/food', express.static(path.resolve(__dirname, '../website/food')));
+app.get(/^\/food.*/, (req, res) => {
+    res.sendFile('index.html', { root: path.resolve(__dirname, '../website/food') });
+});
+
+// Ride Dashboard SPA
+app.use('/ride', express.static(path.resolve(__dirname, '../website/ride')));
+app.get(/^\/ride.*/, (req, res) => {
+    res.sendFile('index.html', { root: path.resolve(__dirname, '../website/ride') });
+});
+
+// Home Services Dashboard SPA
+
+app.use('/home-services', express.static(path.resolve(__dirname, '../website/home-services')));
+app.get(/^\/home-services.*/, (req, res) => {
+    res.sendFile('index.html', { root: path.resolve(__dirname, '../website/home-services') });
+});
+
+// Admin Dashboard SPA
+app.use('/admin/', express.static(path.resolve(__dirname, '../admin-dashboard/dist')));
+app.get(/^\/admin(\/.*)?$/, (req, res) => {
+    const distPath = path.resolve(__dirname, '../admin-dashboard/dist');
+    if (fs.existsSync(path.join(distPath, 'index.html'))) {
+        res.sendFile('index.html', { root: distPath });
+    } else {
+        res.sendFile('index.html', { root: path.resolve(__dirname, '../website/admin') });
+    }
+});
+
+// Redirect old admin-catalog page to admin dashboard
+app.get('/admin-catalog.html', (req, res) => res.redirect('/admin'));
+
+app.use('/', express.static(path.resolve(__dirname, '../website')));
 
 
 // ==========================================
@@ -261,6 +387,16 @@ app.get('/open-app', (req, res) => {
     `);
 });
 
+// Global Error Handling Middleware
+app.use((err, req, res, next) => {
+    console.error(`[SERVER_ERROR] ${err.stack || err.message || err}`);
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.status(err.status || 500).json({
+        success: false,
+        error: isProduction ? 'Internal Server Error' : (err.message || 'Internal Server Error')
+    });
+});
+
 // ==========================================
 // TODO[ENV_CHANGE]: PORT CONFIGURATION
 // ==========================================
@@ -269,3 +405,4 @@ app.listen(PORT, () => {
     console.log(`🚀 Need2Done Backend running on port ${PORT}`);
     console.log(`📍 Health check: http://localhost:${PORT}/api/health`);
 });
+

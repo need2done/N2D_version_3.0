@@ -3,11 +3,13 @@
 Need2Done – Ride Engine (Double OTP)
 =================================================
 """
-from utils.location import to_map_link, haversine
+from utils.location import to_map_link, haversine, get_road_distance
 from whatsapp_client import send_reply_buttons, send_message
 import random
 
-DEFAULT_FALLBACK_KM = 5.0  # Used when GPS coords not available
+DEFAULT_FALLBACK_KM = 1.5  # Realistic local town fallback when GPS coords not available
+
+from utils.geocoding import geocode_address
 
 def check_same_location(p_lat, p_lng, p_addr, d_lat, d_lng, d_addr):
     if p_lat is not None and p_lng is not None and d_lat is not None and d_lng is not None:
@@ -30,7 +32,7 @@ def recalculate_and_send_summary(session, data, user):
     d_lng = data.get("drop_lng")
 
     if p_lat and p_lng and d_lat and d_lng:
-        actual_dist = haversine(float(p_lat), float(p_lng), float(d_lat), float(d_lng))
+        actual_dist = get_road_distance(float(p_lat), float(p_lng), float(d_lat), float(d_lng))
         actual_dist = max(actual_dist, 1.0)  # Minimum 1 km
     else:
         actual_dist = DEFAULT_FALLBACK_KM  # fallback when text addresses used
@@ -237,13 +239,17 @@ def handle(session, text, raw):
             return (
                 "🚖 *N2D Ride Service*\n\n"
                 "Quickly book a bike, auto, or car for your travel. Safe and reliable rides at your doorstep.\n\n"
-                "📍 Please share your *Pickup* location."
+                "📍 *Please share your Pickup location:*\n\n"
+                "📱 *Option 1:* Tap 📎 -> Location -> *\"Send your current location\"*\n"
+                "💬 *Option 2:* Type your address / landmark below (e.g. *\"New bus stop bhongir\"*)"
             )
 
         # PICKUP
         if state == "ASK_PICKUP":
             lat = raw.get("location", {}).get("latitude") or session.get("latitude")
             lng = raw.get("location", {}).get("longitude") or session.get("longitude")
+            loc_name = raw.get("location", {}).get("name") or session.get("location_name")
+            loc_addr = raw.get("location", {}).get("address") or session.get("location_address")
 
             new_pickup_lat = None
             new_pickup_lng = None
@@ -252,10 +258,22 @@ def handle(session, text, raw):
             if lat and lng:
                 new_pickup_lat = lat
                 new_pickup_lng = lng
-                new_pickup_addr = to_map_link(lat, lng)
+                new_pickup_addr = to_map_link(lat, lng, name=loc_name, address=loc_addr)
             else:
-                if not text: return "📍 Please share your *Pickup* location."
-                new_pickup_addr = text
+                if not text or text.upper() == "LOCATION": 
+                    return (
+                        "📍 *Please share your Pickup location:*\n\n"
+                        "📱 *Option 1:* Tap 📎 -> Location -> *\"Send your current location\"*\n"
+                        "💬 *Option 2:* Type your address / landmark below (e.g. *\"New bus stop bhongir\"*)"
+                    )
+                # Automatic Geocoding for Typed Address
+                geo_lat, geo_lng, geo_name = geocode_address(text)
+                new_pickup_lat = geo_lat
+                new_pickup_lng = geo_lng
+                if geo_lat and geo_lng:
+                    new_pickup_addr = to_map_link(geo_lat, geo_lng, name=text, address=geo_name)
+                else:
+                    new_pickup_addr = text
 
             # Validation: Pickup and Drop cannot be the same
             if data.get("drop") or data.get("drop_lat"):
@@ -269,6 +287,8 @@ def handle(session, text, raw):
             data["pickup"] = new_pickup_addr
             session.pop("latitude", None)
             session.pop("longitude", None)
+            session.pop("location_name", None)
+            session.pop("location_address", None)
             
             if session.get("edit_mode") == "PICKUP":
                 session.pop("edit_mode", None)
@@ -278,12 +298,18 @@ def handle(session, text, raw):
             else:
                 session["case_state"] = "ASK_DROP"
                 session["data"] = data
-                return "🏁 Great! Now please share your *Drop* location."
+                return (
+                    "🏁 *Great! Now please share your Drop location:*\n\n"
+                    "📱 *Option 1:* Tap 📎 -> Location -> *\"Send your current location\"*\n"
+                    "💬 *Option 2:* Type your address / landmark below (e.g. *\"Secunderabad Station\"*)"
+                )
 
         # DROP
         if state == "ASK_DROP":
             lat = raw.get("location", {}).get("latitude") or session.get("latitude")
             lng = raw.get("location", {}).get("longitude") or session.get("longitude")
+            loc_name = raw.get("location", {}).get("name") or session.get("location_name")
+            loc_addr = raw.get("location", {}).get("address") or session.get("location_address")
 
             new_drop_lat = None
             new_drop_lng = None
@@ -292,10 +318,24 @@ def handle(session, text, raw):
             if lat and lng:
                 new_drop_lat = lat
                 new_drop_lng = lng
-                new_drop_addr = to_map_link(lat, lng)
+                new_drop_addr = to_map_link(lat, lng, name=loc_name, address=loc_addr)
             else:
-                if not text: return "🏁 Please share your *Drop* location."
-                new_drop_addr = text
+                if not text or text.upper() == "LOCATION": 
+                    return (
+                        "🏁 *Please share your Drop location:*\n\n"
+                        "📱 *Option 1:* Tap 📎 -> Location -> *\"Send your current location\"*\n"
+                        "💬 *Option 2:* Type your address / landmark below (e.g. *\"Secunderabad Station\"*)"
+                    )
+                # Automatic Geocoding for Typed Address (biased by pickup coordinates)
+                p_lat = data.get("pickup_lat")
+                p_lng = data.get("pickup_lng")
+                geo_lat, geo_lng, geo_name = geocode_address(text, ref_lat=p_lat, ref_lng=p_lng)
+                new_drop_lat = geo_lat
+                new_drop_lng = geo_lng
+                if geo_lat and geo_lng:
+                    new_drop_addr = to_map_link(geo_lat, geo_lng, name=text, address=geo_name)
+                else:
+                    new_drop_addr = text
 
             # Validation: Pickup and Drop cannot be the same
             if check_same_location(data.get("pickup_lat"), data.get("pickup_lng"), data.get("pickup"),
@@ -308,6 +348,8 @@ def handle(session, text, raw):
             data["drop"] = new_drop_addr
             session.pop("latitude", None)
             session.pop("longitude", None)
+            session.pop("location_name", None)
+            session.pop("location_address", None)
 
             if session.get("edit_mode") == "DROP":
                 session.pop("edit_mode", None)

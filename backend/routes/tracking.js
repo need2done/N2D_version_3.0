@@ -2,20 +2,83 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const db = require('../config/db');
+const { verifyToken, authenticateAdmin } = require('../middleware/auth');
+
+/**
+ * Middleware: Verify signed token (helper or admin) and enforce order ownership for helpers.
+ */
+async function authenticateHelperAndOrder(req, res, next) {
+    const authHeader = req.headers.authorization;
+    let token = null;
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.split(' ')[1];
+    }
+
+    if (!token) {
+        return res.status(401).json({ success: false, error: 'Unauthorized: Authentication token required' });
+    }
+
+    const payload = verifyToken(token);
+    if (!payload) {
+        return res.status(401).json({ success: false, error: 'Unauthorized: Invalid or expired token' });
+    }
+
+    req.user = payload;
+
+    // Admins have full access
+    if (payload.role === 'admin') {
+        return next();
+    }
+
+    // Helper authentication logic
+    const helperIdFromToken = payload.helper_id || (payload.role === 'helper' ? payload.id : null);
+    if (!helperIdFromToken) {
+        return res.status(403).json({ success: false, error: 'Forbidden: Valid helper or admin identity required' });
+    }
+
+    // Force payload helper_id onto request to prevent helper ID spoofing in body
+    req.authenticatedHelperId = parseInt(helperIdFromToken);
+
+    // If order_id is present in body/query, verify assignment in DB
+    const targetOrderId = req.body.order_id || req.query.order_id;
+    if (targetOrderId) {
+        try {
+            let numericOrderId = parseInt(targetOrderId);
+            if (isNaN(numericOrderId) && typeof targetOrderId === 'string' && targetOrderId.startsWith('N2D')) {
+                const [rows] = await db.query('SELECT id FROM orders WHERE order_id = ?', [targetOrderId]);
+                if (rows.length > 0) numericOrderId = rows[0].id;
+            }
+
+            if (!isNaN(numericOrderId)) {
+                const [assigned] = await db.query(
+                    'SELECT id FROM orders WHERE id = ? AND helper_id = ? AND status NOT IN ("COMPLETED", "CANCELLED")',
+                    [numericOrderId, req.authenticatedHelperId]
+                );
+                if (assigned.length === 0) {
+                    return res.status(403).json({ success: false, error: 'Forbidden: Helper is not assigned to this active order' });
+                }
+            }
+        } catch (err) {
+            console.error('Error verifying order assignment:', err.message);
+            return res.status(500).json({ success: false, error: 'Database verification failed' });
+        }
+    }
+
+    next();
+}
 
 // ==========================================
 // POST /api/tracking/start — Helper starts tracking
-// Body: { helper_id, order_id }
-// Returns: { token } — used for customer tracking link
 // ==========================================
-// ==========================================
-// POST /api/tracking/start — Helper starts tracking
-// Body: { helper_id, order_id }
-// Returns: { token } — used for customer tracking link
-// ==========================================
-router.post('/start', async (req, res) => {
+router.post('/start', authenticateHelperAndOrder, async (req, res) => {
     try {
-        const { helper_id, order_id } = req.body;
+        const helper_id = req.authenticatedHelperId || req.body.helper_id;
+        const { order_id } = req.body;
+        if (!helper_id || !order_id) {
+            return res.status(400).json({ success: false, error: 'helper_id and order_id are required' });
+        }
+
         const token = crypto.randomBytes(32).toString('hex');
 
         // Create token for customer (expires in 24h)
@@ -32,31 +95,27 @@ router.post('/start', async (req, res) => {
 
         res.json({ success: true, token, tracking_link: trackingLink });
     } catch (err) {
-        console.error('Error starting tracking:', err);
-        res.status(500).json({ success: false, error: 'DB error' });
+        console.error('Error starting tracking:', err.message);
+        res.status(500).json({ success: false, error: 'Failed to start tracking' });
     }
 });
 
 // ==========================================
 // POST /api/tracking/update — Helper app sends GPS ping
-// Body: { helper_id, order_id, lat, lng }
 // ==========================================
-router.post('/update', async (req, res) => {
-    console.log(`[TRACKING_PING] Received from ${req.ip}:`, JSON.stringify(req.body));
+router.post('/update', authenticateHelperAndOrder, async (req, res) => {
+    console.log(`[TRACKING_PING] Verified update for helper ID: ${req.authenticatedHelperId || req.body.helper_id}`);
     try {
-        let { helper_id, order_id, lat, lng, latitude, longitude } = req.body;
+        let { order_id, lat, lng, latitude, longitude } = req.body;
+        const helper_id = req.authenticatedHelperId || req.body.helper_id;
 
-        // Support both lat/lng and latitude/longitude field names
         const final_lat = lat !== undefined ? lat : latitude;
         const final_lng = lng !== undefined ? lng : longitude;
 
-        // --- VALIDATION ---
         if (!helper_id || final_lat === undefined || final_lng === undefined) {
-            console.error('Invalid payload received in tracking/update:', req.body);
             return res.status(400).json({ success: false, error: 'Missing helper_id, lat, or lng' });
         }
 
-        // Ensure numeric types for SQL
         const n_helper_id = parseInt(helper_id);
         const n_lat = parseFloat(final_lat);
         const n_lng = parseFloat(final_lng);
@@ -65,8 +124,6 @@ router.post('/update', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Invalid numeric data for helper_id, lat, or lng' });
         }
 
-        // --- ORDER LOOKUP FALLBACK ---
-        // If order_id is a string (e.g., N2D-XXXXXX), find the internal integer id.
         if (order_id && typeof order_id === 'string' && order_id.startsWith('N2D')) {
             const [rows] = await db.query('SELECT id FROM orders WHERE order_id = ?', [order_id]);
             if (rows.length > 0) {
@@ -84,7 +141,7 @@ router.post('/update', async (req, res) => {
             }
         }
 
-        // --- UPDATE HELPER STATUS (Base position) ---
+        // Update base position
         await db.query(
             `INSERT INTO helper_status (helper_id, status, latitude, longitude, last_seen) 
              VALUES (?, 'AVAILABLE', ?, ?, NOW()) 
@@ -92,17 +149,14 @@ router.post('/update', async (req, res) => {
             [n_helper_id, n_lat, n_lng, n_lat, n_lng]
         );
 
-        // --- IF ORDER EXISTS, UPDATE TRACKING TABLES ---
         if (order_id) {
             const n_order_id = parseInt(order_id);
             if (!isNaN(n_order_id)) {
-                // Store location in history
                 await db.query(
                     'INSERT INTO helper_location_history (helper_id, order_id, latitude, longitude) VALUES (?, ?, ?, ?)',
                     [n_helper_id, n_order_id, n_lat, n_lng]
                 );
 
-                // Update live tracking
                 await db.query(
                     'INSERT INTO helper_live_tracking (helper_id, order_id, lat, lng, last_seen) VALUES (?, ?, ?, ?, NOW()) ON DUPLICATE KEY UPDATE lat=?, lng=?, last_seen=NOW()',
                     [n_helper_id, n_order_id, n_lat, n_lng, n_lat, n_lng]
@@ -112,35 +166,31 @@ router.post('/update', async (req, res) => {
 
         res.json({ success: true, message: 'Location updated', order_id: order_id || null });
     } catch (err) {
-        console.error('CRITICAL ERROR in /api/tracking/update:', err);
-        console.error('Payload was:', req.body);
-        res.status(500).json({ success: false, error: 'DB error', details: err.message });
+        console.error('ERROR in /api/tracking/update:', err.message);
+        res.status(500).json({ success: false, error: 'Database update failed' });
     }
 });
 
 // Alias for legacy Android App compatibility
-router.post('/update-location', async (req, res) => {
-    // Forward to the standard update handler
+router.post('/update-location', authenticateHelperAndOrder, async (req, res) => {
     req.url = '/update';
     return router.handle(req, res);
 });
 
-
 // ==========================================
 // POST /api/tracking/stop — Helper stops tracking
-// Body: { helper_id, order_id }
 // ==========================================
-router.post('/stop', async (req, res) => {
+router.post('/stop', authenticateHelperAndOrder, async (req, res) => {
     try {
-        const { helper_id, order_id } = req.body;
+        const helper_id = req.authenticatedHelperId || req.body.helper_id;
+        const { order_id } = req.body;
+        if (!order_id) {
+            return res.status(400).json({ success: false, error: 'order_id is required' });
+        }
         
-        // Finalize order status
         await db.query('UPDATE orders SET status = "COMPLETED", tracking_status = "COMPLETED", completed_at = NOW() WHERE id = ?', [order_id]);
-        
-        // Remove from live tracking
         await db.query('DELETE FROM helper_live_tracking WHERE helper_id = ? AND order_id = ?', [helper_id, order_id]);
 
-        // Bring helper back ONLINE and AVAILABLE
         if (helper_id) {
             await db.query('UPDATE helpers SET status = "ONLINE" WHERE id = ?', [helper_id]);
             await db.query('UPDATE helper_status SET status = "AVAILABLE" WHERE helper_id = ?', [helper_id]);
@@ -148,18 +198,25 @@ router.post('/stop', async (req, res) => {
 
         res.json({ success: true, message: 'Tracking stopped and order completed' });
     } catch (err) {
-        res.status(500).json({ success: false, error: 'DB error' });
+        console.error('Error stopping tracking:', err.message);
+        res.status(500).json({ success: false, error: 'Failed to stop tracking' });
     }
 });
 
 // ==========================================
-// GET /api/tracking/live/:token — Customer polls this
+// GET /api/tracking/live/:token — Customer live view
+// STRICT TOKEN VALIDATION ONLY
 // ==========================================
 router.get('/live/:token', async (req, res) => {
     try {
+        const tokenStr = req.params.token;
+        if (!tokenStr || tokenStr.length < 16) {
+            return res.status(404).json({ success: false, error: 'Invalid tracking token' });
+        }
+
         const [tokens] = await db.query(
             'SELECT * FROM order_tracking_tokens WHERE token = ? AND expires_at > NOW()',
-            [req.params.token]
+            [tokenStr]
         );
 
         if (tokens.length === 0) {
@@ -168,13 +225,11 @@ router.get('/live/:token', async (req, res) => {
 
         const tokenId = tokens[0].order_id;
 
-        // Get live location
         const [locations] = await db.query(
             'SELECT lat, lng, last_seen FROM helper_live_tracking WHERE order_id = ?',
             [tokenId]
         );
 
-        // Get trail (last 20 points)
         const [trail] = await db.query(
             'SELECT latitude as lat, longitude as lng FROM helper_location_history WHERE order_id = ? ORDER BY id DESC LIMIT 20',
             [tokenId]
@@ -186,19 +241,17 @@ router.get('/live/:token', async (req, res) => {
             trail: trail.reverse()
         });
     } catch (err) {
-        console.error('Error fetching live tracking:', err);
-        res.status(500).json({ success: false, error: 'DB error' });
+        console.error('Error fetching live tracking:', err.message);
+        res.status(500).json({ success: false, error: 'Failed to fetch tracking data' });
     }
 });
 
 // ==========================================
 // GET /api/tracking/active — Admin: all active tracking
+// ADMIN PROTECTED
 // ==========================================
-router.get('/active', async (req, res) => {
+router.get('/active', authenticateAdmin, async (req, res) => {
     try {
-        // Fetch:
-        // 1. Helpers on active orders (from helper_live_tracking)
-        // 2. Available helpers who are NOT on an active order (from helper_status)
         const [rows] = await db.query(`
             SELECT 
                 hs.helper_id,
@@ -223,8 +276,8 @@ router.get('/active', async (req, res) => {
         `);
         res.json({ success: true, sessions: rows });
     } catch (err) {
-        console.error('Error fetching active tracking sessions:', err);
-        res.status(500).json({ success: false, error: 'DB error' });
+        console.error('Error fetching active tracking sessions:', err.message);
+        res.status(500).json({ success: false, error: 'Failed to fetch active sessions' });
     }
 });
 

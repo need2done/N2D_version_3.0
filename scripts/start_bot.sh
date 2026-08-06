@@ -19,8 +19,9 @@
 set -e  # Exit on error
 
 # --- Paths ---
-APP_DIR="/need2done/app"
+APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BOT_DIR="$APP_DIR/N2D_whatsapp_bot"
+
 LOG_DIR="$APP_DIR/logs"
 LOG_FILE="$LOG_DIR/bot.log"
 PID_FILE="$LOG_DIR/bot.pid"

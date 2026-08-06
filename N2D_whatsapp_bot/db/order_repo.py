@@ -32,7 +32,8 @@ VALID_TRANSITIONS = {
     "CONFIRMED": ["HELPER_ACCEPTED"],
     "HELPER_ACCEPTED": ["BILL_IMAGE_UPLOADED", "HELPER_ARRIVED"],  # Ride skips bill
     "BILL_IMAGE_UPLOADED": ["ADMIN_APPROVED_BILL"],
-    "ADMIN_APPROVED_BILL": ["HELPER_ARRIVED"],
+    "ADMIN_APPROVED_BILL": ["HELPER_ARRIVED", "ITEMS_PICKED_UP"],
+    "ITEMS_PICKED_UP": ["HELPER_ARRIVED"],
     "HELPER_ARRIVED": ["ITEM_PHOTO_UPLOADED", "RIDE_STARTED"],  # Item for task, Started for ride
     "ITEM_PHOTO_UPLOADED": ["ADMIN_VERIFY_ITEMS", "PAYMENT_GENERATED"],
     "ADMIN_VERIFY_ITEMS": ["PAYMENT_GENERATED"],
@@ -142,15 +143,15 @@ def accept_order_atomic(order_id: str, helper_id: int) -> Tuple[bool, Optional[s
             db.rollback()
             return False, "Order not found"
 
-        # 🚨 NEW FIX 1 — DOUBLE CHECK helper_id
-        if order.get("helper_id") is not None:
+        # Check helper_id: allow if unassigned or assigned to this specific helper
+        if order.get("helper_id") is not None and order.get("helper_id") != helper_id:
             db.rollback()
-            return False, "Order already assigned"
+            return False, "Order already assigned to another helper"
 
-        # 🚨 STRICT STATUS CHECK
-        if order["status"] != "CONFIRMED":
+        # Allow acceptance if order is in CONFIRMED, DRAFT, or HELPER_ACCEPTED state
+        if order["status"] not in ("CONFIRMED", "DRAFT", "HELPER_ACCEPTED"):
             db.rollback()
-            return False, "Order not in assignable state"
+            return False, f"Order is in {order['status']} state"
 
         # 🔒 LOCK HELPER STATUS
         cur.execute(
@@ -169,15 +170,21 @@ def accept_order_atomic(order_id: str, helper_id: int) -> Tuple[bool, Optional[s
             db.rollback()
             return False, "Helper not available"
 
+        # Fetch Helper Phone
+        cur.execute("SELECT phone FROM helpers WHERE id=%s", (helper_id,))
+        helper_row = cur.fetchone()
+        helper_phone = helper_row["phone"] if helper_row else None
+
         # 🚨 NEW FIX 2 — SAFE UPDATE (ATOMIC CHECK)
         cur.execute(
             """
             UPDATE orders
             SET helper_id=%s,
+                helper_phone=%s,
                 assigned_at=NOW()
             WHERE id=%s AND helper_id IS NULL
             """,
-            (helper_id, order["id"])
+            (helper_id, helper_phone, order["id"])
         )
 
         # 🚨 If no row updated → someone else took it
@@ -327,12 +334,13 @@ def mark_helper_arrived(order_id: str) -> bool:
 
         order = _resolve_and_lock(cur, order_id)
 
-        allowed_status = "ADMIN_APPROVED_BILL"
+        allowed_statuses = ["ITEMS_PICKED_UP"]
         is_anywork = order.get("service") in ("AnyWork", 3, 5)
-        if order and (order.get("engine_type") == "RIDE" or is_anywork):
-            allowed_status = "HELPER_ACCEPTED"
+        is_home_service = order.get("service") == "Home Services" or str(order.get("service")) == "10"
+        if order and (order.get("engine_type") == "RIDE" or is_anywork or is_home_service):
+            allowed_statuses.extend(["HELPER_ACCEPTED", "ADMIN_APPROVED_BILL"])
 
-        if not order or order["status"] != allowed_status:
+        if not order or order["status"] not in allowed_statuses:
             db.rollback()
             return False
 
@@ -481,6 +489,22 @@ def complete_order(order_id: str) -> bool:
                 (order["helper_id"],)
             )
 
+            # --- WALLET DEDUCTION LOGIC FOR COD ---
+            if order.get("payment_method") == "COD":
+                # Helper collected cash. They keep their helper_charge.
+                # The rest is owed to Admin/Platform/Vendor.
+                amount_to_deduct = float(order.get("total_amount") or 0) - float(order.get("helper_charge") or 0)
+                
+                if amount_to_deduct > 0:
+                    cur.execute(
+                        "UPDATE helpers SET wallet_balance = wallet_balance - %s WHERE id = %s",
+                        (amount_to_deduct, order["helper_id"])
+                    )
+                    cur.execute(
+                        "INSERT INTO helper_ledger (helper_id, amount, type, description, order_id) VALUES (%s, %s, 'DEBIT', %s, %s)",
+                        (order["helper_id"], amount_to_deduct, f"COD Collection for Order {order['order_id']}", order["id"])
+                    )
+
         db.commit()
 
         return True
@@ -571,9 +595,11 @@ ACTIVE_STATUSES = (
     "HELPER_ACCEPTED",
     "BILL_IMAGE_UPLOADED",
     "ADMIN_APPROVED_BILL",
+    "ITEMS_PICKED_UP",
     "HELPER_ARRIVED",
     "ITEM_PHOTO_UPLOADED",
     "ADMIN_VERIFY_ITEMS",
+    "SERVICE_STARTED",
     "PAYMENT_GENERATED",
     "PAID",
     "OTP_SUBMITTED",
@@ -1317,12 +1343,33 @@ def get_helper_stats(helper_id: int) -> Dict:
         total_count = total['count'] if total else 0
         total_sum = float(total['total_charge']) if total else 0.0
 
+        # Past 10 Days stats
+        cur.execute("""
+            SELECT DATE(completed_at) as c_date, COUNT(*) as count, COALESCE(SUM(helper_charge), 0) as daily_charge
+            FROM orders
+            WHERE helper_id = %s
+              AND status = 'COMPLETED'
+              AND completed_at >= DATE_SUB(CURDATE(), INTERVAL 10 DAY)
+            GROUP BY DATE(completed_at)
+            ORDER BY c_date DESC
+        """, (helper_id,))
+        past_10_raw = cur.fetchall()
+        
+        past_10_days = []
+        for row in past_10_raw:
+            past_10_days.append({
+                "date": row["c_date"].strftime("%d %b") if row["c_date"] else "N/A",
+                "count": row["count"],
+                "daily_charge": float(row["daily_charge"])
+            })
+
         return {
             "today_count": today_count,
             "today_sum": round(today_sum, 2),
             "today_orders": today_orders,
             "total_count": total_count,
-            "total_sum": round(total_sum, 2)
+            "total_sum": round(total_sum, 2),
+            "past_10_days": past_10_days
         }
     except Exception:
         traceback.print_exc()
@@ -1417,8 +1464,180 @@ def has_active_order_for_customer(customer_phone: str) -> bool:
         )
         return cur.fetchone() is not None
     except Exception:
-        import traceback
-        traceback.print_exc()
+        db.close()
+
+# =================================================
+# FETCH CART ITEMS
+# =================================================
+def get_cart_items(order_id: str):
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+    try:
+        cur.execute("SELECT product_name, quantity, unit FROM cart_items WHERE order_id=%s", (order_id,))
+        return cur.fetchall()
+    finally:
+        cur.close()
+        db.close()
+
+# =================================================
+# VENDOR REPOSITORY FUNCTIONS
+# =================================================
+from utils.distance import calculate_distance
+
+def get_auto_assign_vendor(service_category: str, customer_lat=None, customer_lng=None, shop_name=None):
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+    try:
+        cur.execute("SELECT * FROM vendors WHERE service_category=%s AND auto_assign=1 AND status='Active'", (service_category,))
+        vendors = cur.fetchall()
+        
+        if not vendors:
+            return None
+            
+        if shop_name and shop_name.lower() != "restaurant":
+            shop_name_lower = shop_name.lower()
+            matched_vendors = [v for v in vendors if shop_name_lower in (v.get('name') or '').lower() or (v.get('name') or '').lower() in shop_name_lower]
+            if not matched_vendors:
+                return None
+            vendors = matched_vendors
+
+        if not customer_lat or not customer_lng:
+            return vendors[0]
+            
+        # Find nearest
+        nearest_vendor = None
+        min_distance = float('inf')
+        
+        for v in vendors:
+            if v.get('lat') and v.get('lng'):
+                dist = calculate_distance(customer_lat, customer_lng, v['lat'], v['lng'])
+                if dist < min_distance:
+                    min_distance = dist
+                    nearest_vendor = v
+                    
+        return nearest_vendor or vendors[0]
+    finally:
+        cur.close()
+        db.close()
+
+def assign_vendor(order_db_id: int, vendor_id: int) -> bool:
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+    try:
+        db.start_transaction()
+        cur.execute("UPDATE orders SET vendor_id=%s, vendor_status='PENDING' WHERE id=%s", (vendor_id, order_db_id))
+        _log_timeline(cur, order_db_id, "VENDOR_ASSIGNED", "SYSTEM")
+        db.commit()
+        return True
+    except Exception:
+        db.rollback()
+        return False
+    finally:
+        cur.close()
+        db.close()
+
+def update_vendor_status(public_order_id: str, status: str) -> bool:
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+    try:
+        db.start_transaction()
+        order = _resolve_and_lock(cur, public_order_id)
+        if not order:
+            db.rollback()
+            return False
+        cur.execute("UPDATE orders SET vendor_status=%s WHERE id=%s", (status, order["id"]))
+        _log_timeline(cur, order["id"], f"VENDOR_STATUS_{status}", "VENDOR")
+        db.commit()
+        return True
+    except Exception:
+        db.rollback()
+        return False
+    finally:
+        cur.close()
+        db.close()
+
+def get_vendors_by_category(service_category: str, shop_name=None):
+    """Fetch all active vendors in the given category (e.g. Groceries, Vegetables & Fruits, Food Service, Medicines)."""
+    db = get_db()
+    if not db:
+        return []
+    cur = db.cursor(dictionary=True)
+    try:
+        cur.execute("SELECT * FROM vendors WHERE status='Active'")
+        all_vendors = cur.fetchall()
+        if not all_vendors:
+            return []
+
+        sc_lower = (service_category or "").lower().strip()
+        matched_cat = []
+        for v in all_vendors:
+            v_cat = (v.get("service_category") or "").lower().strip()
+            if v_cat == sc_lower:
+                matched_cat.append(v)
+            elif "veg" in sc_lower or "fruit" in sc_lower:
+                if "veg" in v_cat or "fruit" in v_cat:
+                    matched_cat.append(v)
+            elif "groc" in sc_lower:
+                if "groc" in v_cat:
+                    matched_cat.append(v)
+            elif "food" in sc_lower:
+                if "food" in v_cat:
+                    matched_cat.append(v)
+            elif "med" in sc_lower:
+                if "med" in v_cat:
+                    matched_cat.append(v)
+
+        if not matched_cat:
+            matched_cat = [v for v in all_vendors if (v.get("service_category") or "").lower() == sc_lower]
+
+        if not matched_cat:
+            return []
+
+        if shop_name and str(shop_name).lower().strip() not in ("restaurant", "", "none", "null"):
+            shop_name_lower = str(shop_name).lower().strip()
+            shop_matched = [
+                v for v in matched_cat 
+                if shop_name_lower in (v.get('name') or '').lower() or (v.get('name') or '').lower() in shop_name_lower
+            ]
+            if shop_matched:
+                return shop_matched
+
+        return matched_cat
+    finally:
+        cur.close()
+        db.close()
+
+def claim_vendor_order(public_order_id: str, vendor_id: int) -> bool:
+    """Atomic first-pick assignment: claims the order for vendor_id if unassigned or pending."""
+    db = get_db()
+    if not db:
+        return False
+    cur = db.cursor(dictionary=True)
+    try:
+        db.start_transaction()
+        order = _resolve_and_lock(cur, public_order_id)
+        if not order:
+            db.rollback()
+            return False
+        
+        # Check if already assigned to another vendor with non-pending status
+        if order.get("vendor_id") is not None and order.get("vendor_id") != vendor_id and order.get("vendor_status") not in ("PENDING", "UNASSIGNED", ""):
+            db.rollback()
+            return False
+            
+        cur.execute(
+            "UPDATE orders SET vendor_id=%s, vendor_status='ACCEPTED' WHERE id=%s AND (vendor_id IS NULL OR vendor_id=%s OR vendor_status='PENDING' OR vendor_status='UNASSIGNED' OR vendor_status IS NULL OR vendor_status='')",
+            (vendor_id, order["id"], vendor_id)
+        )
+        if cur.rowcount > 0:
+            _log_timeline(cur, order["id"], f"VENDOR_CLAIMED_BY_{vendor_id}", "VENDOR")
+            db.commit()
+            return True
+        else:
+            db.rollback()
+            return False
+    except Exception:
+        db.rollback()
         return False
     finally:
         cur.close()

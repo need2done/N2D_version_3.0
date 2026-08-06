@@ -1,0 +1,2031 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Need2Done — Admin Grocery & Catalog Management Portal</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+    :root {
+      --primary: #0c831f; /* Need2Done Green */
+      --primary-hover: #085e15;
+      --accent: #1565C0; /* Blue */
+      --bg: #f8fafc;
+      --panel-bg: #ffffff;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --radius-lg: 16px;
+      --radius-md: 12px;
+      --radius-sm: 8px;
+      --shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* --- Header --- */
+    header {
+      background: var(--panel-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      z-index: 10;
+    }
+
+    .header-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 800;
+      font-size: 1.4rem;
+    }
+
+    .brand-logo {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      background: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.95rem;
+      color: white;
+    }
+
+    .brand-text span {
+      color: var(--primary);
+    }
+
+    .btn-logout {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+
+    .btn-logout:hover {
+      color: #ef4444;
+      border-color: #ef4444;
+    }
+
+    /* --- Auth Container --- */
+    .auth-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .auth-card {
+      background: var(--panel-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 40px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    }
+
+    .auth-card h2 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.7rem;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    .auth-card p {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .form-group {
+      margin-bottom: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .form-group input, .form-group select, .form-group textarea {
+      background-color: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 12px;
+      border-radius: 8px;
+      outline: none;
+      font-size: 0.95rem;
+    }
+
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      border-color: var(--primary);
+      background-color: white;
+    }
+
+    .btn-primary {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      padding: 14px;
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+      width: 100%;
+      transition: background-color 0.2s;
+    }
+
+    .btn-primary:hover {
+      background-color: var(--primary-hover);
+    }
+
+    /* --- Dashboard Layout --- */
+    .dashboard-layout {
+      display: none;
+      flex: 1;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 260px;
+      background: white;
+      border-right: 1px solid var(--border);
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .sidebar-title {
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin: 16px 8px 4px;
+    }
+
+    .sidebar-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .sidebar-link:hover, .sidebar-link.active {
+      background-color: rgba(12, 131, 31, 0.08);
+      color: var(--primary);
+    }
+
+    /* Main Area */
+    .main-content {
+      flex: 1;
+      padding: 40px;
+      overflow-y: auto;
+    }
+
+    .dashboard-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+    }
+
+    .dashboard-header h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.8rem;
+    }
+
+    .dashboard-header-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn-add {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .btn-add:hover {
+      background-color: var(--primary-hover);
+    }
+
+    /* Analytics Widgets */
+    .analytics-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 20px;
+      margin-bottom: 32px;
+    }
+
+    .analytics-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .analytics-card-title {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .analytics-card-val {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.8rem;
+      font-weight: 800;
+    }
+
+    /* Table Tools bar */
+    .table-tools {
+      background: white;
+      border: 1px solid var(--border);
+      border-top-left-radius: var(--radius-md);
+      border-top-right-radius: var(--radius-md);
+      padding: 20px;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      border-bottom: none;
+    }
+
+    .search-input-box {
+      position: relative;
+      flex: 1;
+      max-width: 360px;
+    }
+
+    .search-input-box input {
+      width: 100%;
+      padding: 10px 16px 10px 40px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.88rem;
+      outline: none;
+    }
+
+    .search-input-box input:focus {
+      border-color: var(--primary);
+    }
+
+    .search-input-box svg {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+    }
+
+    .filter-group {
+      display: flex;
+      gap: 12px;
+    }
+
+    .filter-select {
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      background: white;
+      outline: none;
+    }
+
+    /* Data Tables */
+    .table-container {
+      background: white;
+      border: 1px solid var(--border);
+      border-bottom-left-radius: var(--radius-md);
+      border-bottom-right-radius: var(--radius-md);
+      overflow-x: auto;
+      box-shadow: var(--shadow);
+      margin-bottom: 40px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    th, td {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.88rem;
+    }
+
+    th {
+      background-color: #f8fafc;
+      font-weight: 700;
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .item-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .item-thumbnail {
+      width: 40px;
+      height: 40px;
+      border-radius: 6px;
+      object-fit: cover;
+      background-color: var(--bg);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+
+    .item-name {
+      font-weight: 700;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    .badge-success {
+      background-color: rgba(12, 131, 31, 0.1);
+      color: var(--primary);
+    }
+
+    .badge-danger {
+      background-color: rgba(239, 68, 68, 0.1);
+      color: #ef4444;
+    }
+
+    .badge-warning {
+      background-color: rgba(245, 158, 11, 0.1);
+      color: #f59e0b;
+    }
+
+    .actions-cell {
+      display: flex;
+      gap: 6px;
+    }
+
+    .btn-action {
+      border: 1px solid var(--border);
+      background: white;
+      color: var(--text);
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .btn-action:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .btn-delete:hover {
+      color: #ef4444;
+      border-color: #ef4444;
+      background-color: rgba(239, 68, 68, 0.02);
+    }
+
+    /* Modal dialog */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .modal {
+      background: white;
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      width: 100%;
+      max-width: 600px;
+      box-shadow: 0 20px 45px rgba(0,0,0,0.15);
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+    }
+
+    .modal-header h3 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.35rem;
+    }
+
+    .btn-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1.5rem;
+    }
+
+    .modal-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .photo-upload-box {
+      border: 2px dashed var(--border);
+      padding: 16px;
+      border-radius: 8px;
+      text-align: center;
+      background-color: var(--bg);
+      margin-bottom: 18px;
+    }
+
+    .photo-preview-box {
+      width: 80px;
+      height: 80px;
+      object-fit: contain;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background-color: white;
+      margin: 10px auto 0;
+      display: none;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 24px;
+      border-top: 1px solid var(--border);
+      padding-top: 16px;
+    }
+
+    .btn-cancel {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .btn-save {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-save:hover {
+      background-color: var(--primary-hover);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- --- HEADER --- -->
+  <header>
+    <div class="header-container">
+      <a href="/" class="brand">
+        <div class="brand-logo">N2D</div>
+        <div class="brand-text">Need2Done <span>Admin Console</span></div>
+      </a>
+      <div class="header-actions" id="headerActions" style="display: none;">
+        <button class="btn-logout" onclick="logout()">Sign Out</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- --- AUTH PORTAL --- -->
+  <div class="auth-container" id="authContainer">
+    <div class="auth-card">
+      <h2>Admin Sign In</h2>
+      <p>Authentication is mandatory to manage catalog settings.</p>
+      <div id="loginError" style="color: #ef4444; font-size: 0.85rem; text-align: center; margin-bottom: 12px; display: none;">Invalid admin credentials. Please try again.</div>
+      <form onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="usernameInput" required placeholder="Enter username">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="passwordInput" required placeholder="Enter password">
+        </div>
+        <button type="submit" class="btn-primary">Sign In</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- --- DASHBOARD INTERFACE --- -->
+  <div class="dashboard-layout" id="dashboardLayout">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-title">Catalog</div>
+      <div class="sidebar-link active" onclick="switchTab('products')">🛒 Products Catalog</div>
+      <div class="sidebar-link" onclick="switchTab('categories')">📁 Category Manager</div>
+      
+      <div class="sidebar-title">Operations</div>
+      <div class="sidebar-link" onclick="switchTab('inventory')">📦 Inventory Stocks</div>
+      <div class="sidebar-link" onclick="switchTab('price')">💳 Price Management</div>
+      <div class="sidebar-link" onclick="switchTab('offers')">🉐 Promo Campaigns</div>
+      
+      <div class="sidebar-title">System</div>
+      <div class="sidebar-link" style="color: #ef4444;" onclick="logout()">🚪 Sign Out</div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="main-content">
+      
+      <!-- ================================================= -->
+      <!-- TAB: PRODUCTS CATALOG -->
+      <!-- ================================================= -->
+      <div id="tab-products">
+        <div class="dashboard-header">
+          <h1>Products Catalog</h1>
+          <button class="btn-add" onclick="openProductAddModal()">＋ Add New Product</button>
+        </div>
+
+        <div class="analytics-grid">
+          <div class="analytics-card">
+            <span class="analytics-card-title">Total Products</span>
+            <span class="analytics-card-val" id="prodTotal">0</span>
+          </div>
+          <div class="analytics-card">
+            <span class="analytics-card-title">Active Products</span>
+            <span class="analytics-card-val" id="prodActive" style="color: var(--primary);">0</span>
+          </div>
+          <div class="analytics-card">
+            <span class="analytics-card-title">Out of Stock</span>
+            <span class="analytics-card-val" id="prodOutOfStock" style="color: #ef4444;">0</span>
+          </div>
+          <div class="analytics-card">
+            <span class="analytics-card-title">Low Stock</span>
+            <span class="analytics-card-val" id="prodLowStock" style="color: #f59e0b;">0</span>
+          </div>
+          <div class="analytics-card">
+            <span class="analytics-card-title">Inactive Products</span>
+            <span class="analytics-card-val" id="prodInactive" style="color: var(--text-muted);">0</span>
+          </div>
+        </div>
+
+        <div class="table-tools">
+          <div class="search-input-box">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="prodSearch" placeholder="Search products..." oninput="filterProductsTable()">
+          </div>
+          <div class="filter-group">
+            <select class="filter-select" id="prodFilterCategory" onchange="filterProductsTable()">
+              <option value="All">All Categories</option>
+            </select>
+            <select class="filter-select" id="prodFilterStock" onchange="filterProductsTable()">
+              <option value="All">All Stock Levels</option>
+              <option value="in">In Stock</option>
+              <option value="low">Low Stock (≤5)</option>
+              <option value="out">Out of Stock</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Image & Product Name</th>
+                <th>Category</th>
+                <th>Brand</th>
+                <th>Weight / Unit</th>
+                <th>MRP (₹)</th>
+                <th>Selling Price (₹)</th>
+                <th>Stock</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="productsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ================================================= -->
+      <!-- TAB: CATEGORY MANAGER -->
+      <!-- ================================================= -->
+      <div id="tab-categories" style="display: none;">
+        <div class="dashboard-header">
+          <h1>Category Manager</h1>
+          <button class="btn-add" onclick="openCategoryAddModal()">＋ Add Category</button>
+        </div>
+
+        <div class="analytics-grid">
+          <div class="analytics-card">
+            <span class="analytics-card-title">Total Categories</span>
+            <span class="analytics-card-val" id="catTotal">0</span>
+          </div>
+          <div class="analytics-card">
+            <span class="analytics-card-title">Active Categories</span>
+            <span class="analytics-card-val" id="catActive" style="color: var(--primary);">0</span>
+          </div>
+          <div class="analytics-card">
+            <span class="analytics-card-title">Inactive Categories</span>
+            <span class="analytics-card-val" id="catInactive" style="color: #ef4444;">0</span>
+          </div>
+        </div>
+
+        <div class="table-tools">
+          <div class="search-input-box">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="catSearch" placeholder="Search categories..." oninput="filterCategoriesTable()">
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Image & Category Name</th>
+                <th>Description</th>
+                <th>Display Order</th>
+                <th>Products Count</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="categoriesTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ================================================= -->
+      <!-- TAB: INVENTORY STOCKS -->
+      <!-- ================================================= -->
+      <div id="tab-inventory" style="display: none;">
+        <div class="dashboard-header">
+          <h1>Inventory Stocks Management</h1>
+        </div>
+
+        <div class="analytics-grid">
+          <div class="analytics-card">
+            <span class="analytics-card-title">Total Products</span>
+            <span class="analytics-card-val" id="invTotal">0</span>
+          </div>
+          <div class="analytics-card">
+            <span class="analytics-card-title">Low Stock Alerts</span>
+            <span class="analytics-card-val" id="invLowStock" style="color: #f59e0b;">0</span>
+          </div>
+          <div class="analytics-card">
+            <span class="analytics-card-title">Out of Stock Alerts</span>
+            <span class="analytics-card-val" id="invOutOfStock" style="color: #ef4444;">0</span>
+          </div>
+          <div class="analytics-card">
+            <span class="analytics-card-title">Reserved Stocks</span>
+            <span class="analytics-card-val" id="invReserved" style="color: var(--primary);">0</span>
+          </div>
+        </div>
+
+        <div class="table-tools">
+          <div class="search-input-box">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="invSearch" placeholder="Search stock items..." oninput="filterInventoryTable()">
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Category</th>
+                <th>Current Stock</th>
+                <th>Reserved Stock</th>
+                <th>Available Stock</th>
+                <th>Min Stock Bound</th>
+                <th>Status</th>
+                <th>Adjust</th>
+              </tr>
+            </thead>
+            <tbody id="inventoryTableBody"></tbody>
+          </table>
+        </div>
+
+        <!-- Secondary section for audit trail -->
+        <h2 style="font-size: 1.25rem; font-weight:800; margin-bottom:16px;">Stock Adjustment Audit Log</h2>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Date & Time</th>
+                <th>Product</th>
+                <th>Prev Stock</th>
+                <th>New Stock</th>
+                <th>Diff</th>
+                <th>Reason</th>
+                <th>Operator</th>
+              </tr>
+            </thead>
+            <tbody id="inventoryLogsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ================================================= -->
+      <!-- TAB: PRICE MANAGEMENT -->
+      <!-- ================================================= -->
+      <div id="tab-price" style="display: none;">
+        <div class="dashboard-header">
+          <h1>Price & Discount Management</h1>
+        </div>
+
+        <div class="analytics-grid">
+          <div class="analytics-card">
+            <span class="analytics-card-title">Discounted Items</span>
+            <span class="analytics-card-val" id="priceDiscounted" style="color: var(--primary);">0</span>
+          </div>
+          <div class="analytics-card">
+            <span class="analytics-card-title">Average Saving (%)</span>
+            <span class="analytics-card-val" id="priceAvgSaving">13%</span>
+          </div>
+        </div>
+
+        <div class="table-tools">
+          <div class="search-input-box">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="priceSearch" placeholder="Search pricing catalog..." oninput="filterPriceTable()">
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Product Name</th>
+                <th>MRP (₹)</th>
+                <th>Selling Price (₹)</th>
+                <th>Discount Value (₹)</th>
+                <th>Tax / GST (%)</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="priceTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ================================================= -->
+      <!-- TAB: PROMO CAMPAIGNS -->
+      <!-- ================================================= -->
+      <div id="tab-offers" style="display: none;">
+        <div class="dashboard-header">
+          <h1>Promo Campaigns & Coupons</h1>
+          <button class="btn-add" onclick="openOfferAddModal()">＋ New Offer Code</button>
+        </div>
+
+        <div class="analytics-grid">
+          <div class="analytics-card">
+            <span class="analytics-card-title">Active Offers</span>
+            <span class="analytics-card-val" id="offActive" style="color: var(--primary);">0</span>
+          </div>
+          <div class="analytics-card">
+            <span class="analytics-card-title">Total Campaigns</span>
+            <span class="analytics-card-val" id="offTotal">0</span>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Promo Banner & Offer Name</th>
+                <th>Campaign Type</th>
+                <th>Value</th>
+                <th>Description</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="offersTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- --- CATEGORY MODAL --- -->
+  <div class="modal-overlay" id="categoryModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="catModalTitle">Add Category</h3>
+        <button class="btn-close" onclick="closeCategoryModal()">×</button>
+      </div>
+      <form onsubmit="handleSaveCategory(event)">
+        <input type="hidden" id="catIdInput">
+        <div class="form-group">
+          <label>Category Name *</label>
+          <input type="text" id="catNameInput" required placeholder="e.g. Dairy, Bread & Eggs">
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <input type="text" id="catDescInput" placeholder="Short description of this category">
+        </div>
+        <div class="modal-grid-2">
+          <div class="form-group">
+            <label>Display Order (Unique) *</label>
+            <input type="number" id="catDisplayOrderInput" required placeholder="e.g. 1">
+          </div>
+          <div class="form-group">
+            <label>Status</label>
+            <select id="catStatusInput">
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Category Icon File Upload *</label>
+          <div class="photo-upload-box">
+            <input type="file" id="catFileUploadInput" accept="image/*" onchange="handleCatPhotoUpload(event)" style="font-size: 0.85rem; margin-bottom: 8px;">
+            <p style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 8px;">Or enter a Web URL/Emoji representation:</p>
+            <input type="text" id="catImageInput" placeholder="URL or Emoji representation e.g. 🥛">
+            <img class="photo-preview-box" id="catPhotoPreviewImg" alt="Preview">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-cancel" onclick="closeCategoryModal()">Cancel</button>
+          <button type="submit" class="btn-save">Save Category</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- --- PRODUCT EDIT/ADD MODAL --- -->
+  <div class="modal-overlay" id="productModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="productModalTitle">Add Product</h3>
+        <button class="btn-close" onclick="closeProductModal()">×</button>
+      </div>
+      <form onsubmit="handleSaveProduct(event)">
+        <input type="hidden" id="prodIdInput">
+        <div class="modal-grid-2">
+          <div class="form-group">
+            <label>Product Name *</label>
+            <input type="text" id="prodNameInput" required placeholder="e.g. Fortune Sunflower Oil">
+          </div>
+          <div class="form-group">
+            <label>Brand Name</label>
+            <input type="text" id="prodBrandInput" placeholder="e.g. Fortune">
+          </div>
+        </div>
+
+        <div class="modal-grid-2">
+          <div class="form-group">
+            <label>Category *</label>
+            <select id="prodCategoryInput" required></select>
+          </div>
+          <div class="form-group">
+            <label>Weight / Volume *</label>
+            <input type="text" id="prodUnitInput" required placeholder="e.g. 1 L, 500 g, 1 kg">
+          </div>
+        </div>
+
+        <div class="modal-grid-2">
+          <div class="form-group">
+            <label>MRP (₹) *</label>
+            <input type="number" step="0.01" id="prodMrpInput" required placeholder="e.g. 150.00">
+          </div>
+          <div class="form-group">
+            <label>Selling Price (₹) *</label>
+            <input type="number" step="0.01" id="prodPriceInput" required placeholder="e.g. 135.00">
+          </div>
+        </div>
+
+        <div class="modal-grid-2">
+          <div class="form-group">
+            <label>Stock Qty *</label>
+            <input type="number" id="prodStockInput" required placeholder="e.g. 100">
+          </div>
+          <div class="form-group">
+            <label>Available Status</label>
+            <select id="prodAvailableInput">
+              <option value="1">Active / In Stock</option>
+              <option value="0">Disabled / Hidden</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Product Photo Option</label>
+          <div class="photo-upload-box">
+            <input type="file" id="prodFileUploadInput" accept="image/*" onchange="handleProdPhotoUpload(event)" style="font-size: 0.85rem; margin-bottom: 8px;">
+            <p style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 8px;">Or enter a Web Image URL below:</p>
+            <input type="text" id="prodImageInput" placeholder="URL to web image">
+            <img class="photo-preview-box" id="prodPhotoPreviewImg" alt="Preview">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-cancel" onclick="closeProductModal()">Cancel</button>
+          <button type="submit" class="btn-save">Save Product</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- --- INVENTORY ADJUSTMENT MODAL --- -->
+  <div class="modal-overlay" id="inventoryModal">
+    <div class="modal" style="max-width: 400px;">
+      <div class="modal-header">
+        <h3>Adjust Stock Inventory</h3>
+        <button class="btn-close" onclick="closeInventoryModal()">×</button>
+      </div>
+      <form onsubmit="handleSaveInventoryAdjustment(event)">
+        <input type="hidden" id="invProdIdInput">
+        <div class="form-group">
+          <label>Product Name</label>
+          <input type="text" id="invProdNameInput" readonly style="background:#f1f5f9; cursor:not-allowed;">
+        </div>
+        <div class="form-group">
+          <label>Current Stock</label>
+          <input type="number" id="invCurrentStockInput" readonly style="background:#f1f5f9; cursor:not-allowed;">
+        </div>
+        <div class="form-group">
+          <label>Adjustment Qty (e.g. +10, -5) *</label>
+          <input type="number" id="invAdjustmentInput" required placeholder="Enter positive/negative quantity">
+        </div>
+        <div class="form-group">
+          <label>Reason *</label>
+          <select id="invReasonInput" required>
+            <option value="Purchase">Purchase (Stock Addition)</option>
+            <option value="Damage">Damage (Wastage)</option>
+            <option value="Expired">Expired (Wastage)</option>
+            <option value="Manual Adjustment">Manual Adjustment</option>
+          </select>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-cancel" onclick="closeInventoryModal()">Cancel</button>
+          <button type="submit" class="btn-save">Save Adjustment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- --- PRICE UPDATE MODAL --- -->
+  <div class="modal-overlay" id="priceModal" style="z-index: 1001;">
+    <div class="modal" style="max-width: 400px;">
+      <div class="modal-header">
+        <h3>✏ Update Pricing settings</h3>
+        <button class="btn-close" onclick="closePriceModal()">×</button>
+      </div>
+      <form onsubmit="handleSavePrice(event)">
+        <input type="hidden" id="priceProdIdInput">
+        <div class="form-group">
+          <label>MRP (₹) *</label>
+          <input type="number" step="0.01" id="priceMrpInput" required placeholder="e.g. 150.00" oninput="calculateDiscountPrice()">
+        </div>
+        <div class="form-group">
+          <label>Selling Price (₹) *</label>
+          <input type="number" step="0.01" id="priceSellingInput" required placeholder="e.g. 135.00" oninput="calculateDiscountPrice()">
+        </div>
+        <div class="form-group">
+          <label>Calculated Discount (%)</label>
+          <input type="text" id="priceDiscountInput" readonly style="background:#f1f5f9; cursor:not-allowed;">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-cancel" onclick="closePriceModal()">Cancel</button>
+          <button type="submit" class="btn-save">Update Price</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- --- OFFERS MODAL --- -->
+  <div class="modal-overlay" id="offerModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="offerModalTitle">Add Offer Campaign</h3>
+        <button class="btn-close" onclick="closeOfferModal()">×</button>
+      </div>
+      <form onsubmit="handleSaveOffer(event)">
+        <input type="hidden" id="offerIdInput">
+        <div class="form-group">
+          <label>Offer Name *</label>
+          <input type="text" id="offerNameInput" required placeholder="e.g. Festival Special Flat discount">
+        </div>
+        
+        <div class="modal-grid-2">
+          <div class="form-group">
+            <label>Offer Type *</label>
+            <select id="offerTypeInput" required>
+              <option value="Flat Discount">Flat Discount</option>
+              <option value="Percentage Discount">Percentage Discount</option>
+              <option value="Buy 1 Get 1">Buy 1 Get 1</option>
+              <option value="Combo Offer">Combo Offer</option>
+              <option value="Free Delivery">Free Delivery</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Coupon Value (₹ or %)</label>
+            <input type="number" step="0.01" id="offerValueInput" placeholder="e.g. 100.00">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Description</label>
+          <input type="text" id="offerDescInput" placeholder="Flat discount criteria...">
+        </div>
+
+        <div class="modal-grid-2">
+          <div class="form-group">
+            <label>Start Date</label>
+            <input type="date" id="offerStartDateInput">
+          </div>
+          <div class="form-group">
+            <label>End Date</label>
+            <input type="date" id="offerEndDateInput">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Status</label>
+          <select id="offerStatusInput">
+            <option value="Active">Active</option>
+            <option value="Inactive">Inactive</option>
+          </select>
+        </div>
+
+        <!-- Banner Upload Selection -->
+        <div class="form-group">
+          <label>Promo Banner Upload</label>
+          <div class="photo-upload-box">
+            <input type="file" id="offerFileUploadInput" accept="image/*" onchange="handleOfferPhotoUpload(event)" style="font-size: 0.85rem; margin-bottom: 8px;">
+            <p style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 8px;">Or enter a Web Image URL below:</p>
+            <input type="text" id="offerImageInput" placeholder="URL to web image">
+            <img class="photo-preview-box" id="offerPhotoPreviewImg" alt="Preview">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-cancel" onclick="closeOfferModal()">Cancel</button>
+          <button type="submit" class="btn-save">Save Campaign</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let token = localStorage.getItem('adminToken');
+    let productsList = [];
+    let categoriesList = [];
+    let inventoryList = [];
+    let offersList = [];
+    
+    // Photo upload data holders
+    let prodPhotoBase64 = '';
+    let catPhotoBase64 = '';
+    let offerPhotoBase64 = '';
+
+    // Switch sidebar tab view
+    function switchTab(tabId) {
+      document.querySelectorAll('.sidebar-link').forEach(link => link.classList.remove('active'));
+      const activeLink = Array.from(document.querySelectorAll('.sidebar-link')).find(link => link.innerText.toLowerCase().includes(tabId));
+      if (activeLink) activeLink.classList.add('active');
+
+      const tabs = ['products', 'categories', 'inventory', 'price', 'offers'];
+      tabs.forEach(t => {
+        const tabEl = document.getElementById(`tab-${t}`);
+        if (tabEl) tabEl.style.display = (t === tabId) ? 'block' : 'none';
+      });
+
+      if (tabId === 'products') loadProducts();
+      else if (tabId === 'categories') loadCategories();
+      else if (tabId === 'inventory') loadInventory();
+      else if (tabId === 'price') loadPriceManagement();
+      else if (tabId === 'offers') loadOffers();
+    }
+
+    // Login Form Actions
+    async function handleLogin(e) {
+      e.preventDefault();
+      const username = document.getElementById('usernameInput').value;
+      const password = document.getElementById('passwordInput').value;
+      const errorDiv = document.getElementById('loginError');
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+        if (data.success) {
+          localStorage.setItem('adminToken', data.token);
+          token = data.token;
+          showDashboard();
+        } else {
+          errorDiv.style.display = 'block';
+        }
+      } catch (err) {
+        errorDiv.innerText = 'Network error. Try again.';
+        errorDiv.style.display = 'block';
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem('adminToken');
+      token = null;
+      document.getElementById('dashboardLayout').style.display = 'none';
+      document.getElementById('headerActions').style.display = 'none';
+      document.getElementById('authContainer').style.display = 'flex';
+    }
+
+    async function showDashboard() {
+      document.getElementById('authContainer').style.display = 'none';
+      document.getElementById('dashboardLayout').style.display = 'flex';
+      document.getElementById('headerActions').style.display = 'flex';
+      await loadCategories(); // Load categories first to populate dropdowns
+      await loadProducts();
+    }
+
+    // ===================================================
+    // 1. PRODUCTS MANAGEMENT METHODS
+    // ===================================================
+    async function loadProducts() {
+      try {
+        const res = await fetch('/api/products/admin', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.status === 401) { logout(); return; }
+        const data = await res.json();
+        if (data.success) {
+          productsList = data.products;
+          calculateProductStats();
+          filterProductsTable();
+        }
+      } catch (err) {
+        console.error('Failed to load products:', err);
+      }
+    }
+
+    function calculateProductStats() {
+      const total = productsList.length;
+      const active = productsList.filter(p => p.available === 1 && p.stock > 0).length;
+      const outOfStock = productsList.filter(p => p.stock <= 0).length;
+      const lowStock = productsList.filter(p => p.stock > 0 && p.stock <= 5).length;
+      const inactive = productsList.filter(p => p.available === 0).length;
+
+      document.getElementById('prodTotal').innerText = total;
+      document.getElementById('prodActive').innerText = active;
+      document.getElementById('prodOutOfStock').innerText = outOfStock;
+      document.getElementById('prodLowStock').innerText = lowStock;
+      document.getElementById('prodInactive').innerText = inactive;
+    }
+
+    function filterProductsTable() {
+      const search = document.getElementById('prodSearch').value.toLowerCase();
+      const cat = document.getElementById('prodFilterCategory').value;
+      const stock = document.getElementById('prodFilterStock').value;
+
+      const filtered = productsList.filter(p => {
+        const matchesSearch = p.name.toLowerCase().includes(search) || (p.brand && p.brand.toLowerCase().includes(search));
+        const matchesCategory = cat === 'All' || p.category === cat;
+        
+        let matchesStock = true;
+        if (stock === 'out') matchesStock = p.stock <= 0;
+        else if (stock === 'low') matchesStock = p.stock > 0 && p.stock <= 5;
+        else if (stock === 'in') matchesStock = p.stock > 5;
+
+        return matchesSearch && matchesCategory && matchesStock;
+      });
+
+      renderProductsTable(filtered);
+    }
+
+    function renderProductsTable(products) {
+      const tbody = document.getElementById('productsTableBody');
+      tbody.innerHTML = '';
+
+      products.forEach(p => {
+        const mrpVal = p.mrp || (parseFloat(p.price) * 1.15).toFixed(2);
+        
+        let stockBadge = '<span class="badge badge-success">In Stock</span>';
+        if (p.stock <= 0) stockBadge = '<span class="badge badge-danger">Out of Stock</span>';
+        else if (p.stock <= 5) stockBadge = '<span class="badge badge-warning">Low Stock</span>';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>
+            <div class="item-info">
+              <img class="item-thumbnail" src="${p.image_url || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=100&q=80'}" alt="${p.name}">
+              <div class="item-name">${p.name}</div>
+            </div>
+          </td>
+          <td>${p.category}</td>
+          <td>${p.brand || '—'}</td>
+          <td>${p.unit}</td>
+          <td>₹${parseFloat(mrpVal).toFixed(2)}</td>
+          <td style="font-weight:700; color:var(--primary);">₹${parseFloat(p.price).toFixed(2)}</td>
+          <td>${p.stock}</td>
+          <td>${p.available ? stockBadge : '<span class="badge" style="background:#e2e8f0;">Disabled</span>'}</td>
+          <td>
+            <div class="actions-cell">
+              <button class="btn-action" onclick="openProductEditModal(${JSON.stringify(p).replace(/"/g, '&quot;')})">Edit</button>
+              <button class="btn-action btn-delete" onclick="deleteProduct(${p.id})">Delete</button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function handleProdPhotoUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        prodPhotoBase64 = evt.target.result;
+        const img = document.getElementById('prodPhotoPreviewImg');
+        img.src = prodPhotoBase64;
+        img.style.display = 'block';
+        document.getElementById('prodImageInput').value = '';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function openProductAddModal() {
+      document.getElementById('productModalTitle').innerText = '＋ Add New Product';
+      document.getElementById('prodIdInput').value = '';
+      document.getElementById('prodNameInput').value = '';
+      document.getElementById('prodBrandInput').value = '';
+      document.getElementById('prodUnitInput').value = '1 kg';
+      document.getElementById('prodMrpInput').value = '';
+      document.getElementById('prodPriceInput').value = '';
+      document.getElementById('prodStockInput').value = '100';
+      document.getElementById('prodImageInput').value = '';
+      document.getElementById('prodFileUploadInput').value = '';
+      document.getElementById('prodPhotoPreviewImg').style.display = 'none';
+      document.getElementById('prodAvailableInput').value = '1';
+      prodPhotoBase64 = '';
+      document.getElementById('productModal').style.display = 'flex';
+    }
+
+    function openProductEditModal(p) {
+      document.getElementById('productModalTitle').innerText = '✏ Edit Product';
+      document.getElementById('prodIdInput').value = p.id;
+      document.getElementById('prodNameInput').value = p.name;
+      document.getElementById('prodBrandInput').value = p.brand || '';
+      document.getElementById('prodCategoryInput').value = p.category;
+      document.getElementById('prodUnitInput').value = p.unit;
+      document.getElementById('prodMrpInput').value = p.mrp || (parseFloat(p.price) * 1.15).toFixed(2);
+      document.getElementById('prodPriceInput').value = p.price;
+      document.getElementById('prodStockInput').value = p.stock !== undefined ? p.stock : 100;
+      document.getElementById('prodAvailableInput').value = p.available ? '1' : '0';
+      document.getElementById('prodFileUploadInput').value = '';
+      
+      const imgPreview = document.getElementById('prodPhotoPreviewImg');
+      if (p.image_url) {
+        document.getElementById('prodImageInput').value = p.image_url.startsWith('data:') ? '' : p.image_url;
+        imgPreview.src = p.image_url;
+        imgPreview.style.display = 'block';
+        prodPhotoBase64 = p.image_url.startsWith('data:') ? p.image_url : '';
+      } else {
+        document.getElementById('prodImageInput').value = '';
+        imgPreview.style.display = 'none';
+        prodPhotoBase64 = '';
+      }
+      document.getElementById('productModal').style.display = 'flex';
+    }
+
+    function closeProductModal() {
+      document.getElementById('productModal').style.display = 'none';
+    }
+
+    async function handleSaveProduct(e) {
+      e.preventDefault();
+      const id = document.getElementById('prodIdInput').value;
+      const name = document.getElementById('prodNameInput').value;
+      const brand = document.getElementById('prodBrandInput').value;
+      const category = document.getElementById('prodCategoryInput').value;
+      const unit = document.getElementById('prodUnitInput').value;
+      const mrp = parseFloat(document.getElementById('prodMrpInput').value);
+      const price = parseFloat(document.getElementById('prodPriceInput').value);
+      const stock = parseInt(document.getElementById('prodStockInput').value);
+      const available = document.getElementById('prodAvailableInput').value === '1';
+      
+      const textUrl = document.getElementById('prodImageInput').value;
+      const image_url = prodPhotoBase64 || textUrl || null;
+
+      if (price > mrp) { alert('⚠️ Selling Price cannot exceed MRP.'); return; }
+      if (stock < 0) { alert('⚠️ Stock cannot be negative.'); return; }
+
+      const method = id ? 'PUT' : 'POST';
+      const url = id ? `/api/products/${id}` : '/api/products';
+
+      try {
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ name, brand, category, unit, mrp, price, stock, available, image_url })
+        });
+        const data = await res.json();
+        if (data.success) {
+          closeProductModal();
+          loadProducts();
+        } else {
+          alert(data.error);
+        }
+      } catch (err) {
+        alert('Error saving product');
+      }
+    }
+
+    async function deleteProduct(id) {
+      if (!confirm('⚠️ Delete this product?')) return;
+      try {
+        const res = await fetch(`/api/products/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success) { loadProducts(); }
+      } catch (err) {
+        alert('Error deleting product');
+      }
+    }
+
+
+    // ===================================================
+    // 2. CATEGORY MANAGEMENT METHODS
+    // ===================================================
+    async function loadCategories() {
+      try {
+        const res = await fetch('/api/categories');
+        const data = await res.json();
+        if (data.success && data.categories) {
+          categoriesList = data.categories;
+          calculateCategoryStats();
+          filterCategoriesTable();
+          populateCategoriesDropdown();
+        }
+      } catch (err) {
+        console.error('Failed to load categories:', err);
+      }
+    }
+
+    function calculateCategoryStats() {
+      const total = categoriesList.length;
+      const active = categoriesList.filter(c => c.status === 'Active').length;
+      const inactive = categoriesList.filter(c => c.status === 'Inactive').length;
+
+      document.getElementById('catTotal').innerText = total;
+      document.getElementById('catActive').innerText = active;
+      document.getElementById('catInactive').innerText = inactive;
+    }
+
+    function populateCategoriesDropdown() {
+      const dropdown = document.getElementById('prodCategoryInput');
+      const prodFilter = document.getElementById('prodFilterCategory');
+      
+      dropdown.innerHTML = '';
+      prodFilter.innerHTML = '<option value="All">All Categories</option>';
+
+      categoriesList.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.name;
+        opt.innerText = c.name;
+        dropdown.appendChild(opt);
+
+        const filterOpt = document.createElement('option');
+        filterOpt.value = c.name;
+        filterOpt.innerText = c.name;
+        prodFilter.appendChild(filterOpt);
+      });
+    }
+
+    function filterCategoriesTable() {
+      const search = document.getElementById('catSearch').value.toLowerCase();
+      const filtered = categoriesList.filter(c => c.name.toLowerCase().includes(search));
+      renderCategoriesTable(filtered);
+    }
+
+    function renderCategoriesTable(categories) {
+      const tbody = document.getElementById('categoriesTableBody');
+      tbody.innerHTML = '';
+
+      categories.forEach(c => {
+        // Count products belonging to this category
+        const prodCount = productsList.filter(p => p.category === c.name).length;
+        const isEmoji = c.image_url && c.image_url.length <= 4; // Emoji or short symbol representation
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>
+            <div class="item-info">
+              <div class="item-thumbnail">
+                ${isEmoji ? c.image_url : `<img src="${c.image_url || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=100&q=80'}" style="width:100%; height:100%; object-fit:cover;">`}
+              </div>
+              <div class="item-name">${c.name}</div>
+            </div>
+          </td>
+          <td>${c.description || '—'}</td>
+          <td>${c.display_order}</td>
+          <td><strong>${prodCount} Products</strong></td>
+          <td>
+            <span class="badge ${c.status === 'Active' ? 'badge-success' : 'badge-danger'}">${c.status}</span>
+          </td>
+          <td>
+            <div class="actions-cell">
+              <button class="btn-action" onclick="openCategoryEditModal(${JSON.stringify(c).replace(/"/g, '&quot;')})">Edit</button>
+              <button class="btn-action btn-delete" onclick="deleteCategory(${c.id}, '${c.name.replace(/'/g, "\\'")}', ${prodCount})">Delete</button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function handleCatPhotoUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        catPhotoBase64 = evt.target.result;
+        const img = document.getElementById('catPhotoPreviewImg');
+        img.src = catPhotoBase64;
+        img.style.display = 'block';
+        document.getElementById('catImageInput').value = '';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function openCategoryAddModal() {
+      document.getElementById('catModalTitle').innerText = '＋ Add Category';
+      document.getElementById('catIdInput').value = '';
+      document.getElementById('catNameInput').value = '';
+      document.getElementById('catDescInput').value = '';
+      document.getElementById('catDisplayOrderInput').value = categoriesList.length + 1;
+      document.getElementById('catStatusInput').value = 'Active';
+      document.getElementById('catImageInput').value = '';
+      document.getElementById('catFileUploadInput').value = '';
+      document.getElementById('catPhotoPreviewImg').style.display = 'none';
+      catPhotoBase64 = '';
+      document.getElementById('categoryModal').style.display = 'flex';
+    }
+
+    function openCategoryEditModal(c) {
+      document.getElementById('catModalTitle').innerText = '✏ Edit Category';
+      document.getElementById('catIdInput').value = c.id;
+      document.getElementById('catNameInput').value = c.name;
+      document.getElementById('catDescInput').value = c.description || '';
+      document.getElementById('catDisplayOrderInput').value = c.display_order;
+      document.getElementById('catStatusInput').value = c.status;
+      document.getElementById('catFileUploadInput').value = '';
+      
+      const imgPreview = document.getElementById('catPhotoPreviewImg');
+      if (c.image_url) {
+        document.getElementById('catImageInput').value = c.image_url.startsWith('data:') ? '' : c.image_url;
+        imgPreview.src = c.image_url.startsWith('data:') ? c.image_url : '';
+        imgPreview.style.display = c.image_url.startsWith('data:') ? 'block' : 'none';
+        catPhotoBase64 = c.image_url.startsWith('data:') ? c.image_url : '';
+      } else {
+        document.getElementById('catImageInput').value = '';
+        imgPreview.style.display = 'none';
+        catPhotoBase64 = '';
+      }
+      document.getElementById('categoryModal').style.display = 'flex';
+    }
+
+    function closeCategoryModal() {
+      document.getElementById('categoryModal').style.display = 'none';
+    }
+
+    async function handleSaveCategory(e) {
+      e.preventDefault();
+      const id = document.getElementById('catIdInput').value;
+      const name = document.getElementById('catNameInput').value;
+      const description = document.getElementById('catDescInput').value;
+      const display_order = parseInt(document.getElementById('catDisplayOrderInput').value);
+      const status = document.getElementById('catStatusInput').value;
+      
+      const textVal = document.getElementById('catImageInput').value;
+      const image_url = catPhotoBase64 || textVal || null;
+
+      const method = id ? 'PUT' : 'POST';
+      const url = id ? `/api/categories/${id}` : '/api/categories';
+
+      try {
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ name, description, display_order, status, image_url })
+        });
+        const data = await res.json();
+        if (data.success) {
+          closeCategoryModal();
+          loadCategories();
+        } else {
+          alert(data.error);
+        }
+      } catch (err) {
+        alert('Error saving category');
+      }
+    }
+
+    async function deleteCategory(id, name, count) {
+      if (count > 0) {
+        alert('⚠️ Category contains products. Move products before deleting.');
+        return;
+      }
+      if (!confirm(`⚠️ Delete category "${name}"?`)) return;
+      try {
+        const res = await fetch(`/api/categories/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success) { loadCategories(); }
+      } catch (err) {
+        alert('Error deleting category');
+      }
+    }
+
+
+    // ===================================================
+    // 3. INVENTORY MANAGEMENT METHODS
+    // ===================================================
+    async function loadInventory() {
+      try {
+        const res = await fetch('/api/inventory', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success) {
+          inventoryList = data.inventory;
+          calculateInventoryStats();
+          filterInventoryTable();
+          loadInventoryLogs();
+        }
+      } catch (err) {
+        console.error('Failed to load inventory:', err);
+      }
+    }
+
+    async function loadInventoryLogs() {
+      try {
+        const res = await fetch('/api/inventory/logs', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success) {
+          renderInventoryLogsTable(data.logs);
+        }
+      } catch (err) {
+        console.error('Failed to load inventory logs:', err);
+      }
+    }
+
+    function calculateInventoryStats() {
+      const total = inventoryList.length;
+      const low = inventoryList.filter(i => i.current_stock > 0 && i.current_stock <= i.min_stock).length;
+      const out = inventoryList.filter(i => i.current_stock <= 0).length;
+      const reserved = inventoryList.reduce((acc, x) => acc + x.reserved_stock, 0);
+
+      document.getElementById('invTotal').innerText = total;
+      document.getElementById('invLowStock').innerText = low;
+      document.getElementById('invOutOfStock').innerText = out;
+      document.getElementById('invReserved').innerText = reserved;
+    }
+
+    function filterInventoryTable() {
+      const search = document.getElementById('invSearch').value.toLowerCase();
+      const filtered = inventoryList.filter(i => i.name.toLowerCase().includes(search));
+      renderInventoryTable(filtered);
+    }
+
+    function renderInventoryTable(items) {
+      const tbody = document.getElementById('inventoryTableBody');
+      tbody.innerHTML = '';
+
+      items.forEach(i => {
+        let badgeClass = 'badge-success';
+        if (i.status === 'Out of Stock') badgeClass = 'badge-danger';
+        else if (i.status === 'Low Stock') badgeClass = 'badge-warning';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td style="font-weight:700;">${i.name}</td>
+          <td>${i.category}</td>
+          <td>${i.current_stock} ${i.unit}</td>
+          <td>${i.reserved_stock} ${i.unit}</td>
+          <td style="font-weight:700; color:var(--primary);">${i.available_stock} ${i.unit}</td>
+          <td>${i.min_stock} ${i.unit}</td>
+          <td><span class="badge ${badgeClass}">${i.status}</span></td>
+          <td>
+            <button class="btn-action" onclick="openInventoryModal(${JSON.stringify(i).replace(/"/g, '&quot;')})">Adjust</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderInventoryLogsTable(logs) {
+      const tbody = document.getElementById('inventoryLogsTableBody');
+      tbody.innerHTML = '';
+
+      logs.forEach(l => {
+        const diff = l.new_stock - l.previous_stock;
+        const diffText = diff > 0 ? `+${diff}` : `${diff}`;
+        const color = diff > 0 ? 'var(--primary)' : '#ef4444';
+        const date = new Date(l.created_at).toLocaleString();
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${date}</td>
+          <td style="font-weight:700;">${l.product_name}</td>
+          <td>${l.previous_stock}</td>
+          <td>${l.new_stock}</td>
+          <td style="color:${color}; font-weight:700;">${diffText}</td>
+          <td>${l.reason}</td>
+          <td>${l.updated_by}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function openInventoryModal(item) {
+      document.getElementById('invProdIdInput').value = item.id;
+      document.getElementById('invProdNameInput').value = item.name;
+      document.getElementById('invCurrentStockInput').value = item.current_stock;
+      document.getElementById('invAdjustmentInput').value = '';
+      document.getElementById('invReasonInput').value = 'Purchase';
+      document.getElementById('inventoryModal').style.display = 'flex';
+    }
+
+    function closeInventoryModal() {
+      document.getElementById('inventoryModal').style.display = 'none';
+    }
+
+    async function handleSaveInventoryAdjustment(e) {
+      e.preventDefault();
+      const productId = document.getElementById('invProdIdInput').value;
+      const adjustment = parseInt(document.getElementById('invAdjustmentInput').value);
+      const reason = document.getElementById('invReasonInput').value;
+
+      try {
+        const res = await fetch('/api/inventory/adjust', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ productId, adjustment, reason })
+        });
+        const data = await res.json();
+        if (data.success) {
+          closeInventoryModal();
+          await loadInventory();
+          await loadProducts(); // sync products
+        } else {
+          alert(data.error);
+        }
+      } catch (err) {
+        alert('Error saving inventory adjustment');
+      }
+    }
+
+
+    // ===================================================
+    // 4. PRICE MANAGEMENT METHODS
+    // ===================================================
+    function loadPriceManagement() {
+      calculatePriceStats();
+      filterPriceTable();
+    }
+
+    function calculatePriceStats() {
+      const discounted = productsList.filter(p => {
+        const mrpVal = p.mrp ? parseFloat(p.mrp) : parseFloat(p.price) * 1.15;
+        return parseFloat(p.price) < parseFloat(mrpVal);
+      }).length;
+
+      document.getElementById('priceDiscounted').innerText = discounted;
+    }
+
+    function filterPriceTable() {
+      const search = document.getElementById('priceSearch').value.toLowerCase();
+      const filtered = productsList.filter(p => p.name.toLowerCase().includes(search));
+      renderPriceTable(filtered);
+    }
+
+    function renderPriceTable(items) {
+      const tbody = document.getElementById('priceTableBody');
+      tbody.innerHTML = '';
+
+      items.forEach(p => {
+        const mrp = p.mrp || (parseFloat(p.price) * 1.15).toFixed(2);
+        const selling = parseFloat(p.price);
+        const discount = mrp - selling;
+        const discountPercent = ((discount / mrp) * 100).toFixed(0);
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td style="font-weight:700;">${p.name}</td>
+          <td>₹${parseFloat(mrp).toFixed(2)}</td>
+          <td style="font-weight:700; color:var(--primary);">₹${selling.toFixed(2)}</td>
+          <td>₹${discount.toFixed(2)} (${discountPercent}%)</td>
+          <td>18% (GST)</td>
+          <td>
+            <button class="btn-action" onclick="openPriceModal(${JSON.stringify(p).replace(/"/g, '&quot;')})">Update Price</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function openPriceModal(p) {
+      document.getElementById('priceProdIdInput').value = p.id;
+      
+      const mrpVal = p.mrp || (parseFloat(p.price) * 1.15).toFixed(2);
+      document.getElementById('priceMrpInput').value = mrpVal;
+      document.getElementById('priceSellingInput').value = p.price;
+      
+      document.getElementById('priceModal').style.display = 'flex';
+      calculateDiscountPrice();
+    }
+
+    function calculateDiscountPrice() {
+      const mrp = parseFloat(document.getElementById('priceMrpInput').value) || 0;
+      const selling = parseFloat(document.getElementById('priceSellingInput').value) || 0;
+      
+      if (mrp > 0 && selling <= mrp) {
+        const saving = mrp - selling;
+        const percent = ((saving / mrp) * 100).toFixed(0);
+        document.getElementById('priceDiscountInput').value = `₹${saving.toFixed(2)} (${percent}%)`;
+      } else {
+        document.getElementById('priceDiscountInput').value = 'Invalid range';
+      }
+    }
+
+    function closePriceModal() {
+      document.getElementById('priceModal').style.display = 'none';
+    }
+
+    async function handleSavePrice(e) {
+      e.preventDefault();
+      const id = document.getElementById('priceProdIdInput').value;
+      const mrp = parseFloat(document.getElementById('priceMrpInput').value);
+      const price = parseFloat(document.getElementById('priceSellingInput').value);
+
+      if (price > mrp) { alert('⚠️ Selling Price cannot exceed MRP.'); return; }
+      if (price < 0 || mrp < 0) { alert('⚠️ Prices cannot be negative.'); return; }
+
+      try {
+        const res = await fetch(`/api/products/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ mrp, price })
+        });
+        const data = await res.json();
+        if (data.success) {
+          closePriceModal();
+          await loadProducts(); // reload list
+          loadPriceManagement();
+        } else {
+          alert('Failed to update price details');
+        }
+      } catch (err) {
+        alert('Error saving price settings');
+      }
+    }
+
+
+    // ===================================================
+    // 5. OFFERS MANAGEMENT METHODS
+    // ===================================================
+    async function loadOffers() {
+      try {
+        const res = await fetch('/api/offers');
+        const data = await res.json();
+        if (data.success) {
+          offersList = data.offers;
+          calculateOffersStats();
+          renderOffersTable(data.offers);
+        }
+      } catch (err) {
+        console.error('Failed to load offers:', err);
+      }
+    }
+
+    function calculateOffersStats() {
+      const total = offersList.length;
+      const active = offersList.filter(o => o.status === 'Active').length;
+
+      document.getElementById('offTotal').innerText = total;
+      document.getElementById('offActive').innerText = active;
+    }
+
+    function renderOffersTable(offers) {
+      const tbody = document.getElementById('offersTableBody');
+      tbody.innerHTML = '';
+
+      offers.forEach(o => {
+        const start = o.start_date ? new Date(o.start_date).toLocaleDateString() : 'Immediate';
+        const end = o.end_date ? new Date(o.end_date).toLocaleDateString() : 'No Limit';
+        
+        let valText = `${o.value}`;
+        if (o.type.includes('Percent')) valText = `${o.value}%`;
+        else if (o.type.includes('Flat')) valText = `₹${o.value}`;
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>
+            <div class="item-info">
+              <img class="item-thumbnail" src="${o.banner_url || 'https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=100&q=80'}" alt="${o.name}">
+              <div class="item-name">${o.name}</div>
+            </div>
+          </td>
+          <td>${o.type}</td>
+          <td style="font-weight:700; color:var(--primary);">${valText}</td>
+          <td>${o.description || '—'}</td>
+          <td>${start}</td>
+          <td>${end}</td>
+          <td><span class="badge ${o.status === 'Active' ? 'badge-success' : 'badge-danger'}">${o.status}</span></td>
+          <td>
+            <button class="btn-action btn-delete" onclick="deleteOffer(${o.id})">Delete</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function handleOfferPhotoUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        offerPhotoBase64 = evt.target.result;
+        const img = document.getElementById('offerPhotoPreviewImg');
+        img.src = offerPhotoBase64;
+        img.style.display = 'block';
+        document.getElementById('offerImageInput').value = '';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function openOfferAddModal() {
+      document.getElementById('offerModalTitle').innerText = '＋ New Offer Campaign';
+      document.getElementById('offerIdInput').value = '';
+      document.getElementById('offerNameInput').value = '';
+      document.getElementById('offerTypeInput').value = 'Flat Discount';
+      document.getElementById('offerValueInput').value = '100';
+      document.getElementById('offerDescInput').value = '';
+      document.getElementById('offerStartDateInput').value = '';
+      document.getElementById('offerEndDateInput').value = '';
+      document.getElementById('offerStatusInput').value = 'Active';
+      document.getElementById('offerImageInput').value = '';
+      document.getElementById('offerFileUploadInput').value = '';
+      document.getElementById('offerPhotoPreviewImg').style.display = 'none';
+      offerPhotoBase64 = '';
+      document.getElementById('offerModal').style.display = 'flex';
+    }
+
+    function closeOfferModal() {
+      document.getElementById('offerModal').style.display = 'none';
+    }
+
+    async function handleSaveOffer(e) {
+      e.preventDefault();
+      const name = document.getElementById('offerNameInput').value;
+      const type = document.getElementById('offerTypeInput').value;
+      const value = parseFloat(document.getElementById('offerValueInput').value) || 0;
+      const description = document.getElementById('offerDescInput').value;
+      const start_date = document.getElementById('offerStartDateInput').value;
+      const end_date = document.getElementById('offerEndDateInput').value;
+      const status = document.getElementById('offerStatusInput').value;
+      
+      const textUrl = document.getElementById('offerImageInput').value;
+      const banner_url = offerPhotoBase64 || textUrl || null;
+
+      if (start_date && end_date && new Date(end_date) < new Date(start_date)) {
+        alert('⚠️ End Date must be after Start Date.');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/offers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ name, type, value, description, banner_url, start_date, end_date, status })
+        });
+        const data = await res.json();
+        if (data.success) {
+          closeOfferModal();
+          loadOffers();
+        } else {
+          alert(data.error);
+        }
+      } catch (err) {
+        alert('Error saving promo campaign');
+      }
+    }
+
+    async function deleteOffer(id) {
+      if (!confirm('⚠️ Delete this campaign?')) return;
+      try {
+        const res = await fetch(`/api/offers/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success) { loadOffers(); }
+      } catch (err) {
+        alert('Error deleting campaign');
+      }
+    }
+
+    // Init check
+    if (token) {
+      showDashboard();
+    }
+  </script>
+</body>
+</html>

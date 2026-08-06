@@ -1,12 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
+const { otpRateLimiter } = require('../middleware/rateLimiter');
 
 // ==========================================
 // POST /api/otp/generate — Generate OTP for order
 // Body: { order_id, otp_type: "DELIVERY" | "RIDE_START" | "RIDE_END" }
 // ==========================================
-router.post('/generate', async (req, res) => {
+router.post('/generate', otpRateLimiter, async (req, res) => {
+
     try {
         const { order_id, otp_type } = req.body;
         const otp = Math.floor(1000 + Math.random() * 9000); // 4-digit OTP
@@ -36,7 +38,7 @@ router.post('/generate', async (req, res) => {
 // In-memory attempt tracker (reset on server restart — sufficient for MVP)
 const otpAttempts = {};
 
-router.post('/verify', async (req, res) => {
+router.post('/verify', otpRateLimiter, async (req, res) => {
     try {
         const { order_id, otp, otp_type } = req.body;
         const attemptKey = `${order_id}_${otp_type}`;

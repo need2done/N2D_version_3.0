@@ -65,6 +65,122 @@ def handle_customer_interactive(
 
 
         # =================================================
+        # EXTENSION HANDLING
+        # =================================================
+        if btn_id.startswith("CUST_"):
+            parts = btn_id.split("|")
+            action = parts[0]
+            
+            if action in ("CUST_EXT_APPROVE", "CUST_EXT_DECLINE"):
+                order_db_id = int(parts[1])
+                order = get_order_by_db_id(order_db_id)
+                if not order: return True
+                
+                helper_phone = order.get("helper_phone")
+                
+                if action == "CUST_EXT_APPROVE":
+                    ext_mins = int(parts[2])
+                    ext_price = float(parts[3])
+                    
+                    from db.mysql_conn import get_db
+                    db = get_db()
+                    cur = db.cursor()
+                    cur.execute(
+                        "UPDATE orders SET extension_status='APPROVED', service_end_time = DATE_ADD(service_end_time, INTERVAL %s MINUTE), total_amount = total_amount + %s, bill_amount = bill_amount + %s WHERE id=%s",
+                        (ext_mins, ext_price, ext_price, order_db_id)
+                    )
+                    db.commit()
+                    cur.close()
+                    db.close()
+                    
+                    send_message(from_number, f"✅ Extension Approved. {ext_mins} mins added to the service.")
+                    if helper_phone:
+                        send_reply_buttons(
+                            helper_phone,
+                            f"✅ Customer approved the extension. Extra {ext_mins} mins granted.\nCost added: +₹{ext_price}",
+                            [
+                                {"id": f"REQ_END_OTP|{order_db_id}", "title": "🏁 Request End OTP"},
+                                {"id": f"REQ_EXT|{order_db_id}", "title": "⏱️ Request Extension"}
+                            ]
+                        )
+                        
+                elif action == "CUST_EXT_DECLINE":
+                    from db.mysql_conn import get_db
+                    db = get_db()
+                    cur = db.cursor()
+                    cur.execute("UPDATE orders SET extension_status='REJECTED' WHERE id=%s", (order_db_id,))
+                    db.commit()
+                    cur.close()
+                    db.close()
+                    
+                    send_message(from_number, "❌ Extension Declined.")
+                    if helper_phone:
+                        send_reply_buttons(
+                            helper_phone,
+                            "❌ Customer declined the extension.\nPlease wrap up work at the original scheduled time.",
+                            [
+                                {"id": f"REQ_END_OTP|{order_db_id}", "title": "🏁 Request End OTP"}
+                            ]
+                        )
+                return True
+
+            elif action == "CUST_REQ_EXT":
+                order_db_id = int(parts[1])
+                order = get_order_by_db_id(order_db_id)
+                if not order: return True
+                
+                from core.helper_router import safe_parse_payload
+                payload = safe_parse_payload(order.get("payload"))
+                duration_str = payload.get("duration", "1 Hour")
+                base_price = float(order.get("bill_amount") or 200)
+                
+                base_mins = 60
+                if "1.5" in duration_str: base_mins = 90
+                elif "2" in duration_str: base_mins = 120
+                elif "3" in duration_str: base_mins = 180
+                
+                price_per_min = base_price / base_mins
+                p60 = round(price_per_min * 60)
+                p30 = round(price_per_min * 30)
+                p15 = round(price_per_min * 15)
+                
+                if p30 < 10: p30 = 100
+                if p60 < 20: p60 = 200
+                if p15 < 5: p15 = 50
+                
+                send_reply_buttons(
+                    from_number,
+                    "⏱️ *Request Extension*\nSelect extra time needed:",
+                    [
+                        {"id": f"CUST_EXT_SELECT|60|{p60}|{order_db_id}", "title": f"1 Hr (+₹{p60})"},
+                        {"id": f"CUST_EXT_SELECT|30|{p30}|{order_db_id}", "title": f"30 Mins (+₹{p30})"},
+                        {"id": f"CUST_EXT_SELECT|15|{p15}|{order_db_id}", "title": f"15 Mins (+₹{p15})"}
+                    ]
+                )
+                return True
+
+            elif action == "CUST_EXT_SELECT":
+                ext_mins = int(parts[1])
+                ext_price = float(parts[2])
+                order_db_id = int(parts[3])
+                order = get_order_by_db_id(order_db_id)
+                if not order: return True
+                
+                helper_phone = order.get("helper_phone")
+                send_message(from_number, f"✅ Extension request (+{ext_mins} mins, +₹{ext_price}) sent to professional.")
+                
+                if helper_phone:
+                    send_reply_buttons(
+                        helper_phone,
+                        f"⏱️ *Customer Requested Extension*\n\nThe customer requested to extend the service by *{ext_mins} Minutes* (+₹{ext_price}).\n\nDo you accept?",
+                        [
+                            {"id": f"HLPR_EXT_ACCEPT|{ext_mins}|{ext_price}|{order_db_id}", "title": "✅ Accept"},
+                            {"id": f"HLPR_EXT_REJECT|{order_db_id}", "title": "❌ Reject"}
+                        ]
+                    )
+                return True
+
+        # =================================================
         # PAY VIA UPI
         # =================================================
 
@@ -95,7 +211,9 @@ def handle_customer_interactive(
 
                 return True
 
-            total = float(order["total_amount"])
+            from core.helper_router import safe_parse_payload
+            payload = safe_parse_payload(order.get("payload"))
+            total = float(payload.get("balance_due", order["total_amount"]))
 
             # save payment method
             mark_payment_method(order_db_id, "UPI")
@@ -164,7 +282,9 @@ def handle_customer_interactive(
 
                 return True
 
-            total = float(order["total_amount"])
+            from core.helper_router import safe_parse_payload
+            payload = safe_parse_payload(order.get("payload"))
+            total = float(payload.get("balance_due", order["total_amount"]))
 
             mark_payment_method(order_db_id, "COD")
 
@@ -196,7 +316,7 @@ def handle_customer_interactive(
         # CUSTOMER CONFIRMS PAYMENT
         # =================================================
 
-        if btn_id.startswith("I_PAID_"):
+        if btn_id.startswith("I_PAID_") or btn_id.startswith("PAID_CASH_") or btn_id.startswith("PAID_UPI_"):
 
             order_db_id = int(btn_id.split("_")[-1])
 
@@ -223,15 +343,21 @@ def handle_customer_interactive(
 
                 return True
 
-            if not order.get("payment_method"):
+            method = order.get("payment_method")
+            if btn_id.startswith("PAID_CASH_"):
+                method = "Cash"
+            elif btn_id.startswith("PAID_UPI_"):
+                method = "UPI"
 
-                send_message(
-                    from_number,
-                    "⚠️ Payment method not selected."
-                )
-
-                return True
-
+            if not method:
+                if order["service"] == "Home Services":
+                    method = "Cash/UPI"
+                else:
+                    send_message(
+                        from_number,
+                        "⚠️ Payment method not selected."
+                    )
+                    return True
 
             # ------------------------------------------------
             # Mark payment received
@@ -239,7 +365,7 @@ def handle_customer_interactive(
 
             mark_payment_received(
                 order_db_id,
-                method=order["payment_method"]
+                method=method
             )
 
             send_message(

@@ -3,26 +3,43 @@ const router = express.Router();
 const db = require('../config/db');
 const axios = require('axios');
 
+const { authenticateAdmin, authenticateToken, authenticateInternalOrToken } = require('../middleware/auth');
+
+
 // ==========================================
 // WhatsApp API Configuration (for helper notifications)
 // ==========================================
-const WA_TOKEN = process.env.WA_TOKEN;
-const WA_PHONE_ID = process.env.WA_PHONE_ID || '';
-const WA_API_URL = `https://graph.facebook.com/v19.0/${WA_PHONE_ID}/messages`;
+
+const ADMIN_NUMBER = process.env.ADMIN_NUMBER || '917095849056';
+
+function getWaToken() {
+    return process.env.WA_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN || '';
+}
+
+function getWaPhoneId() {
+    return process.env.WA_PHONE_ID || process.env.WHATSAPP_PHONE_ID || '';
+}
+
+function getWaApiUrl() {
+    const phoneId = getWaPhoneId();
+    return `https://graph.facebook.com/v19.0/${phoneId}/messages`;
+}
 
 async function sendWhatsAppText(to, text) {
-    if (!WA_TOKEN || !WA_PHONE_ID) {
+    const token = getWaToken();
+    const phoneId = getWaPhoneId();
+    if (!token || !phoneId) {
         console.log('[WA MOCK] To:', to, 'Text:', text);
         return;
     }
     try {
-        await axios.post(WA_API_URL, {
+        await axios.post(getWaApiUrl(), {
             messaging_product: "whatsapp",
             to: to.replace(/\D/g, ''),
             type: "text",
             text: { body: text }
         }, {
-            headers: { 'Authorization': `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' }
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
         });
     } catch (err) {
         console.error('[WA ERROR] Failed to send message:', err.response?.data || err.message);
@@ -30,7 +47,9 @@ async function sendWhatsAppText(to, text) {
 }
 
 async function sendWhatsAppButton(to, body, buttons) {
-    if (!WA_TOKEN || !WA_PHONE_ID) {
+    const token = getWaToken();
+    const phoneId = getWaPhoneId();
+    if (!token || !phoneId) {
         console.log('[WA MOCK] Button to:', to, 'Body:', body);
         return;
     }
@@ -39,7 +58,7 @@ async function sendWhatsAppButton(to, body, buttons) {
             type: "reply",
             reply: { id: String(b.id).substring(0, 256), title: String(b.title).substring(0, 20) }
         }));
-        await axios.post(WA_API_URL, {
+        await axios.post(getWaApiUrl(), {
             messaging_product: "whatsapp",
             to: to.replace(/\D/g, ''),
             type: "interactive",
@@ -49,7 +68,7 @@ async function sendWhatsAppButton(to, body, buttons) {
                 action: { buttons: safeButtons }
             }
         }, {
-            headers: { 'Authorization': `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' }
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
         });
     } catch (err) {
         console.error('[WA ERROR] Failed to send button:', err.response?.data || err.message);
@@ -60,12 +79,14 @@ async function sendWhatsAppButton(to, body, buttons) {
 // GET /api/orders — List all orders (Admin Dashboard)
 // Supports ?engine_type=TASK or ?engine_type=RIDE filter, and ?date=YYYY-MM-DD
 // ==========================================
-router.get('/', async (req, res) => {
+router.get('/', authenticateAdmin, async (req, res) => {
+
     try {
-        const { status, engine_type, date } = req.query;
+        const { status, engine_type, date, service } = req.query;
         let query = `
             SELECT o.*, c.phone as customer_phone,
                    h.name as helper_name,
+                   v.name as vendor_name,
                    ot.items_text, 
                    (SELECT GROUP_CONCAT(media_id) FROM order_images WHERE order_id = o.id AND image_type = 'ITEM') as item_media_ids,
                    (SELECT media_id FROM order_images WHERE order_id = o.id AND image_type = 'BILL' LIMIT 1) as bill_media_id,
@@ -75,6 +96,7 @@ router.get('/', async (req, res) => {
             FROM orders o
             LEFT JOIN customers c ON o.customer_id = c.id
             LEFT JOIN helpers h ON o.helper_id = h.id
+            LEFT JOIN vendors v ON o.vendor_id = v.id
             LEFT JOIN order_tasks ot ON o.id = ot.order_id
             LEFT JOIN order_rides orid ON o.id = orid.order_id
             WHERE 1=1
@@ -88,6 +110,10 @@ router.get('/', async (req, res) => {
         if (engine_type) {
             query += ` AND o.engine_type = ?`;
             params.push(engine_type);
+        }
+        if (service) {
+            query += ` AND o.service LIKE ?`;
+            params.push('%' + service + '%');
         }
         if (date) {
             query += ` AND DATE(o.created_at) = ?`;
@@ -105,9 +131,10 @@ router.get('/', async (req, res) => {
 });
 
 // ==========================================
-// GET /api/orders/:id — Single order detail
+// GET /api/orders/:id — Single order detail (Protected)
 // ==========================================
-router.get('/:id', async (req, res) => {
+router.get('/:id', authenticateInternalOrToken, async (req, res) => {
+
     try {
         const [rows] = await db.query(`
             SELECT o.*, c.phone as customer_phone,
@@ -127,10 +154,11 @@ router.get('/:id', async (req, res) => {
 });
 
 // ==========================================
-// POST /api/orders — Create new order
+// POST /api/orders — Create new order (Protected)
 // Body: { customer_phone, customer_name, service, bill_amount }
 // ==========================================
-router.post('/', async (req, res) => {
+router.post('/', authenticateInternalOrToken, async (req, res) => {
+
     try {
         const { customer_phone, customer_name, service, bill_amount } = req.body;
 
@@ -171,7 +199,8 @@ router.post('/', async (req, res) => {
 // POST /api/orders/:id/approve — Admin approves bill
 // Notifies helper to proceed to customer
 // ==========================================
-router.post('/:id/approve', async (req, res) => {
+router.post('/:id/approve', authenticateAdmin, async (req, res) => {
+
     try {
         // Get order + helper details before updating
         const [orders] = await db.query(`
@@ -194,11 +223,10 @@ router.post('/:id/approve', async (req, res) => {
                 `✅ *Bill Approved – Need2Done*\n\n` +
                 `🆔 Order : ${order.order_id}\n` +
                 `💰 Amount: ₹${order.bill_amount || 0}\n\n` +
-                `📍 *Delivery Location:*\n${deliveryLink}\n\n` +
-                `Tap *Arrived* button below when you reach the customer.`;
+                `🛍️ Pick up items from the store, then tap *Picked Up*.`;
             
             await sendWhatsAppButton(order.helper_phone, msg, [
-                { id: `ARRIVED|${order.id}`, title: '📍 Arrived' }
+                { id: `PICKED_UP|${order.id}`, title: '🛍️ Picked Up' }
             ]);
             console.log(`[APPROVE] Notification sent to helper ${order.helper_name}`);
         }
@@ -210,12 +238,11 @@ router.post('/:id/approve', async (req, res) => {
     }
 });
 
-// ==========================================
 // POST /api/orders/:id/assign — Admin assigns helper
 // Body: { helper_id }
 // Sends WhatsApp notification to helper with full order details
 // ==========================================
-router.post('/:id/assign', async (req, res) => {
+router.post('/:id/assign', authenticateAdmin, async (req, res) => {
     try {
         const { helper_id } = req.body;
         
@@ -242,31 +269,44 @@ router.post('/:id/assign', async (req, res) => {
                         VALUES (?, 'OFFER_SENT', ?, 'ADMIN')`, 
                         [req.params.id, `Offer sent to helper ${helper.name}`]);
 
-        // ==========================================
-        // 📢 SEND WHATSAPP NOTIFICATION TO HELPER
-        // Privacy: Send basic details. Reveal rest on accept.
-        // ==========================================
-
-        let itemsPreview = "";
-        if (order.engine_type === 'TASK' && order.items_text) {
-            itemsPreview = `🛍️ Items:\n${order.items_text}\n\n`;
+        // Fetch cart items or task description
+        const [cartItems] = await db.query('SELECT product_name, quantity, unit FROM cart_items WHERE order_id = ?', [order.order_id]);
+        
+        let itemsText = "";
+        if (cartItems && cartItems.length > 0) {
+            itemsText = cartItems.map(i => `• ${i.quantity}x ${i.product_name} (${i.unit})`).join('\n');
+        } else if (order.items_text) {
+            itemsText = order.items_text;
         }
 
-        const assignMsg = 
-            `📦 *New Order Offer (Admin Assigned)*\n\n` +
-            `🆔 Order : ${order.order_id}\n` +
-            `🛠 Service  : ${order.service}\n` +
-            itemsPreview +
-            `💰 Est. Bill: ₹${order.bill_amount || "TBD"}\n\n` +
-            `Tap below to accept.`;
+        const itemsBlock = itemsText ? `🛍️ *Items / Details:*\n${itemsText}\n\n` : '';
+        const helperEarning = order.helper_charge ? `💰 *Earnings:* ₹${order.helper_charge}\n` : '';
+        const serviceName = order.service || 'General Service';
 
-        await sendWhatsAppButton(helper.phone, assignMsg, [
-            { id: `ACCEPT_ORDER|${order.order_id}`, title: 'Accept Order' }
-        ]);
+        // ==========================================
+        // 💬 SEND ASSIGNMENT OFFER TO HELPER
+        // ==========================================
         
-        console.log(`[ASSIGN] WhatsApp offer sent to helper ${helper.name} (${helper.phone})`);
+        const offerMessage = 
+            `📣 *New Order Assignment*\n\n` +
+            `You have been assigned to order *${order.order_id}*.\n\n` +
+            `🛠️ *Service:* ${serviceName}\n` +
+            `👤 *Customer:* ${order.customer_name || 'Customer'}\n` +
+            `${helperEarning}` +
+            `📍 *Location:* ${order.customer_lat ? 'Available' : 'TBD'}\n\n` +
+            `Please accept or reject this assignment.`;
 
-        res.json({ success: true, message: 'Offer sent to helper' });
+        try {
+            await sendWhatsAppButton(helper.phone, offerMessage, [
+                { id: `ACCEPT_ORDER|${order.order_id}`, title: '✅ Accept' },
+                { id: `REJECT_ORDER|${order.order_id}`, title: '❌ Reject' }
+            ]);
+            console.log(`[ASSIGN] Sent assignment offer to helper ${helper.name} (${helper.phone}) for order ${order.order_id}`);
+            res.json({ success: true, message: 'Assignment offer sent to helper via WhatsApp' });
+        } catch (err) {
+            console.error('[ASSIGN ERROR] Failed to send offer via WhatsApp:', err.message);
+            res.status(500).json({ success: false, error: 'Failed to send offer to helper' });
+        }
     } catch (err) {
         console.error('Error assigning helper:', err);
         res.status(500).json({ success: false, error: 'DB error' });
@@ -274,11 +314,74 @@ router.post('/:id/assign', async (req, res) => {
 });
 
 // ==========================================
-// POST /api/orders/:id/verify-items — Admin verifies item photos
-// Transitions: ITEM_PHOTO_UPLOADED → ADMIN_VERIFY_ITEMS → PAYMENT_GENERATED
-// Sends payment options to customer via WhatsApp
+// POST /api/orders/:id/assign-vendor — Admin assigns vendor
 // ==========================================
-router.post('/:id/verify-items', async (req, res) => {
+router.post('/:id/assign-vendor', authenticateAdmin, async (req, res) => {
+
+    try {
+        const { vendor_id } = req.body;
+        
+        const [vendors] = await db.query('SELECT * FROM vendors WHERE id = ?', [vendor_id]);
+        if (vendors.length === 0) return res.status(404).json({ success: false, error: 'Vendor not found' });
+        const vendor = vendors[0];
+
+        const [orders] = await db.query(`
+            SELECT o.*, c.name as customer_name, h.name as helper_name, h.phone as helper_phone, ot.items_text
+            FROM orders o
+            LEFT JOIN customers c ON o.customer_id = c.id
+            LEFT JOIN helpers h ON o.helper_id = h.id
+            LEFT JOIN order_tasks ot ON o.id = ot.order_id
+            WHERE o.id = ?
+        `, [req.params.id]);
+        
+        if (orders.length === 0) return res.status(404).json({ success: false, error: 'Order not found' });
+        const order = orders[0];
+
+        // Update order
+        await db.query('UPDATE orders SET vendor_id = ?, vendor_status = "PENDING" WHERE id = ?', [vendor_id, req.params.id]);
+        await db.query(`INSERT INTO order_timeline (order_id, event_type, event_text, triggered_by) 
+                        VALUES (?, 'VENDOR_ASSIGNED', ?, 'ADMIN')`, 
+                        [req.params.id, `Vendor ${vendor.name} assigned to order.`]);
+
+        // Send WhatsApp to Vendor (ONLY Order ID and Item details)
+        const [cartItems] = await db.query('SELECT product_name, quantity, unit FROM cart_items WHERE order_id = ?', [order.order_id]);
+        let itemsText = "No items specified.";
+        if (cartItems.length > 0) {
+            itemsText = cartItems.map(i => `• ${i.quantity}x ${i.product_name} (${i.unit})`).join('\n');
+        } else if (order.items_text) {
+            itemsText = order.items_text;
+        } else {
+            try {
+                const payload = JSON.parse(order.payload || '{}');
+                if (payload.items && payload.items.length > 0) {
+                    itemsText = payload.items.map(i => `• ${i}`).join('\n');
+                }
+            } catch(e) {}
+        }
+
+        const vendorMsg = 
+            `📦 *New Order Pickup!*\n\n` +
+            `🆔 *Order ID:* ${order.order_id}\n` +
+            `🛠️ *Service:* ${order.service || 'Groceries'}\n\n` +
+            `🛍️ *Items to Pack:*\n${itemsText}\n\n` +
+            `Please accept or reject to confirm item availability.`;
+
+        await sendWhatsAppButton(vendor.phone, vendorMsg, [
+            { id: `VENDOR_ACCEPT|${order.order_id}`, title: '✅ Accept' },
+            { id: `VENDOR_REJECT|${order.order_id}`, title: '❌ Reject' }
+        ]);
+
+        res.json({ success: true, message: 'Vendor assigned successfully' });
+    } catch (err) {
+        console.error('Error assigning vendor:', err);
+        res.status(500).json({ success: false, error: 'DB error' });
+    }
+});
+
+// ==========================================
+// POST /api/orders/:id/verify-items — Admin verifies item photos
+// ==========================================
+router.post('/:id/verify-items', authenticateAdmin, async (req, res) => {
     try {
         const UPI_ID = process.env.UPI_ID || '';
 
@@ -312,6 +415,15 @@ router.post('/:id/verify-items', async (req, res) => {
         } else if (svcLower.includes('ride')) {
             helperChargeKey = 'HELPER_CHARGE_RIDE';
             platformFeeKey = 'PLATFORM_FEE_RIDE';
+        } else if (svcLower.includes('veg') || svcLower.includes('fruit')) {
+            helperChargeKey = 'HELPER_CHARGE_VEG_FRUITS';
+            platformFeeKey = 'PLATFORM_FEE_VEG_FRUITS';
+        } else if (svcLower.includes('food')) {
+            helperChargeKey = 'HELPER_CHARGE_FOOD';
+            platformFeeKey = 'PLATFORM_FEE_FOOD';
+        } else if (svcLower.includes('home')) {
+            helperChargeKey = 'HELPER_CHARGE_HOMESERVICES';
+            platformFeeKey = 'PLATFORM_FEE_HOMESERVICES';
         }
 
         const HELPER_CHARGE = parseFloat(process.env[helperChargeKey] || process.env.HELPER_CHARGE || '20');
@@ -321,24 +433,19 @@ router.post('/:id/verify-items', async (req, res) => {
             return res.status(400).json({ success: false, error: `Order not in verifiable state (current: ${order.status})` });
         }
 
-        // Calculate total
         const billAmount = parseFloat(order.bill_amount || 0);
         const total = billAmount + HELPER_CHARGE + PLATFORM_FEE;
 
-        // Transition: ITEM_PHOTO_UPLOADED → ADMIN_VERIFY_ITEMS
         await db.query('UPDATE orders SET status = "ADMIN_VERIFY_ITEMS", updated_at = NOW() WHERE id = ?', [req.params.id]);
 
-        // Transition: ADMIN_VERIFY_ITEMS → PAYMENT_GENERATED
         await db.query(
             'UPDATE orders SET status = "PAYMENT_GENERATED", total_amount = ?, platform_fee = ?, helper_charge = ?, payment_status = "PENDING", updated_at = NOW() WHERE id = ?',
             [total, PLATFORM_FEE, HELPER_CHARGE, req.params.id]
         );
 
-        // Timeline
         await db.query(`INSERT INTO order_timeline (order_id, event_type, event_text, triggered_by) 
                         VALUES (?, 'ITEMS_VERIFIED', 'Admin verified items and generated payment', 'ADMIN')`, [req.params.id]);
 
-        // 📢 Send payment options to CUSTOMER via WhatsApp
         const customerPhone = order.customer_number || order.customer_phone;
         if (customerPhone) {
             const paymentMsg = 
@@ -358,7 +465,6 @@ router.post('/:id/verify-items', async (req, res) => {
             console.log(`[VERIFY] Payment options sent to customer ${customerPhone}`);
         }
 
-        // Notify helper
         if (order.helper_phone) {
             await sendWhatsAppText(order.helper_phone, 
                 `✅ Items verified for Order ${order.order_id}.\n⏳ Waiting for customer payment (₹${total}).`
@@ -373,9 +479,8 @@ router.post('/:id/verify-items', async (req, res) => {
 
 // ==========================================
 // POST /api/orders/:id/cancel — Admin forcefully cancels order
-// Transitions: * → CANCELLED
 // ==========================================
-router.post('/:id/cancel', async (req, res) => {
+router.post('/:id/cancel', authenticateAdmin, async (req, res) => {
     try {
         const { reason } = req.body;
         
@@ -389,15 +494,12 @@ router.post('/:id/cancel', async (req, res) => {
         if (orders.length === 0) return res.status(404).json({ success: false, error: 'Order not found' });
         const order = orders[0];
 
-        // Ensure it's not already cancelled or completed
         if (order.status === 'CANCELLED' || order.status === 'COMPLETED') {
             return res.status(400).json({ success: false, error: 'Order is already ' + order.status });
         }
 
-        // Transition -> CANCELLED
         await db.query('UPDATE orders SET status = "CANCELLED", updated_at = NOW() WHERE id = ?', [req.params.id]);
 
-        // 🔥 CRITICAL: If helper was assigned, make them AVAILABLE again
         if (order.helper_id) {
             await db.query('UPDATE helper_status SET status = "AVAILABLE" WHERE helper_id = ?', [order.helper_id]);
             await db.query('UPDATE helpers SET status = "ONLINE" WHERE id = ?', [order.helper_id]);
@@ -405,16 +507,30 @@ router.post('/:id/cancel', async (req, res) => {
 
         const reasonText = reason ? reason.trim() : 'No reason provided';
 
+        const isCustomer = reason === 'Cancelled by customer';
+        const actor = isCustomer ? 'CUSTOMER' : 'ADMIN';
+        const timelineMsg = isCustomer ? `Customer cancelled the booking.` : `Admin forcefully cancelled the order. Reason: ${reasonText}`;
 
-        // Timeline
         await db.query(`INSERT INTO order_timeline (order_id, event_type, event_text, triggered_by) 
-                        VALUES (?, 'CANCELLED', ?, 'ADMIN')`, 
-                        [req.params.id, `Admin forcefully cancelled the order. Reason: ${reasonText}`]);
+                        VALUES (?, 'CANCELLED', ?, ?)`, 
+                        [req.params.id, timelineMsg, actor]);
 
-        // Notify helper
+        await sendWhatsAppText(ADMIN_NUMBER, 
+            `⚠️ *Order Cancelled*\n\n` +
+            `Order: #${order.order_id}\n` +
+            `Cancelled By: ${isCustomer ? 'Customer' : 'Admin'}\n` +
+            `Reason: ${reasonText}`
+        );
+
+        await sendWhatsAppText(order.customer_number, 
+            `❌ *Booking Cancelled*\n\n` +
+            `Your order #${order.order_id} has been cancelled.\n` +
+            `Reason: ${reasonText}`
+        );
+
         if (order.helper_phone) {
             await sendWhatsAppText(order.helper_phone, 
-                `❌ Order ${order.order_id} has been cancelled by the admin. You are now free to accept new orders.`
+                `❌ Order ${order.order_id} has been cancelled by ${isCustomer ? 'the customer' : 'admin'}. You are now free to accept new orders.`
             );
         }
 
@@ -426,9 +542,10 @@ router.post('/:id/cancel', async (req, res) => {
 });
 
 // ==========================================
-// PATCH /api/orders/:id/rating  – sync feedback from bot
+// PATCH /api/orders/:id/rating  – sync feedback from bot (Protected)
 // ==========================================
-router.patch('/:id/rating', async (req, res) => {
+router.patch('/:id/rating', authenticateInternalOrToken, async (req, res) => {
+
     try {
         const { rating } = req.body;
         if (!rating || rating < 1 || rating > 5) {
@@ -445,7 +562,8 @@ router.patch('/:id/rating', async (req, res) => {
 // ==========================================
 // POST /api/orders/:id/unlock — Admin unlocks a locked ride
 // ==========================================
-router.post('/:id/unlock', async (req, res) => {
+router.post('/:id/unlock', authenticateAdmin, async (req, res) => {
+
     try {
         await db.query('UPDATE order_rides SET locked = 0, otp_attempts = 0 WHERE order_id = ?', [req.params.id]);
         

@@ -36,6 +36,10 @@ _http = requests.Session()
 # =================================================
 
 def get_access_token() -> str:
+    from dotenv import load_dotenv
+    from pathlib import Path
+    base_dir = Path(__file__).resolve().parent
+    load_dotenv(base_dir.parent / ".env", override=True)
     token = os.getenv("WHATSAPP_ACCESS_TOKEN")
     if not token:
         raise RuntimeError("ERROR: WHATSAPP_ACCESS_TOKEN not found in environment.")
@@ -53,7 +57,9 @@ def normalize_number(num: str) -> str:
 
 
 def message_url() -> str:
-    return f"https://graph.facebook.com/{GRAPH_API_VERSION}/{PHONE_NUMBER_ID}/messages"
+    phone_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID", PHONE_NUMBER_ID)
+    version = os.getenv("GRAPH_API_VERSION", GRAPH_API_VERSION or "v19.0")
+    return f"https://graph.facebook.com/{version}/{phone_id}/messages"
 
 
 def build_headers() -> Dict[str, str]:
@@ -70,10 +76,15 @@ def build_headers() -> Dict[str, str]:
 
 def _post(payload: Dict[str, Any]) -> Optional[requests.Response]:
     try:
-        print("\nOUT: WHATSAPP REQUEST")
+        url = message_url()
+        headers = build_headers()
+        token = headers.get("Authorization", "")
+        masked_token = (token[:20] + "..." + token[-6:]) if len(token) > 26 else token
+        print(f"\nOUT: WHATSAPP REQUEST -> {url}")
+        print(f"OUT: USING TOKEN -> {masked_token}")
         res = _http.post(
-            message_url(),
-            headers=build_headers(),
+            url,
+            headers=headers,
             json=payload,
             timeout=20
         )
@@ -135,6 +146,31 @@ def send_reply_buttons(to: str, body: str, buttons: list):
     }
     return _post(payload)
 
+
+# =================================================
+# CTA URL BUTTON
+# =================================================
+
+def send_url_button(to: str, text: str, button_text: str, url: str):
+    if not to or not text or not button_text or not url:
+        return None
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": normalize_number(to),
+        "type": "interactive",
+        "interactive": {
+            "type": "cta_url",
+            "body": {"text": text[:1024]},
+            "action": {
+                "name": "cta_url",
+                "parameters": {
+                    "display_text": button_text[:20],
+                    "url": url
+                }
+            }
+        }
+    }
+    return _post(payload)
 
 # =================================================
 # INTERACTIVE LIST
@@ -206,6 +242,13 @@ def send_helper_auto_assign(
                             "id": f"ACCEPT_ORDER|{order_id}",
                             "title": "Accept Order"
                         }
+                    },
+                    {
+                        "type": "reply",
+                        "reply": {
+                            "id": f"REJECT_ORDER|{order_id}",
+                            "title": "Reject Order"
+                        }
                     }
                 ]
             }
@@ -232,14 +275,17 @@ def send_service_list(to: str):
                 "button": "Select Service",
                 "sections": [
                     {
-                        "title": "Need2Done Services",
+                        "title": "Need2Done Services ⚙️",
                         "rows": [
-                            {"id": "SERVICE_1", "title": "Groceries", "description": "Grocery shopping & item delivery"},
-                            {"id": "SERVICE_2", "title": "Medicines", "description": "Medicine purchase & prescription"},
-                            {"id": "SERVICE_3", "title": "Parcel", "description": "Pickup & drop documents/parcel"},
-                            {"id": "SERVICE_4", "title": "Ride", "description": "Bike, Auto or Car ride"},
-                            {"id": "SERVICE_5", "title": "Any Work", "description": "Errands & general assistance"},
-                            {"id": "SERVICE_6", "title": "Support", "description": "Talk to our team"}
+                            {"id": "SERVICE_1", "title": "🛒 Groceries", "description": "Order daily essentials or fresh food items."},
+                            {"id": "SERVICE_7", "title": "🥦 Vegetables & Fruits", "description": "Browse catalog and order fresh produce."},
+                            {"id": "SERVICE_9", "title": "🍔 Food", "description": "Order meals from favorite restaurants."},
+                            {"id": "SERVICE_10", "title": "🏠 Home Services", "description": "Book trusted home cleaning and repairs."},
+                            {"id": "SERVICE_2", "title": "💊 Medicines", "description": "Buy health supplies or medicines."},
+                            {"id": "SERVICE_4", "title": "🚗 Ride", "description": "Book a quick bike, auto, or car ride."},
+                            {"id": "SERVICE_5", "title": "👨‍🔧 Any Work", "description": "Pick/Drop parcels, run errands."},
+                            {"id": "SERVICE_6", "title": "📞 Support", "description": "Talk to our team for assistance."},
+                            {"id": "SERVICE_8", "title": "📦 My Orders", "description": "View recent order history."}
                         ]
                     }
                 ]
@@ -393,6 +439,8 @@ def send_rich_welcome(to: str, name: str = None):
         f"👋 {greeting}\n\n"
         "We help you get anything done locally:\n\n"
         "🛒 *Groceries*\n"
+        "🍔 *Food*\n"
+        "🏠 *Home Services*\n"
         "💊 *Medicines*\n"
         "🚗 *Ride Booking*\n"
         "👨‍🔧 *Any Work / Parcel*\n\n"
@@ -438,13 +486,17 @@ def send_rich_service_list(to: str, name: str = None):
                 "button": "Select Service",
                 "sections": [
                     {
-                        "title": "Need2Done Services ⚙️",
+                        "title": "Need2Done Services",
                         "rows": [
                             {"id": "SERVICE_1", "title": "🛒 Groceries Service", "description": "Order daily essentials, milk, or fresh food items."},
+                            {"id": "SERVICE_7", "title": "🥦 Veggies & Fruits", "description": "Browse catalog, check live prices, and order fresh produce."},
+                            {"id": "SERVICE_9", "title": "🍔 Food Service", "description": "Order meals and food from your favorite restaurants."},
+                            {"id": "SERVICE_10", "title": "🏠 Home Services", "description": "Book trusted home cleaning and repair services."},
                             {"id": "SERVICE_2", "title": "💊 Medicines Service", "description": "Buy health supplies or medicines with prescription."},
                             {"id": "SERVICE_4", "title": "🚗 Ride Service", "description": "Book a quick bike, auto, or car for your travel."},
                             {"id": "SERVICE_5", "title": "👨‍🔧 Any Work Service", "description": "Pick/Drop parcels, run errands, or custom tasks."},
-                            {"id": "SERVICE_6", "title": "📞 Support", "description": "Talk to our team for any assistance or help."}
+                            {"id": "SERVICE_6", "title": "📞 Support", "description": "Talk to our team for any assistance or help."},
+                            {"id": "SERVICE_8", "title": "📦 My Orders", "description": "View your recent order history and tracking."}
                         ]
                     }
                 ]

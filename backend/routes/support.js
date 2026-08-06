@@ -2,11 +2,12 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const axios = require('axios');
+const { authenticateAdmin } = require('../middleware/auth');
 
 // WhatsApp Configs
 const WA_TOKEN = process.env.WA_TOKEN;
 const WA_PHONE_ID = process.env.WA_PHONE_ID || '';
-const ADMIN_NUMBER = process.env.ADMIN_PHONE_NUMBER || '917981072623';
+const ADMIN_NUMBER = process.env.ADMIN_PHONE_NUMBER || '15556349916';
 const WA_API_URL = `https://graph.facebook.com/v19.0/${WA_PHONE_ID}/messages`;
 
 async function notifyAdminSupportResolved(customerName, customerPhone, id) {
@@ -61,9 +62,9 @@ async function notifyCustomerSupportResolved(customerName, customerPhone, id) {
 }
 
 // ==========================================
-// GET /api/support — List all support requests
+// GET /api/support — List all support requests (Admin protected)
 // ==========================================
-router.get('/', async (req, res) => {
+router.get('/', authenticateAdmin, async (req, res) => {
     try {
         const [rows] = await db.query(`
             SELECT id, customer_name, customer_phone, status, created_at
@@ -78,9 +79,9 @@ router.get('/', async (req, res) => {
 });
 
 // ==========================================
-// POST /api/support/:id/resolve — Mark as resolved & notify
+// POST /api/support/:id/resolve — Mark as resolved & notify (Admin protected)
 // ==========================================
-router.post('/:id/resolve', async (req, res) => {
+router.post('/:id/resolve', authenticateAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         

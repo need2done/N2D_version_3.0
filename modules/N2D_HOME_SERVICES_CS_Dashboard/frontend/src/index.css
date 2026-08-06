@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #0C1E3C; /* Dark Hero Blue */
+  --color-accent: #FF7D00;  /* Bright Orange */
+  --color-lightBg: #F8F9FA;
+  --color-btnBlue: #1952C5; /* Blue for Book Now */
+}
+
+@layer base {
+  body {
+    @apply bg-lightBg text-gray-800 font-sans antialiased;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-white/70 backdrop-blur-lg border border-white/20 shadow-lg;
+  }
+}

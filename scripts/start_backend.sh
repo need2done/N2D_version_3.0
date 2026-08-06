@@ -20,8 +20,9 @@
 set -e
 
 # --- Paths ---
-APP_DIR="/need2done/app"
+APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BACKEND_DIR="$APP_DIR/backend"
+
 LOG_DIR="$APP_DIR/logs"
 LOG_FILE="$LOG_DIR/backend.log"
 PID_FILE="$LOG_DIR/backend.pid"

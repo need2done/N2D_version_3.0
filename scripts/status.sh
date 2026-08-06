@@ -9,8 +9,9 @@
 #   ./scripts/status.sh
 # ==========================================================
 
-APP_DIR="/need2done/app"
+APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOG_DIR="$APP_DIR/logs"
+
 
 echo "=========================================="
 echo "  Need2Done — Service Status"

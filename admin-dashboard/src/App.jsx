@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, NavLink, Navigate, Outlet } from 'react-r
 import Dashboard from './pages/Dashboard';
 import LiveMap from './pages/LiveMap';
 import Helpers from './pages/Helpers';
+import HomeServiceHelpers from './pages/HomeServiceHelpers';
 import TrackingStatus from './pages/TrackingStatus';
 import Alerts from './pages/Alerts';
 import Earnings from './pages/Earnings';
@@ -10,7 +11,9 @@ import Health from './pages/Health';
 import Support from './pages/Support';
 import Login from './pages/Login';
 import SettingsPage from './pages/Settings';
-import { LayoutDashboard, MapPinned, Users, Activity, Bell, Settings, DollarSign, BarChart3, ServerCrash, LifeBuoy, LogOut } from 'lucide-react';
+import Vendors from './pages/Vendors';
+import WalletPage from './pages/Wallet';
+import { LayoutDashboard, MapPinned, Users, Activity, Bell, Settings, DollarSign, BarChart3, ServerCrash, LifeBuoy, LogOut, Store, Wallet, Wrench } from 'lucide-react';
 import logo from './assets/logo.png';
 import './index.css';
 
@@ -56,6 +59,18 @@ const DashboardLayout = () => {
                     <NavLink to="/helpers" className={({isActive}) => isActive ? "nav-link active" : "nav-link"}>
                         <Users size={20} />
                         Helpers
+                    </NavLink>
+                    <NavLink to="/hs-helpers" className={({isActive}) => isActive ? "nav-link active" : "nav-link"}>
+                        <Wrench size={20} />
+                        HS Helpers
+                    </NavLink>
+                    <NavLink to="/vendors" className={({isActive}) => isActive ? "nav-link active" : "nav-link"}>
+                        <Store size={20} />
+                        Vendors
+                    </NavLink>
+                    <NavLink to="/wallet" className={({isActive}) => isActive ? "nav-link active" : "nav-link"}>
+                        <Wallet size={20} />
+                        Wallets & Settlements
                     </NavLink>
                     <NavLink to="/status" className={({isActive}) => isActive ? "nav-link active" : "nav-link"}>
                         <Activity size={20} />
@@ -111,6 +126,9 @@ function App() {
                         <Route path="/analysis" element={<Analysis />} />
                         <Route path="/map" element={<LiveMap />} />
                         <Route path="/helpers" element={<Helpers />} />
+                        <Route path="/hs-helpers" element={<HomeServiceHelpers />} />
+                        <Route path="/vendors" element={<Vendors />} />
+                        <Route path="/wallet" element={<WalletPage />} />
                         <Route path="/status" element={<TrackingStatus />} />
                         <Route path="/alerts" element={<Alerts />} />
                         <Route path="/health" element={<Health />} />

@@ -16,6 +16,10 @@ __pycache__/
 
 # Environment (SENSITIVE — never commit!)
 .env
+docs/AWS/full_data_backup.sql
+*.sql.gz
+*.sql
+
 
 # Logs
 *.log

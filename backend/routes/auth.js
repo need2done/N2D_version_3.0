@@ -1,26 +1,26 @@
 const express = require('express');
 const router = express.Router();
+const { generateToken } = require('../middleware/auth');
+const { loginRateLimiter } = require('../middleware/rateLimiter');
 
 // POST /api/auth/login
-// Basic authentication for admin dashboard
-router.post('/login', (req, res) => {
+// Secure authentication for admin dashboard
+router.post('/login', loginRateLimiter, (req, res) => {
     const { username, password } = req.body;
 
     const adminUsername = process.env.ADMIN_USERNAME;
     const adminPassword = process.env.ADMIN_PASSWORD;
 
     if (!adminUsername || !adminPassword) {
-        console.error('Admin credentials not configured in environment variables.');
-        return res.status(500).json({ success: false, error: 'Server misconfiguration' });
+        console.error('CRITICAL: ADMIN_USERNAME or ADMIN_PASSWORD is not set in environment variables.');
+        return res.status(500).json({ success: false, error: 'Authentication service misconfigured' });
     }
 
     if (username === adminUsername && password === adminPassword) {
-        // In a production app, we would return a signed JWT token here.
-        // For simple admin dashboard access, returning a hardcoded token flag is sufficient for now,
-        // or a simple dummy token that the frontend checks.
+        const token = generateToken({ username: adminUsername, role: 'admin' }, 86400); // 24h token
         return res.json({ 
             success: true, 
-            token: 'N2D_ADMIN_TOKEN_SECURE_2026',
+            token,
             user: { username: adminUsername, role: 'admin' }
         });
     }
@@ -29,3 +29,4 @@ router.post('/login', (req, res) => {
 });
 
 module.exports = router;
+

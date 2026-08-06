@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Need2Done Ride — Book Bike, Auto & Cabs Instantly</title>
+  
+  <!-- Leaflet Map CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --primary: #1565C0; /* N2D Blue */
+      --primary-hover: #0D47A1;
+      --rapido-yellow: #f9c915; /* Rapido Yellow */
+      --rapido-yellow-hover: #e0b40e;
+      --dark: #1e293b;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --radius: 16px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* --- Navbar --- */
+    header {
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 72px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 800;
+      font-size: 1.4rem;
+      color: var(--text);
+    }
+    .brand img {
+      height: 38px;
+      object-fit: contain;
+    }
+    .btn-home {
+      border: 1px solid var(--border);
+      background: transparent;
+      padding: 8px 18px;
+      border-radius: 50px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+      color: var(--text-muted);
+      text-decoration: none;
+    }
+    .btn-home:hover {
+      color: var(--text);
+      border-color: var(--text);
+    }
+
+    /* --- Main App Container --- */
+    .app-container {
+      flex: 1;
+      display: flex;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* --- Sidebar Booking Panel --- */
+    .booking-panel {
+      width: 440px;
+      background: var(--card-bg);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      z-index: 5;
+      box-shadow: 4px 0 20px rgba(0,0,0,0.03);
+    }
+
+    .booking-flow {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .panel-title h2 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+    .panel-title p {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+    }
+
+    /* Input locations */
+    .location-inputs {
+      position: relative;
+      background: var(--bg);
+      border-radius: var(--radius);
+      padding: 18px;
+      border: 1px solid var(--border);
+    }
+    .input-line {
+      position: absolute;
+      left: 28px;
+      top: 36px;
+      bottom: 36px;
+      width: 2px;
+      border-left: 2px dashed #cbd5e1;
+      z-index: 1;
+    }
+    .input-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: relative;
+      z-index: 2;
+    }
+    .input-group:first-child { margin-bottom: 16px; }
+
+    .input-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .input-dot.green { background: #22c55e; box-shadow: 0 0 0 4px rgba(34,197,94,0.15); }
+    .input-dot.red { background: #ef4444; box-shadow: 0 0 0 4px rgba(239,68,68,0.15); }
+
+    .input-group-content {
+      flex: 1;
+      position: relative;
+    }
+    .input-group-content label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 2px;
+    }
+    .input-group-content input {
+      width: 100%;
+      border: none;
+      outline: none;
+      background: transparent;
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: var(--text);
+      padding: 4px 0;
+    }
+
+    /* Autocomplete dropdown suggestions */
+    .autocomplete-list {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+      max-height: 180px;
+      overflow-y: auto;
+      z-index: 100;
+      display: none;
+      margin-top: 6px;
+    }
+    .autocomplete-item {
+      padding: 10px 14px;
+      cursor: pointer;
+      font-size: 0.88rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .autocomplete-item:hover {
+      background-color: var(--bg);
+      color: var(--primary);
+    }
+
+    /* Service Selector Options */
+    .services-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .service-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      cursor: pointer;
+      background: var(--card-bg);
+      transition: all 0.2s;
+    }
+    .service-item.selected {
+      border-color: var(--rapido-yellow);
+      background-color: rgba(249, 201, 21, 0.05);
+      box-shadow: 0 4px 12px rgba(249,201,21,0.08);
+    }
+    .service-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .service-icon {
+      font-size: 1.8rem;
+      width: 44px;
+      height: 44px;
+      background: var(--bg);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .service-details h3 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+    .service-details p {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+    .service-price {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    /* Footer / CTA section inside panel */
+    .panel-footer {
+      padding: 20px 24px 24px;
+      border-top: 1px solid var(--border);
+      background: var(--card-bg);
+    }
+    .btn-book {
+      width: 100%;
+      background-color: var(--rapido-yellow);
+      color: #000;
+      border: none;
+      padding: 16px;
+      border-radius: 50px;
+      font-weight: 800;
+      font-size: 1rem;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(249, 201, 21, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-book:hover {
+      background-color: var(--rapido-yellow-hover);
+      box-shadow: 0 6px 20px rgba(249, 201, 21, 0.45);
+    }
+    .btn-book:disabled {
+      background-color: #cbd5e1;
+      color: #94a3b8;
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+
+    /* --- Leaflet Map --- */
+    .map-container {
+      flex: 1;
+      height: 100%;
+      z-index: 1;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .app-container { flex-direction: column-reverse; }
+      .booking-panel { width: 100%; height: 50vh; }
+      .map-container { height: 50vh; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- --- HEADER --- -->
+  <header>
+    <a href="/" class="brand">
+      <img src="/assets/logo.png" alt="Need2Done Logo">
+    </a>
+    <a href="/" class="btn-home">Back to Home</a>
+  </header>
+
+  <!-- --- APP CONTAINER --- -->
+  <div class="app-container">
+    
+    <!-- SIDEBAR BOOKING PANEL -->
+    <div class="booking-panel">
+      <div class="booking-flow">
+        
+        <div class="panel-title">
+          <h2>Book a Ride</h2>
+          <p>Local Bike, Auto, and Cabs at your doorstep instantly.</p>
+        </div>
+
+        <!-- Location Inputs -->
+        <div class="location-inputs">
+          <div class="input-line"></div>
+          
+          <!-- Pickup -->
+          <div class="input-group">
+            <div class="input-dot green"></div>
+            <div class="input-group-content">
+              <label>Pickup Location</label>
+              <input type="text" id="pickupInput" placeholder="Enter pickup landmark..." onfocus="showAutocomplete('pickup')" oninput="handleAutocompleteInput('pickup', event)">
+              <div class="autocomplete-list" id="pickupList"></div>
+            </div>
+          </div>
+
+          <!-- Drop -->
+          <div class="input-group">
+            <div class="input-dot red"></div>
+            <div class="input-group-content">
+              <label>Drop Location</label>
+              <input type="text" id="dropInput" placeholder="Enter drop landmark..." onfocus="showAutocomplete('drop')" oninput="handleAutocompleteInput('drop', event)">
+              <div class="autocomplete-list" id="dropList"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Service Options -->
+        <div class="services-list" id="servicesList">
+          <!-- 1. Bike -->
+          <div class="service-item selected" onclick="selectService('BIKE')" id="svc-BIKE">
+            <div class="service-left">
+              <div class="service-icon">🏍️</div>
+              <div class="service-details">
+                <h3>Bike Taxi</h3>
+                <p>Perfect for solo travel & beating traffic</p>
+              </div>
+            </div>
+            <div class="service-price" id="price-BIKE">₹0</div>
+          </div>
+
+          <!-- 2. Auto -->
+          <div class="service-item" onclick="selectService('AUTO')" id="svc-AUTO">
+            <div class="service-left">
+              <div class="service-icon">🛺</div>
+              <div class="service-details">
+                <h3>N2D Auto</h3>
+                <p>Comfortable & pocket-friendly rides</p>
+              </div>
+            </div>
+            <div class="service-price" id="price-AUTO">₹0</div>
+          </div>
+
+          <!-- 3. Car -->
+          <div class="service-item" onclick="selectService('CAR')" id="svc-CAR">
+            <div class="service-left">
+              <div class="service-icon">🚗</div>
+              <div class="service-details">
+                <h3>N2D Cab</h3>
+                <p>Comfortable family AC travel</p>
+              </div>
+            </div>
+            <div class="service-price" id="price-CAR">₹0</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Action Button -->
+      <div class="panel-footer">
+        <button class="btn-book" id="bookBtn" disabled onclick="handleBookRide()">
+          <span>Select Locations on Map</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- LEAFLET MAP CONTAINER -->
+    <div class="map-container" id="map"></div>
+
+  </div>
+
+  <!-- Leaflet Map JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
+  <script>
+    // Preset local coordinates of landmarks in Bhongir, Telangana
+    const PRESETS = [
+      { name: "Bhongir Fort", lat: 17.5108, lng: 78.8988 },
+      { name: "Bhongir Bus Station", lat: 17.5098, lng: 78.8814 },
+      { name: "Bhongir Railway Station", lat: 17.5194, lng: 78.8837 },
+      { name: "Yadagirigutta Temple", lat: 17.5284, lng: 78.9482 },
+      { name: "Raigiri Railway Station", lat: 17.5054, lng: 78.9221 },
+      { name: "Area Hospital Bhongir", lat: 17.5134, lng: 78.8784 },
+      { name: "Bhuvanagiri Bypass", lat: 17.4984, lng: 78.8684 },
+      { name: "Nalgonda Crossroads Bhongir", lat: 17.5101, lng: 78.8850 }
+    ];
+
+    let map;
+    let pickupMarker, dropMarker;
+    let routeLine;
+
+    // Booking state
+    let pickupLoc = null; // { name, lat, lng }
+    let dropLoc = null; // { name, lat, lng }
+    let selectedVehicle = "BIKE";
+    let calculatedDistance = 0; // km
+    let fares = { BIKE: 0, AUTO: 0, CAR: 0 };
+
+    // Initialize Map centered in Bhongir, Telangana
+    function initMap() {
+      map = L.map('map').setView([17.5115, 78.8870], 14);
+
+      // Add OpenStreetMap tiles
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+
+      // Handle map clicks to set coordinates manually
+      map.on('click', (e) => {
+        const lat = e.latlng.lat;
+        const lng = e.latlng.lng;
+        
+        if (!pickupLoc) {
+          setPickupCoordinates(lat, lng, `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+        } else if (!dropLoc) {
+          setDropCoordinates(lat, lng, `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+        }
+      });
+    }
+
+    function setPickupCoordinates(lat, lng, name) {
+      pickupLoc = { name, lat, lng };
+      document.getElementById('pickupInput').value = name;
+      
+      if (pickupMarker) map.removeLayer(pickupMarker);
+      
+      const greenIcon = new L.Icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+      });
+
+      pickupMarker = L.marker([lat, lng], { icon: greenIcon, draggable: true })
+        .addTo(map)
+        .bindPopup("<b>Pickup:</b> " + name)
+        .openPopup();
+
+      pickupMarker.on('dragend', (e) => {
+        const newPos = pickupMarker.getLatLng();
+        setPickupCoordinates(newPos.lat, newPos.lng, `Location (${newPos.lat.toFixed(4)}, ${newPos.lng.toFixed(4)})`);
+      });
+
+      map.setView([lat, lng], map.getZoom());
+      calculateRoute();
+    }
+
+    function setDropCoordinates(lat, lng, name) {
+      dropLoc = { name, lat, lng };
+      document.getElementById('dropInput').value = name;
+      
+      if (dropMarker) map.removeLayer(dropMarker);
+      
+      const redIcon = new L.Icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+      });
+
+      dropMarker = L.marker([lat, lng], { icon: redIcon, draggable: true })
+        .addTo(map)
+        .bindPopup("<b>Drop:</b> " + name)
+        .openPopup();
+
+      dropMarker.on('dragend', (e) => {
+        const newPos = dropMarker.getLatLng();
+        setDropCoordinates(newPos.lat, newPos.lng, `Location (${newPos.lat.toFixed(4)}, ${newPos.lng.toFixed(4)})`);
+      });
+
+      calculateRoute();
+    }
+
+    // Calculate Distance using Haversine Formula (Leaflet's distanceTo)
+    function calculateRoute() {
+      if (!pickupLoc || !dropLoc) return;
+
+      const pLatLng = L.latLng(pickupLoc.lat, pickupLoc.lng);
+      const dLatLng = L.latLng(dropLoc.lat, dropLoc.lng);
+      
+      // Calculate road distance simulation (crow flies distance * 1.25 factor for streets)
+      const directDist = pLatLng.distanceTo(dLatLng) / 1000; // in km
+      calculatedDistance = parseFloat((directDist * 1.25).toFixed(2));
+      if (calculatedDistance < 1.0) calculatedDistance = 1.0; // Min 1km
+
+      // Draw polyline route
+      if (routeLine) map.removeLayer(routeLine);
+      routeLine = L.polyline([pLatLng, dLatLng], { color: 'var(--primary)', weight: 5, dashArray: '10, 10' }).addTo(map);
+      
+      // Fit map bounds
+      const bounds = L.latLngBounds(pLatLng, dLatLng);
+      map.fitBounds(bounds, { padding: [50, 50] });
+
+      // Update Pricing Fares
+      calculatePrices();
+    }
+
+    function calculatePrices() {
+      // Bike pricing: Base ₹20 + ₹10/km
+      fares.BIKE = Math.round(20 + (calculatedDistance * 10));
+      
+      // Auto pricing: Base ₹30 + ₹12/km
+      fares.AUTO = Math.round(30 + (calculatedDistance * 12));
+      
+      // Car pricing: Base ₹80 + ₹15/km (Min 2km applied)
+      const carDist = Math.max(calculatedDistance, 2.0);
+      fares.CAR = Math.round(80 + (carDist * 15));
+
+      // Update UI prices
+      document.getElementById('price-BIKE').innerText = `₹${fares.BIKE}`;
+      document.getElementById('price-AUTO').innerText = `₹${fares.AUTO}`;
+      document.getElementById('price-CAR').innerText = `₹${fares.CAR}`;
+
+      // Enable booking button
+      const bookBtn = document.getElementById('bookBtn');
+      bookBtn.disabled = false;
+      updateBookingButtonLabel();
+    }
+
+    function selectService(svc) {
+      selectedVehicle = svc;
+      document.querySelectorAll('.service-item').forEach(el => el.classList.remove('selected'));
+      document.getElementById(`svc-${svc}`).classList.add('selected');
+      updateBookingButtonLabel();
+    }
+
+    function updateBookingButtonLabel() {
+      const bookBtn = document.getElementById('bookBtn');
+      if (pickupLoc && dropLoc) {
+        let label = "Book Bike";
+        if (selectedVehicle === "AUTO") label = "Book Auto";
+        else if (selectedVehicle === "CAR") label = "Book Cab";
+        bookBtn.innerHTML = `<span>${label} • ₹${fares[selectedVehicle]}</span>`;
+      } else {
+        bookBtn.innerHTML = `<span>Select Locations on Map</span>`;
+        bookBtn.disabled = true;
+      }
+    }
+
+    // Autocomplete dropdown controllers
+    function showAutocomplete(type) {
+      const list = document.getElementById(`${type}List`);
+      list.innerHTML = '';
+      list.style.display = 'block';
+
+      PRESETS.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'autocomplete-item';
+        div.innerHTML = `📍 ${p.name}`;
+        div.onclick = () => {
+          if (type === 'pickup') {
+            setPickupCoordinates(p.lat, p.lng, p.name);
+          } else {
+            setDropCoordinates(p.lat, p.lng, p.name);
+          }
+          list.style.display = 'none';
+        };
+        list.appendChild(div);
+      });
+    }
+
+    function handleAutocompleteInput(type, event) {
+      const query = event.target.value.toLowerCase();
+      const list = document.getElementById(`${type}List`);
+      list.innerHTML = '';
+
+      const filtered = PRESETS.filter(p => p.name.toLowerCase().includes(query));
+      
+      if (filtered.length === 0) {
+        list.style.display = 'none';
+        return;
+      }
+
+      list.style.display = 'block';
+      filtered.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'autocomplete-item';
+        div.innerHTML = `📍 ${p.name}`;
+        div.onclick = () => {
+          if (type === 'pickup') {
+            setPickupCoordinates(p.lat, p.lng, p.name);
+          } else {
+            setDropCoordinates(p.lat, p.lng, p.name);
+          }
+          list.style.display = 'none';
+        };
+        list.appendChild(div);
+      });
+    }
+
+    // Close autocomplete on click outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.input-group-content')) {
+        document.querySelectorAll('.autocomplete-list').forEach(l => l.style.display = 'none');
+      }
+    });
+
+    // Handle ride booking submit
+    async function handleBookRide() {
+      if (!pickupLoc || !dropLoc) return;
+      
+      const bookBtn = document.getElementById('bookBtn');
+      bookBtn.disabled = true;
+      bookBtn.innerHTML = `<span>Reserving Ride...</span>`;
+
+      const payload = {
+        pickup_address: pickupLoc.name,
+        pickup_lat: pickupLoc.lat,
+        pickup_lng: pickupLoc.lng,
+        drop_address: dropLoc.name,
+        drop_lat: dropLoc.lat,
+        drop_lng: dropLoc.lng,
+        vehicle: selectedVehicle,
+        price: fares[selectedVehicle],
+        distance: calculatedDistance
+      };
+
+      try {
+        const res = await fetch('/api/ride/book', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        
+        if (data.success && data.orderId) {
+          // Redirect user to WhatsApp with the ORDER_ message
+          const msg = `ORDER_${data.orderId}`;
+          const waUrl = `https://wa.me/15556349916?text=${encodeURIComponent(msg)}`;
+          window.location.href = waUrl;
+        } else {
+          alert('Failed to book ride: ' + (data.error || 'Unknown error'));
+          updateBookingButtonLabel();
+        }
+      } catch (err) {
+        console.error('Failed to request ride booking API:', err);
+        alert('Network error. Failed to book ride. Please try again.');
+        updateBookingButtonLabel();
+      }
+    }
+
+    // Init script
+    document.addEventListener('DOMContentLoaded', () => {
+      initMap();
+    });
+  </script>
+</body>
+</html>

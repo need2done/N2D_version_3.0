@@ -224,7 +224,7 @@ def handle(session: dict, text: str, raw: dict) -> Optional[str]:
                     "How would you like to share details?"
                 ),
                 buttons=[
-                    {"id": "MED_UPLOAD", "title": "📸 Upload prescription"},
+                    {"id": "MED_UPLOAD", "title": "📸 Upload Rx"},
                     {"id": "MED_TYPE", "title": "✍️ Type details"}
                 ]
             )
@@ -257,7 +257,7 @@ def handle(session: dict, text: str, raw: dict) -> Optional[str]:
                 to=user,
                 body="💊 Add more details or prescriptions:",
                 buttons=[
-                    {"id": "MED_UPLOAD", "title": "📸 Upload prescription"},
+                    {"id": "MED_UPLOAD", "title": "📸 Upload Rx"},
                     {"id": "MED_TYPE", "title": "✍️ Type details"}
                 ]
             )
@@ -496,46 +496,49 @@ def handle(session: dict, text: str, raw: dict) -> Optional[str]:
 
         # ---------- LOCATION ----------
         if state == "ASK_LOCATION":
-            if text == "LOCATION" or raw.get("type") == "location":
-                lat = raw.get("location", {}).get("latitude") or session.get("latitude")
-                lng = raw.get("location", {}).get("longitude") or session.get("longitude")
-                
-                if lat and lng:
-                    session["latitude"] = lat
-                    session["longitude"] = lng
-                    s["location"] = to_map_link(lat, lng)
+            lat = raw.get("location", {}).get("latitude") or session.get("latitude")
+            lng = raw.get("location", {}).get("longitude") or session.get("longitude")
+            loc_name = raw.get("location", {}).get("name") or session.get("location_name")
+            loc_addr = raw.get("location", {}).get("address") or session.get("location_address")
+            
+            if lat and lng:
+                session["latitude"] = lat
+                session["longitude"] = lng
+                s["location"] = to_map_link(lat, lng, name=loc_name, address=loc_addr)
+            elif text and text.upper() != "LOCATION":
+                s["location"] = text
+            else:
+                return "📍 Please share your *delivery location* (send a location pin or type your local address)."
 
-                    if session.get("edit_mode") == "LOCATION":
-                        session["case_state"] = "SUMMARY"
-                        session.pop("edit_mode", None)
-                        send_reply_buttons(
-                            to=user,
-                            body=_summary(session),
-                            buttons=[
-                                {"id": "MED_CONFIRM", "title": "✅ Confirm"},
-                                {"id": "MED_EDIT", "title": "✏️ Edit"},
-                                {"id": "MED_CANCEL", "title": "❌ Cancel"}
-                            ]
-                        )
-                        return None
-                    else:
-                        session["case_state"] = "ASK_COST"
-                        send_reply_buttons(
-                            to=user,
-                            body=(
-                                "💰 *How much cash will the helper need for these medicines?*\n\n"
-                                "💡 *Why this matters?*\n"
-                                "This helps us ensure our helper carries enough cash to purchase your medicines. 🤝\n\n"
-                                "📝 *Example:* If your prescription has 3 strips of Paracetamol, you might enter ₹150.\n\n"
-                                "👉 *Not sure?* No problem! Just tap 'Skip' below. Our helper will pay as per the actual bill."
-                            ),
-                            buttons=[
-                                {"id": "MED_SKIP_COST", "title": "⏭️ Skip / I don't know"}
-                            ]
-                        )
-                        return None
-
-            return "❌ Please share your location using the WhatsApp location feature. Text descriptions are not accepted."
+            if session.get("edit_mode") == "LOCATION":
+                session["case_state"] = "SUMMARY"
+                session.pop("edit_mode", None)
+                send_reply_buttons(
+                    to=user,
+                    body=_summary(session),
+                    buttons=[
+                        {"id": "MED_CONFIRM", "title": "✅ Confirm"},
+                        {"id": "MED_EDIT", "title": "✏️ Edit"},
+                        {"id": "MED_CANCEL", "title": "❌ Cancel"}
+                    ]
+                )
+                return None
+            else:
+                session["case_state"] = "ASK_COST"
+                send_reply_buttons(
+                    to=user,
+                    body=(
+                        "💰 *How much cash will the helper need for these medicines?*\n\n"
+                        "💡 *Why this matters?*\n"
+                        "This helps us ensure our helper carries enough cash to purchase your medicines. 🤝\n\n"
+                        "📝 *Example:* If your prescription has 3 strips of Paracetamol, you might enter ₹150.\n\n"
+                        "👉 *Not sure?* No problem! Just tap 'Skip' below. Our helper will pay as per the actual bill."
+                    ),
+                    buttons=[
+                        {"id": "MED_SKIP_COST", "title": "⏭️ Skip / Not Sure"}
+                    ]
+                )
+                return None
 
         # ---------- COST ----------
         if state == "ASK_COST":

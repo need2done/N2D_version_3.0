@@ -22,7 +22,7 @@ logger = logging.getLogger("N2D_Bot")
 # =================================================
 # 🛰️ FIND NEAREST HELPERS
 # =================================================
-def find_nearest_helpers(lat, lng, radius_km=5, engine_type='TASK'):
+def find_nearest_helpers(lat, lng, radius_km=5, engine_type='TASK', service=None):
     """
     Returns list of helpers within radius_km and correct category.
     Fallback to 50km if no one found in initial radius.
@@ -31,7 +31,7 @@ def find_nearest_helpers(lat, lng, radius_km=5, engine_type='TASK'):
         if lat is None or lng is None:
             return []
             
-        available = get_available_helpers(engine_type)
+        available = get_available_helpers(engine_type, service)
         logger.info(f"🛰️ FIND_NEAR: Found {len(available)} online helpers for engine {engine_type}")
         
         def _get_near(target_radius):
@@ -124,58 +124,133 @@ def finalize_order(session: dict) -> str | None:
             customer_id = cur.lastrowid
 
         # -------------------------------
-        # CREATE ORDER
+        # CREATE OR UPDATE ORDER
         # -------------------------------
-        order_code = "N2D" + uuid.uuid4().hex[:5].upper()
+        existing_order_id = session.get("order_id")
 
         # Determine Engine Type
         engine = 'RIDE' if service_id == 4 else 'TASK'
 
-        # 🚨 FIX: Handle 'TBD' for database DECIMAL column
+        # 🚨 FIX: Calculate default estimated fare for AnyWork/Task if TBD or 0
         db_estimated_cost = estimated_cost
-        if str(db_estimated_cost).upper() == 'TBD':
-            db_estimated_cost = 0.0
+        if not db_estimated_cost or str(db_estimated_cost).upper() == 'TBD' or float(db_estimated_cost or 0) == 0.0:
+            if engine == 'TASK':
+                from config import get_service_pricing
+                pricing_svc = get_service_pricing(service_name(service_id))
+                pf = pricing_svc.get("platform_fee", 5.0)
+                hc = pricing_svc.get("helper_charge", 20.0)
+                if session.get("pickup_latitude") and session.get("latitude"):
+                    try:
+                        p_lat = float(session.get("pickup_latitude"))
+                        p_lng = float(session.get("pickup_longitude"))
+                        d_lat = float(session.get("latitude"))
+                        d_lng = float(session.get("longitude"))
+                        route_dist = haversine(p_lat, p_lng, d_lat, d_lng)
+                        hc = min(round(hc + (route_dist * 12.0), 2), 250.0)
+                    except Exception:
+                        pass
+                db_estimated_cost = round(pf + hc, 2)
+            else:
+                db_estimated_cost = 0.0
+        else:
+            try:
+                db_estimated_cost = float(db_estimated_cost)
+            except ValueError:
+                db_estimated_cost = 30.0
 
-        cur.execute(
-            """
-            INSERT INTO orders (
-                order_id,
-                engine_type,
-                customer_id,
-                customer_number,
-                customer_name,
-                service,
-                payload,
-                total_amount,
-                status,
-                payment_status,
-                customer_lat,
-                customer_lng,
-                created_at
-            )
-            VALUES (
-                %s,%s,%s,%s,%s,%s,%s,%s,
-                'CONFIRMED',
-                'PENDING',
-                %s,%s,
-                NOW()
-            )
-            """,
-            (
-                order_code,
-                engine,
-                customer_id,
-                user_phone,
-                name,
-                service_name(service_id),
-                json.dumps(data, ensure_ascii=False),
-                db_estimated_cost,
-                customer_lat,
-                customer_lng
-            )
-        )
+        # If session already has an order_id (e.g. from web booking DRAFT), UPDATE it instead of creating a new one
+        if existing_order_id:
+            cur.execute("SELECT id FROM orders WHERE order_id=%s AND status='DRAFT'", (existing_order_id,))
+            existing_row = cur.fetchone()
+            if existing_row:
+                order_code = existing_order_id
+                order_db_id = existing_row["id"]
+                cur.execute(
+                    """
+                    UPDATE orders SET
+                        customer_id=%s,
+                        customer_number=%s,
+                        customer_name=%s,
+                        service=%s,
+                        payload=%s,
+                        total_amount=%s,
+                        status='CONFIRMED',
+                        payment_status='PENDING',
+                        customer_lat=%s,
+                        customer_lng=%s
+                    WHERE id=%s
+                    """,
+                    (
+                        customer_id,
+                        user_phone,
+                        name,
+                        service_name(service_id),
+                        json.dumps(data, ensure_ascii=False),
+                        db_estimated_cost,
+                        customer_lat,
+                        customer_lng,
+                        order_db_id
+                    )
+                )
+                logger.info(f"✅ Updated existing DRAFT order {order_code} to CONFIRMED")
+            else:
+                # Existing order_id but not DRAFT — use it as the code for a new insert
+                existing_order_id = None
 
-        order_db_id = cur.lastrowid
+        if not existing_order_id:
+            prefix_map = {
+                1: "N2DGR",   # Groceries
+                7: "N2DVF",   # Vegetables & Fruits
+                9: "N2DFD",   # Food Service
+                2: "N2DMD",   # Medicines
+                4: "N2DRD",   # Ride
+                3: "N2DAW",   # AnyWork
+                5: "N2DAW",   # AnyWork
+                10: "N2DHS"   # Home Services
+            }
+            order_prefix = prefix_map.get(service_id, "N2D")
+            order_code = f"{order_prefix}{uuid.uuid4().hex[:4].upper()}"
+
+            cur.execute(
+                """
+                INSERT INTO orders (
+                    order_id,
+                    engine_type,
+                    customer_id,
+                    customer_number,
+                    customer_name,
+                    service,
+                    payload,
+                    total_amount,
+                    status,
+                    payment_status,
+                    customer_lat,
+                    customer_lng,
+                    created_at
+                )
+                VALUES (
+                    %s,%s,%s,%s,%s,%s,%s,%s,
+                    'CONFIRMED',
+                    'PENDING',
+                    %s,%s,
+                    NOW()
+                )
+                """,
+                (
+                    order_code,
+                    engine,
+                    customer_id,
+                    user_phone,
+                    name,
+                    service_name(service_id),
+                    json.dumps(data, ensure_ascii=False),
+                    db_estimated_cost,
+                    customer_lat,
+                    customer_lng
+                )
+            )
+
+            order_db_id = cur.lastrowid
 
         # -------------------------------
         # ENGINE SPECIFIC DATA
@@ -303,7 +378,7 @@ def finalize_order(session: dict) -> str | None:
                     try:
                         # Look up nearest helpers again specifically for pricing if not already available
                         # Or reuse results from auto-assign logic (which runs later, so we calculate here)
-                        temp_helpers = find_nearest_helpers(customer_lat, customer_lng, radius_km=5, engine_type='TASK')
+                        temp_helpers = find_nearest_helpers(customer_lat, customer_lng, radius_km=5, engine_type='TASK', service=service_name(service_id))
                         if temp_helpers:
                             nearest_dist = temp_helpers[0].get('distance', 0)
                             # Add ₹10 per km after the first 2km, or just a small per-km increment
@@ -372,6 +447,38 @@ def finalize_order(session: dict) -> str | None:
             db.close()
 
     # =================================================
+    # 🏬 VENDOR AUTO-ASSIGNMENT LOGIC
+    # =================================================
+    try:
+        if engine == 'TASK':
+            from db.order_repo import get_vendors_by_category, update_vendor_status
+            vendors = get_vendors_by_category(service_name(service_id), shop_name=data.get("restaurant"))
+            if vendors:
+                logger.info(f"🏬 AUTO-BROADCAST VENDOR: Broadcasting Order {order_code} to {len(vendors)} vendors in category {service_name(service_id)}")
+                update_vendor_status(order_code, "PENDING")
+                
+                items_text = "\n".join(data.get("items", [])) if data.get("items") else "N/A"
+                vendor_msg = (
+                    f"📦 *New Order Offer! (First Pick)*\n\n"
+                    f"🆔 Order ID : {order_code}\n"
+                    f"🛠️ Service  : {service_name(service_id)}\n\n"
+                    f"🛍️ *Items to Pack:*\n{items_text}\n\n"
+                    f"Tap Accept below to claim & confirm this order."
+                )
+                from whatsapp_client import send_reply_buttons
+                for v in vendors:
+                    if v.get("phone"):
+                        send_reply_buttons(v["phone"], vendor_msg, [
+                            {"id": f"VENDOR_ACCEPT|{order_code}", "title": "✅ Accept"},
+                            {"id": f"VENDOR_REJECT|{order_code}", "title": "❌ Reject"}
+                        ])
+            else:
+                logger.info(f"🏬 AUTO-ASSIGN VENDOR: No vendor found for {service_name(service_id)}")
+    except Exception:
+        logger.error("ERROR: VENDOR AUTO-ASSIGNMENT FAILED")
+        traceback.print_exc()
+
+    # =================================================
     # 📢 NOTIFY ADMIN VIA WHATSAPP
     # =================================================
     try:
@@ -399,7 +506,7 @@ def finalize_order(session: dict) -> str | None:
 
     try:
         engine = 'RIDE' if service_id == 4 else 'TASK'
-        near_helpers = find_nearest_helpers(customer_lat, customer_lng, radius_km=5, engine_type=engine)
+        near_helpers = find_nearest_helpers(customer_lat, customer_lng, radius_km=5, engine_type=engine, service=service_name(service_id))
         
         if near_helpers:
             logger.info(f"🛰️ AUTO-ASSIGN: Found {len(near_helpers)} helpers nearby.")
@@ -418,12 +525,15 @@ def finalize_order(session: dict) -> str | None:
                 if engine == 'RIDE' and data.get("distance_km"):
                     ride_length = f"🚕 Ride Length : {data['distance_km']} km\n"
 
+                dist_val = h.get('distance', 0.0)
+                dist_str = f"{round(dist_val, 1)} km away" if dist_val and dist_val > 0.05 else "N/A"
+
                 invite_text = (
                     f"📦 *New Order Offer*\n\n"
                     f"🛠 Service  : {service_name(service_id)}\n"
                     f"{items_preview}{bill_preview}{ride_length}"
-                    f"📍 Pickup is : {round(h['distance'], 2)} km away\n\n"
-                    "Tap below to accept (First Come, First Served)."
+                    f"📍 Pickup is : {dist_str}\n\n"
+                    "Tap below to accept or reject (First Come, First Served)."
                 )
                 send_helper_auto_assign(h['phone'], order_code, invite_text)
 
@@ -451,7 +561,9 @@ def service_name(service_id: int) -> str:
         3: "AnyWork",
         4: "Ride",
         5: "AnyWork",   # was incorrectly "Support"
-        6: "Other"
+        6: "Other",
+        7: "Vegetables & Fruits",
+        9: "Food Service"
     }.get(service_id, "Service")
 
 

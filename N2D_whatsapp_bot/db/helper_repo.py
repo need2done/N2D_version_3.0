@@ -68,7 +68,7 @@ def get_helper_by_phone(phone: str) -> Optional[Dict]:
     try:
         cur.execute(
             """
-            SELECT id, name, phone, helper_code, active, status
+            SELECT id, name, phone, helper_code, active, status, wallet_balance
             FROM helpers
             WHERE phone=%s
               AND active=1
@@ -101,7 +101,7 @@ def get_helper_by_id(helper_id: int) -> Optional[Dict]:
     try:
         cur.execute(
             """
-            SELECT id, name, phone, helper_code, active, status
+            SELECT id, name, phone, helper_code, active, status, wallet_balance
             FROM helpers
             WHERE id=%s
               AND active=1
@@ -382,7 +382,7 @@ def update_helper_location(helper_id: int, latitude: float, longitude: float) ->
 # GET AVAILABLE HELPERS
 # =================================================
 
-def get_available_helpers(engine_type: str = 'TASK') -> List[Dict]:
+def get_available_helpers(engine_type: str = 'TASK', service: str = None) -> List[Dict]:
 
     db = get_db()
 
@@ -393,9 +393,10 @@ def get_available_helpers(engine_type: str = 'TASK') -> List[Dict]:
 
     try:
         # Filtering logic based on user request:
-        # TASK order -> Helpers with category 'TASK' or 'BOTH'
-        # RIDE order -> Helpers with category 'RIDE' or 'BOTH'
-        category_filter = "('TASK', 'BOTH')" if engine_type == 'TASK' else "('RIDE', 'BOTH')"
+        if engine_type == 'TASK':
+            category_filter = "('TASK', 'BOTH', 'FOOD', 'VEG_FRUITS', 'MEDICINES', 'ANYWORK', 'HOME_SERVICES')"
+        else:
+            category_filter = "('RIDE', 'BOTH')"
 
         cur.execute(
             f"""
@@ -418,7 +419,28 @@ def get_available_helpers(engine_type: str = 'TASK') -> List[Dict]:
             """
         )
 
-        return cur.fetchall()
+        helpers = cur.fetchall()
+
+        if service and engine_type == 'TASK':
+            s_lower = service.lower()
+            filtered_helpers = []
+            for h in helpers:
+                cat = (h.get('category') or '').upper()
+                if cat in ('BOTH', 'TASK'):
+                    filtered_helpers.append(h)
+                elif cat == 'FOOD' and 'food' in s_lower:
+                    filtered_helpers.append(h)
+                elif cat == 'VEG_FRUITS' and ('veg' in s_lower or 'fruit' in s_lower):
+                    filtered_helpers.append(h)
+                elif cat == 'MEDICINES' and 'medicine' in s_lower:
+                    filtered_helpers.append(h)
+                elif cat == 'ANYWORK' and 'anywork' in s_lower:
+                    filtered_helpers.append(h)
+                elif cat == 'HOME_SERVICES' and ('home' in s_lower or 'service' in s_lower) and 'food' not in s_lower:
+                    filtered_helpers.append(h)
+            return filtered_helpers
+
+        return helpers
 
     except Exception:
 
@@ -447,19 +469,21 @@ def is_helper(phone: str) -> bool:
     cur = db.cursor()
 
     try:
-
+        normalized_phone = phone if phone.startswith('+') else '+' + phone
         cur.execute(
             """
             SELECT 1
             FROM helpers
-            WHERE phone=%s
+            WHERE (phone=%s OR phone=%s)
               AND active=1
             LIMIT 1
             """,
-            (phone,)
+            (phone, normalized_phone)
         )
 
-        return cur.fetchone() is not None
+        row = cur.fetchone()
+
+        return bool(row)
 
     except Exception:
 

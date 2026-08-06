@@ -36,6 +36,12 @@ export default function Settings() {
                 return { hc: 'HELPER_CHARGE_ANYWORK', pf: 'PLATFORM_FEE_ANYWORK' };
             case 'groceries':
                 return { hc: 'HELPER_CHARGE_GROCERIES', pf: 'PLATFORM_FEE_GROCERIES' };
+            case 'veg_fruits':
+                return { hc: 'HELPER_CHARGE_VEG_FRUITS', pf: 'PLATFORM_FEE_VEG_FRUITS' };
+            case 'food':
+                return { hc: 'HELPER_CHARGE_FOOD', pf: 'PLATFORM_FEE_FOOD' };
+            case 'homeservices':
+                return { hc: 'HELPER_CHARGE_HOMESERVICES', pf: 'PLATFORM_FEE_HOMESERVICES' };
             case 'helper':
             default:
                 return { hc: 'HELPER_CHARGE', pf: 'PLATFORM_FEE' };
@@ -458,30 +464,49 @@ export default function Settings() {
                                         <option value="medicine">Medicine Service</option>
                                         <option value="anywork">AnyWork Service</option>
                                         <option value="groceries">Groceries Service</option>
+                                        <option value="veg_fruits">Vegetables & Fruits Service</option>
+                                        <option value="food">Food Service</option>
+                                        <option value="homeservices">Home Services</option>
                                     </select>
                                 </div>
                                 <div className="form-group">
-                                    <label>Helper Charge (₹) - {selectedModule.toUpperCase()}</label>
+                                    <label>🚚 Delivery Fee (Helper Charge) (₹) - {selectedModule.toUpperCase()}</label>
                                     <input
                                         type="number"
                                         className="form-control"
                                         name={getModuleKeys(selectedModule).hc}
                                         value={envSettings[getModuleKeys(selectedModule).hc] || ''}
                                         onChange={handleEnvChange}
-                                        placeholder={selectedModule === 'helper' ? 'e.g. 20' : `Falls back to ${envSettings.HELPER_CHARGE || '20'}`}
+                                        placeholder={selectedModule === 'helper' ? 'e.g. 30' : `Falls back to ${envSettings.HELPER_CHARGE || '30'}`}
                                     />
+                                    <small className="form-text text-muted" style={{ display: 'block', marginTop: '0.25rem' }}>Delivery fee paid to helper for {selectedModule} orders.</small>
                                 </div>
                                 <div className="form-group">
-                                    <label>Platform Fee (₹) - {selectedModule.toUpperCase()}</label>
+                                    <label>📋 Platform Fee (₹) - {selectedModule.toUpperCase()}</label>
                                     <input
                                         type="number"
                                         className="form-control"
                                         name={getModuleKeys(selectedModule).pf}
                                         value={envSettings[getModuleKeys(selectedModule).pf] || ''}
                                         onChange={handleEnvChange}
-                                        placeholder={selectedModule === 'helper' ? 'e.g. 5' : `Falls back to ${envSettings.PLATFORM_FEE || '5'}`}
+                                        placeholder={selectedModule === 'helper' ? 'e.g. 8' : `Falls back to ${envSettings.PLATFORM_FEE || '8'}`}
                                     />
+                                    <small className="form-text text-muted" style={{ display: 'block', marginTop: '0.25rem' }}>Platform convenience fee for {selectedModule} orders.</small>
                                 </div>
+                                {selectedModule === 'anywork' && (
+                                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                                        <label style={{ fontWeight: '600', color: '#1e40af' }}>AnyWork Base Service Fee (₹)</label>
+                                        <input
+                                            type="number"
+                                            className="form-control"
+                                            name="ANYWORK_BASE_FEE"
+                                            value={envSettings.ANYWORK_BASE_FEE || ''}
+                                            onChange={handleEnvChange}
+                                            placeholder={`Falls back to 50 (Current: ${envSettings.ANYWORK_BASE_FEE || '50'})`}
+                                        />
+                                        <small className="form-text text-muted" style={{ display: 'block', marginTop: '0.25rem' }}>Base service labor fee for AnyWork errands (no shopping bill).</small>
+                                    </div>
+                                )}
                                 <div className="form-group">
                                     <label>Auto-Assign Timeout (seconds)</label>
                                     <input

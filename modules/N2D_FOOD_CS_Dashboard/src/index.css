@@ -1,0 +1,196 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background-color: #FAFAFA;
+    color: #1A1A1A;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #f1f1f1;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #FF6B00;
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #E55A00;
+  }
+}
+
+@layer components {
+  /* Glass Morphism */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+  }
+
+  .glass-dark {
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  /* Gradient Buttons */
+  .btn-primary {
+    @apply bg-gradient-to-r from-brand-orange to-brand-orange-light text-white font-semibold rounded-xl px-6 py-3 shadow-orange hover:shadow-orange-hover transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0;
+  }
+
+  .btn-secondary {
+    @apply border-2 border-brand-orange text-brand-orange font-semibold rounded-xl px-6 py-3 hover:bg-brand-orange hover:text-white transition-all duration-200;
+  }
+
+  .btn-ghost {
+    @apply text-text-secondary font-medium rounded-xl px-4 py-2 hover:bg-gray-100 transition-all duration-200;
+  }
+
+  /* Cards */
+  .card {
+    @apply bg-white rounded-2xl shadow-card hover:shadow-card-hover transition-all duration-300;
+  }
+
+  .card-lift {
+    @apply hover:-translate-y-1 hover:shadow-card-hover transition-all duration-300;
+  }
+
+  /* Badges */
+  .badge-veg {
+    @apply inline-flex items-center gap-1 bg-brand-green-pale text-brand-green text-xs font-semibold px-2 py-0.5 rounded-full;
+  }
+
+  .badge-nonveg {
+    @apply inline-flex items-center gap-1 bg-red-50 text-red-600 text-xs font-semibold px-2 py-0.5 rounded-full;
+  }
+
+  .badge-offer {
+    @apply inline-flex items-center bg-gradient-to-r from-brand-green to-brand-green-light text-white text-xs font-bold px-2 py-1 rounded-lg;
+  }
+
+  .badge-open {
+    @apply inline-flex items-center bg-brand-green-pale text-brand-green text-xs font-semibold px-2 py-0.5 rounded-full;
+  }
+
+  /* Section Headers */
+  .section-title {
+    @apply font-display text-2xl font-bold text-text-primary;
+  }
+
+  .section-subtitle {
+    @apply text-text-secondary text-sm mt-1;
+  }
+
+  /* Shimmer Loading */
+  .shimmer {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 1000px 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  /* Star Rating */
+  .star-rating {
+    @apply flex items-center gap-1 text-amber-400;
+  }
+
+  /* Horizontal Scroll Container */
+  .scroll-container {
+    @apply flex gap-4 overflow-x-auto pb-2;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .scroll-container::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scroll-item {
+    scroll-snap-align: start;
+    flex-shrink: 0;
+  }
+
+  /* Overlay */
+  .overlay {
+    @apply fixed inset-0 bg-black/50 z-40 backdrop-blur-sm;
+  }
+
+  /* Input */
+  .input-field {
+    @apply w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange focus:border-transparent transition-all duration-200;
+  }
+
+  /* Gradient Text */
+  .gradient-text-orange {
+    background: linear-gradient(135deg, #FF6B00 0%, #FF8C38 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Offer Price */
+  .price-original {
+    @apply text-text-muted line-through text-xs;
+  }
+
+  .price-offer {
+    @apply text-brand-orange font-bold;
+  }
+
+  /* WhatsApp Green */
+  .whatsapp-card {
+    @apply bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl p-4;
+  }
+
+  /* Custom scrollbar for category carousel */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .animation-delay-100 {
+    animation-delay: 100ms;
+  }
+
+  .animation-delay-200 {
+    animation-delay: 200ms;
+  }
+
+  .animation-delay-300 {
+    animation-delay: 300ms;
+  }
+}

@@ -1,6 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
+const { authenticateAdmin } = require('../middleware/auth');
+
+// All helper management routes require Admin authorization
+router.use(authenticateAdmin);
+
 
 // ==========================================
 // GET /api/helpers — List all active helpers
@@ -27,11 +32,11 @@ router.get('/', async (req, res) => {
 // ==========================================
 router.post('/', async (req, res) => {
     try {
-        const { name, phone, helper_code } = req.body;
+        const { name, phone, helper_code, category } = req.body;
 
         const [result] = await db.query(
-            'INSERT INTO helpers (name, phone, helper_code, status, active) VALUES (?, ?, ?, "OFFLINE", 1)',
-            [name, phone, helper_code || `N2D-${Date.now().toString().slice(-4)}`]
+            'INSERT INTO helpers (name, phone, helper_code, category, status, active) VALUES (?, ?, ?, ?, "OFFLINE", 1)',
+            [name, phone, helper_code || `N2D-${Date.now().toString().slice(-4)}`, category || 'BOTH']
         );
         const helperId = result.insertId;
 
@@ -71,7 +76,8 @@ router.post('/:id/status', async (req, res) => {
 router.patch('/:id/category', async (req, res) => {
     try {
         const { category } = req.body;
-        if (!['TASK', 'RIDE', 'BOTH'].includes(category)) {
+        const allowedCategories = ['TASK', 'RIDE', 'BOTH', 'FOOD', 'VEG_FRUITS', 'MEDICINES', 'ANYWORK', 'HOME_SERVICES'];
+        if (!allowedCategories.includes(category)) {
             return res.status(400).json({ success: false, error: 'Invalid category' });
         }
         await db.query('UPDATE helpers SET category = ? WHERE id = ?', [category, req.params.id]);

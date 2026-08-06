@@ -193,6 +193,15 @@ def get_service_pricing(service_name_str: str) -> dict:
     elif "ride" in svc_lower:
         hc = safe_float(env_vars.get("HELPER_CHARGE_RIDE"), default_hc)
         pf = safe_float(env_vars.get("PLATFORM_FEE_RIDE"), default_pf)
+    elif "veg" in svc_lower or "fruit" in svc_lower:
+        hc = safe_float(env_vars.get("HELPER_CHARGE_VEG_FRUITS"), default_hc)
+        pf = safe_float(env_vars.get("PLATFORM_FEE_VEG_FRUITS"), default_pf)
+    elif "food" in svc_lower:
+        hc = safe_float(env_vars.get("HELPER_CHARGE_FOOD"), default_hc)
+        pf = safe_float(env_vars.get("PLATFORM_FEE_FOOD"), default_pf)
+    elif "home" in svc_lower:
+        hc = safe_float(env_vars.get("HELPER_CHARGE_HOMESERVICES"), default_hc)
+        pf = safe_float(env_vars.get("PLATFORM_FEE_HOMESERVICES"), default_pf)
     else:
         hc = default_hc
         pf = default_pf
