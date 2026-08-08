@@ -601,7 +601,15 @@ async function seed() {
     `);
 
     // Ensure products table has required grocery columns
-    const columns = ['category_id INT', 'brand_id INT', 'mrp DECIMAL(10,2)', 'selling_price DECIMAL(10,2)'];
+    const columns = [
+      'category_id INT',
+      'brand_id INT',
+      'mrp DECIMAL(10,2)',
+      'selling_price DECIMAL(10,2)',
+      'weight VARCHAR(100)',
+      'image_url TEXT',
+      'price DECIMAL(10,2)'
+    ];
     for (const col of columns) {
       try {
         await connection.query(`ALTER TABLE products ADD COLUMN ${col}`);
@@ -609,6 +617,7 @@ async function seed() {
         // Column already exists, ignore
       }
     }
+
 
 
     for (const cat of categoriesData) {
