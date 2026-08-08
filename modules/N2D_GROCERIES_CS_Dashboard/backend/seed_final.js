@@ -608,8 +608,11 @@ async function seed() {
       'selling_price DECIMAL(10,2)',
       'weight VARCHAR(100)',
       'image_url TEXT',
-      'price DECIMAL(10,2)'
+      'price DECIMAL(10,2)',
+      'stock INT DEFAULT 50',
+      'category VARCHAR(255)'
     ];
+
     for (const col of columns) {
       try {
         await connection.query(`ALTER TABLE products ADD COLUMN ${col}`);
