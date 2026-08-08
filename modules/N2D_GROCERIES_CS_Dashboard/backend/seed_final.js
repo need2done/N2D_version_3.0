@@ -570,13 +570,31 @@ async function seed() {
     host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'need2done_grocery'
+    database: process.env.DB_NAME || 'N2D'
   });
 
   try {
+    // Ensure tables exist before inserting
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS categories (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        name VARCHAR(255) NOT NULL UNIQUE,
+        icon VARCHAR(100) DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS brands (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        name VARCHAR(255) NOT NULL UNIQUE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
     for (const cat of categoriesData) {
       console.log(`Inserting Category ${cat.id}: ${cat.name}...`);
       await connection.query("INSERT IGNORE INTO categories (id, name, icon) VALUES (?, ?, ?)", [cat.id, cat.name, cat.icon]);
+
 
       for (const b of cat.brands) {
         await connection.query('INSERT IGNORE INTO brands (name) VALUES (?)', [b]);
