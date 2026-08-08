@@ -591,6 +591,26 @@ async function seed() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS product_images (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        product_id INT NOT NULL,
+        image_url TEXT,
+        is_primary BOOLEAN DEFAULT FALSE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    // Ensure products table has required grocery columns
+    const columns = ['category_id INT', 'brand_id INT', 'mrp DECIMAL(10,2)', 'selling_price DECIMAL(10,2)'];
+    for (const col of columns) {
+      try {
+        await connection.query(`ALTER TABLE products ADD COLUMN ${col}`);
+      } catch (colErr) {
+        // Column already exists, ignore
+      }
+    }
+
+
     for (const cat of categoriesData) {
       console.log(`Inserting Category ${cat.id}: ${cat.name}...`);
       await connection.query("INSERT IGNORE INTO categories (id, name, icon) VALUES (?, ?, ?)", [cat.id, cat.name, cat.icon]);
