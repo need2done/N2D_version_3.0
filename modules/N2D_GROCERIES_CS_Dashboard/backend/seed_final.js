@@ -671,14 +671,15 @@ async function seed() {
         let selling = Math.floor(mrp * (Math.random() * 0.2 + 0.7));
 
         const [result] = await connection.query(`
-          INSERT INTO products (category_id, brand_id, name, weight, mrp, selling_price, stock) 
-          VALUES (?, ?, ?, ?, ?, ?, ?)
-        `, [cat.id, brandId, item.name, weight, mrp, selling, 50]); 
+          INSERT INTO products (category_id, brand_id, name, weight, mrp, selling_price, stock, price, category, image_url) 
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [cat.id, brandId, item.name, weight, mrp, selling, 50, selling, cat.name, cat.image]); 
         
         await connection.query(`
           INSERT INTO product_images (product_id, image_url, is_primary) 
           VALUES (?, ?, TRUE)
         `, [result.insertId, cat.image]);
+
         
         count++;
       }
