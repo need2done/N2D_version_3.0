@@ -3,7 +3,7 @@ const db = require('../config/db');
 exports.getAllProducts = async (req, res) => {
   try {
     const [rows] = await db.query(`
-      SELECT p.*, b.name as brand_name, pi.image_url
+      SELECT p.*, b.name as brand_name, COALESCE(pi.image_url, p.image_url) as image_url
       FROM products p
       LEFT JOIN brands b ON p.brand_id = b.id
       LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = TRUE
@@ -42,7 +42,7 @@ exports.getProductById = async (req, res) => {
 exports.getProductsByCategory = async (req, res) => {
   try {
     const [rows] = await db.query(`
-      SELECT p.*, b.name as brand_name, pi.image_url
+      SELECT p.*, b.name as brand_name, COALESCE(pi.image_url, p.image_url) as image_url
       FROM products p
       LEFT JOIN brands b ON p.brand_id = b.id
       LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = TRUE
