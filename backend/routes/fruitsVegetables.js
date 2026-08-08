@@ -20,13 +20,44 @@ function saveProducts(products) {
 }
 
 // 1. GET ALL (Public catalog)
-router.get('/products', (req, res) => {
+router.get('/products', async (req, res) => {
     try {
-        res.json(getProducts());
+        let products = getProducts();
+        if (!products || products.length === 0) {
+            const pool = require('../config/db');
+            const [rows] = await pool.query(`
+                SELECT id, name, category, price as basePrice, weight as baseUnit, COALESCE(image_url, 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=400&q=80') as image
+                FROM products 
+                WHERE category IN ('Fresh Vegetables', 'Fresh Fruits', 'Leafy Vegetables', 'Root Vegetables', 'Herbs & Seasonings', 'Citrus Fruits', 'Seasonal Fruits', 'Premium Fruits', 'Seasonings & Herbs', 'Exotics')
+                   OR category_id IN (1, 2, 3, 4, 5)
+            `);
+            products = rows.map(p => ({
+                id: p.id,
+                name: p.name,
+                category: p.category || 'Fresh Vegetables',
+                basePrice: parseFloat(p.basePrice || 40),
+                price: parseFloat(p.basePrice || 40),
+                baseUnit: p.baseUnit || '1 kg',
+                unitType: 'Weight',
+                image: p.image || 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=400&q=80',
+                status: 'In Stock',
+                inStock: true,
+                rating: 4.8,
+                reviewCount: 50,
+                description: `Fresh ${p.name}`,
+                quantityOptions: [
+                    { label: p.baseUnit || '1 kg', value: 1, price: parseFloat(p.basePrice || 40) },
+                    { label: '500 g', value: 0.5, price: parseFloat(p.basePrice || 40) * 0.5 }
+                ]
+            }));
+        }
+        res.json(products);
     } catch (e) {
+        console.error('Failed to fetch fruits & vegetables products:', e);
         res.status(500).json({ error: 'Failed to fetch products' });
     }
 });
+
 
 // 2. CREATE (Admin protected)
 router.post('/products', authenticateAdmin, (req, res) => {
