@@ -102,8 +102,8 @@ router.post('/:orderId', async (req, res) => {
                 const itemId = item.id !== undefined ? item.id : item.product_id;
                 const itemName = item.name !== undefined ? item.name : item.product_name;
                 const itemQty = item.qty !== undefined ? item.qty : item.quantity;
-                const itemPrice = item.price;
-                const itemUnit = item.unit;
+                const itemPrice = item.price !== undefined ? item.price : 0;
+                const itemUnit = item.unit !== undefined ? item.unit : '';
 
                 const itemTotal = parseFloat(itemPrice) * parseFloat(itemQty);
                 totalAmount += itemTotal;
