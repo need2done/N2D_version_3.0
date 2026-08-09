@@ -70,10 +70,14 @@ const ProductCard = ({ product }) => {
       {/* Image Container */}
       <div className="relative aspect-[4/3] w-full rounded-xl bg-gray-50 mb-3 overflow-hidden flex items-center justify-center group-hover:bg-gray-100 transition-colors">
         <img 
-          src={product.image || product.image_url} 
+          src={product.image || product.image_url || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&q=80'} 
           alt={product.name}
           className={`w-full h-full object-cover mix-blend-multiply transition-transform duration-500 cursor-pointer ${isOutOfStock ? 'opacity-50 grayscale' : 'group-hover:scale-105'}`}
           onClick={() => !isOutOfStock && setIsQuickViewOpen(true)}
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&q=80';
+          }}
         />
         
         {isOutOfStock && (

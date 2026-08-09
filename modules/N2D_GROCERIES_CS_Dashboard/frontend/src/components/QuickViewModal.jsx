@@ -69,9 +69,13 @@ const QuickViewModal = ({ product, isOpen, onClose }) => {
             </div>
           )}
           <img 
-            src={product.image} 
+            src={product.image || product.image_url || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&q=80'} 
             alt={product.name} 
             className="w-full h-full max-h-[400px] object-contain mix-blend-multiply"
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&q=80';
+            }}
           />
         </div>
 
