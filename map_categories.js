@@ -11,6 +11,24 @@ async function mapCats() {
   });
   console.log('Connected to DB');
 
+  const cats = [
+    [1, 'Dairy, Bread & Eggs', 'Milk'],
+    [2, 'Oils & Cooking Items', 'Droplet'],
+    [3, 'Rice, Flour & Grains', 'Wheat'],
+    [4, 'Dal & Beans', 'Bean'],
+    [5, 'Spices & Masalas', 'Flame'],
+    [6, 'Salt, Sugar & Sweeteners', 'Cookie'],
+    [7, 'Nuts & Dry Fruits', 'Nut'],
+    [8, 'Snacks & Biscuits', 'Cookie'],
+    [9, 'Breakfast & Instant Food', 'Coffee'],
+    [10, 'Tea, Coffee & Beverages', 'CupSoda'],
+    [11, 'Frozen Food', 'Snowflake']
+  ];
+
+  for (const [id, name, icon] of cats) {
+    await conn.query('INSERT IGNORE INTO categories (id, name, icon) VALUES (?, ?, ?)', [id, name, icon]);
+  }
+
   const mappings = [
     [1, '%Dairy%'], [1, '%Bread%'], [1, '%Egg%'], [1, '%Milk%'], [1, '%Yogurt%'], [1, '%Paneer%'], [1, '%Butter%'], [1, '%Cheese%'],
     [2, '%Oil%'], [2, '%Ghee%'], [2, '%Sunflower%'], [2, '%Olive%'],
@@ -45,7 +63,7 @@ async function mapCats() {
   await conn.query(`UPDATE products SET image_url = '/groceries/images/oil.png' WHERE name LIKE '%Oil%' OR name LIKE '%Ghee%'`);
   await conn.query(`UPDATE products SET image_url = '/groceries/images/rice.png' WHERE name LIKE '%Rice%' OR name LIKE '%Atta%' OR name LIKE '%Flour%' OR name LIKE '%Basmati%'`);
 
-  console.log('Category mapping & image fix completed successfully!');
+  console.log('All 16 categories inserted & category mappings completed successfully!');
   await conn.end();
 }
 
