@@ -1,0 +1,17 @@
+[Unit]
+Description=Need2Done Node.js Backend API
+After=network.target mysql.service
+
+[Service]
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/need2done/app/Need2Done/backend
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=3
+EnvironmentFile=/need2done/app/Need2Done/.env
+StandardOutput=append:/need2done/app/Need2Done/logs/backend/backend.log
+StandardError=append:/need2done/app/Need2Done/logs/backend/backend_error.log
+
+[Install]
+WantedBy=multi-user.target

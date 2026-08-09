@@ -1,0 +1,17 @@
+[Unit]
+Description=Need2Done Python WhatsApp Bot
+After=network.target mysql.service
+
+[Service]
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/need2done/app/Need2Done/N2D_whatsapp_bot
+ExecStart=/need2done/app/Need2Done/N2D_whatsapp_bot/venv_n2d/bin/uvicorn app:app --host 0.0.0.0 --port 8000 --workers 2
+Restart=always
+RestartSec=3
+EnvironmentFile=/need2done/app/Need2Done/.env
+StandardOutput=append:/need2done/app/Need2Done/logs/bot/bot.log
+StandardError=append:/need2done/app/Need2Done/logs/bot/bot_error.log
+
+[Install]
+WantedBy=multi-user.target
