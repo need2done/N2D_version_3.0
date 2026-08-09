@@ -1,16 +1,4 @@
-const mysql = require('mysql2/promise');
-const dotenv = require('dotenv');
+const path = require('path');
+const db = require(path.resolve(__dirname, '../../../../backend/config/db'));
+module.exports = db;
 
-dotenv.config();
-
-const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: 'need2done_grocery',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
-});
-
-module.exports = pool;
