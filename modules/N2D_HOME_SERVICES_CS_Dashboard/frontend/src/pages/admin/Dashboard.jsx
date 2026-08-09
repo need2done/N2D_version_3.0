@@ -88,9 +88,9 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-gray-100 p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8 bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-8 bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
           <h1 className="text-3xl font-black text-gray-900">Admin Dashboard</h1>
-          <div className="flex gap-4">
+          <div className="flex flex-wrap gap-3 items-center">
             <button 
               onClick={() => {
                 if(window.confirm('This will delete all custom services and restore the original generated images. Continue?')) {
