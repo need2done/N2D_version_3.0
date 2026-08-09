@@ -7,16 +7,56 @@ const crypto = require('crypto');
 const { generateToken, authenticateAdmin } = require('../middleware/auth');
 const { loginRateLimiter } = require('../middleware/rateLimiter');
 
-const dataPath = path.resolve(__dirname, '../../modules/N2D_FRUITS_VEGETABLES_Dashboard/frontend/data/products.json');
+const dataPaths = [
+    path.resolve(__dirname, '../data/fruits_vegetables_products.json'),
+    path.resolve(__dirname, '../../modules/N2D_FRUITS_VEGETABLES_Dashboard/frontend/data/products.json')
+];
 
 function getProducts() {
-    if (!fs.existsSync(dataPath)) return [];
-    return JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+    for (const p of dataPaths) {
+        if (fs.existsSync(p)) {
+            try {
+                const data = JSON.parse(fs.readFileSync(p, 'utf8'));
+                if (Array.isArray(data) && data.length > 0) return data;
+            } catch (e) {
+                console.error('Error reading JSON path:', p, e);
+            }
+        }
+    }
+    return [];
 }
 
 function saveProducts(products) {
-    fs.mkdirSync(path.dirname(dataPath), { recursive: true });
-    fs.writeFileSync(dataPath, JSON.stringify(products, null, 2), 'utf8');
+    for (const p of dataPaths) {
+        try {
+            fs.mkdirSync(path.dirname(p), { recursive: true });
+            fs.writeFileSync(p, JSON.stringify(products, null, 2), 'utf8');
+        } catch (e) {
+            console.error('Error saving JSON path:', p, e);
+        }
+    }
+}
+
+function formatImageUrl(product) {
+    const categoryFallbacks = {
+        'Fresh Vegetables': 'https://images.unsplash.com/photo-1597362925123-77861d3fbac7?w=600&h=600&fit=crop',
+        'Leafy Vegetables': 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=600&h=600&fit=crop',
+        'Root Vegetables': 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=600&h=600&fit=crop',
+        'Herbs & Seasonings': 'https://images.unsplash.com/photo-1608683282713-994fff640027?w=600&h=600&fit=crop',
+        'Fresh Fruits': 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=600&h=600&fit=crop',
+        'Citrus Fruits': 'https://images.unsplash.com/photo-1534531141161-e416040974ed?w=600&h=600&fit=crop',
+        'Seasonal Fruits': 'https://images.unsplash.com/photo-1550258987-190a2d41a8ba?w=600&h=600&fit=crop',
+        'Premium Fruits': 'https://images.unsplash.com/photo-1528825871115-3581a5387919?w=600&h=600&fit=crop'
+    };
+
+    const img = product.image || product.image_url;
+    const fallback = categoryFallbacks[product.category] || categoryFallbacks['Fresh Vegetables'];
+
+    if (!img) return fallback;
+    if (img.startsWith('http://') || img.startsWith('https://')) return img;
+    if (img.startsWith('/uploads/')) return img;
+    if (img.startsWith('/images/')) return `/fruits${img}`;
+    return fallback;
 }
 
 // 1. GET ALL (Public catalog)
@@ -51,6 +91,12 @@ router.get('/products', async (req, res) => {
                 ]
             }));
         }
+        
+        products = products.map(p => ({
+            ...p,
+            image: formatImageUrl(p)
+        }));
+
         res.json(products);
     } catch (e) {
         console.error('Failed to fetch fruits & vegetables products:', e);
@@ -152,7 +198,7 @@ router.post('/logout', (req, res) => {
 // 8. UPLOAD IMAGE (Admin protected, file type & size validated, sanitized filename)
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        const uploadDir = path.resolve(__dirname, '../../website/images/products');
+        const uploadDir = path.resolve(__dirname, '../public/uploads');
         fs.mkdirSync(uploadDir, { recursive: true });
         cb(null, uploadDir);
     },
@@ -185,7 +231,7 @@ router.post('/upload', authenticateAdmin, (req, res) => {
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
         }
-        res.status(201).json({ url: `/images/products/${req.file.filename}` });
+        res.status(201).json({ url: `/uploads/${req.file.filename}` });
     });
 });
 
