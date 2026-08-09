@@ -48,6 +48,14 @@ const QuickViewModal = ({ product, isOpen, onClose }) => {
   const cartItem = cart.find(item => item.cartItemId === cartItemId);
   const quantity = cartItem ? cartItem.quantity : 0;
 
+  const getImageUrl = (img) => {
+    if (!img) return 'https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=600&q=80';
+    if (img.startsWith('/images/')) return `/groceries${img}`;
+    return img;
+  };
+
+  const displayImage = getImageUrl(product.image || product.image_url);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity">
       {/* Modal Container */}
@@ -69,9 +77,9 @@ const QuickViewModal = ({ product, isOpen, onClose }) => {
             </div>
           )}
           <img 
-            src={product.image || product.image_url || 'https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=600&q=80'} 
+            src={displayImage} 
             alt={product.name} 
-            className="w-full h-full max-h-[380px] object-cover rounded-xl shadow-sm"
+            className="w-full h-full max-h-[380px] object-contain rounded-xl"
             onError={(e) => {
               e.target.onerror = null;
               e.target.src = 'https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=600&q=80';
