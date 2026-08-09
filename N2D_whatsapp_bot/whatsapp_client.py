@@ -439,6 +439,7 @@ def send_rich_welcome(to: str, name: str = None):
         f"👋 {greeting}\n\n"
         "We help you get anything done locally:\n\n"
         "🛒 *Groceries*\n"
+        "🥦 *Vegetables & Fruits*\n"
         "🍔 *Food*\n"
         "🏠 *Home Services*\n"
         "💊 *Medicines*\n"
