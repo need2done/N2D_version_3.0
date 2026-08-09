@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Need2Done — Razorpay Payment Gateway Simulator</title>
+  <title>Need2Done — Secure Payment</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💳</text></svg>">
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 
@@ -140,40 +141,43 @@
       border: none;
       transition: all 0.2s;
       margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
     }
 
-    .btn-success {
-      background-color: #10b981;
+    .btn-primary {
+      background-color: var(--primary);
       color: white;
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+      box-shadow: 0 4px 12px rgba(51, 153, 204, 0.25);
     }
 
-    .btn-success:hover {
-      background-color: #059669;
+    .btn-primary:hover {
+      background-color: var(--primary-hover);
       transform: translateY(-1px);
     }
 
-    .btn-danger {
-      background-color: #ef4444;
-      color: white;
-      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+    .btn-primary:disabled {
+      background-color: #94a3b8;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
     }
 
-    .btn-danger:hover {
-      background-color: #dc2626;
-      transform: translateY(-1px);
+    .spinner {
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top: 2px solid white;
+      width: 16px;
+      height: 16px;
+      animation: spin 1s linear infinite;
+      display: none;
     }
 
-    .simulator-badge {
-      display: inline-block;
-      background: #fffbeb;
-      border: 1px solid #fef3c7;
-      color: #d97706;
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 0.75rem;
-      font-weight: 700;
-      margin-bottom: 24px;
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
   </style>
 </head>
@@ -181,11 +185,9 @@
 
   <div class="payment-container">
     <div class="brand">
-      <div class="brand-logo">RP</div>
-      <div class="brand-text">Razorpay <span>Simulator</span></div>
+      <div class="brand-logo">N2D</div>
+      <div class="brand-text">Need2Done <span>Payment</span></div>
     </div>
-
-    <div class="simulator-badge">⚠️ Sandbox / Test Mode</div>
 
     <div class="amount-box">
       <div class="amount-val" id="amountVal">₹0.00</div>
@@ -195,26 +197,35 @@
     <div class="order-details">
       <div class="detail-row">
         <span class="detail-label">Merchant</span>
-        <span class="detail-val">Need2Done Bhongir</span>
+        <span class="detail-val">Need2Done Services</span>
       </div>
       <div class="detail-row">
         <span class="detail-label">Order ID</span>
-        <span class="detail-val" id="orderIdVal">N2D10001</span>
+        <span class="detail-val" id="orderIdVal">-</span>
       </div>
     </div>
 
-    <button class="btn btn-success" onclick="simulateSuccess()">Simulate Success</button>
-    <button class="btn btn-danger" onclick="simulateFailure()">Simulate Failure</button>
+    <button class="btn btn-primary" id="payBtn" onclick="initiatePayment()">
+      <div class="spinner" id="spinner"></div>
+      <span id="btnText">Pay Securely</span>
+    </button>
   </div>
 
   <script>
     const urlParams = new URLSearchParams(window.location.search);
-    const orderId = urlParams.get('orderId') || 'DRAFT';
-    const amount = parseFloat(urlParams.get('amount')) || 0.00;
-    let botPhone = '15556349916'; // Default fallback
+    const orderId = urlParams.get('orderId') || '';
+    const amount = parseFloat(urlParams.get('amount')) || 0;
+    
+    // Default bot phone for fallback
+    let botPhone = '15556349916'; 
 
-    document.getElementById('orderIdVal').innerText = orderId;
-    document.getElementById('amountVal').innerText = `₹${amount.toFixed(2)}`;
+    if(orderId) {
+        document.getElementById('orderIdVal').innerText = orderId;
+    }
+    if(amount > 0) {
+        document.getElementById('amountVal').innerText = `₹${amount.toFixed(2)}`;
+        document.getElementById('btnText').innerText = `Pay ₹${amount.toFixed(2)}`;
+    }
 
     // Fetch products to retrieve botPhone dynamically
     async function loadBotConfig() {
@@ -230,12 +241,106 @@
     }
     loadBotConfig();
 
-    function simulateSuccess() {
-      window.location.href = `https://wa.me/${botPhone}?text=PAY_SUCCESS_${orderId}`;
-    }
+    async function initiatePayment() {
+      if (!orderId || amount <= 0) {
+        alert('Invalid order details. Cannot initiate payment.');
+        return;
+      }
 
-    function simulateFailure() {
-      window.location.href = `https://wa.me/${botPhone}?text=PAY_FAILED_${orderId}`;
+      const payBtn = document.getElementById('payBtn');
+      const spinner = document.getElementById('spinner');
+      const btnText = document.getElementById('btnText');
+
+      payBtn.disabled = true;
+      spinner.style.display = 'block';
+      btnText.innerText = 'Processing...';
+
+      try {
+        // 1. Create order on backend
+        const response = await fetch('/api/payments/create-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            amount: amount, 
+            orderId: orderId,
+            customerName: 'Guest User',
+            customerPhone: '9999999999'
+          })
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to create payment order');
+        }
+
+        // 2. Open Razorpay Checkout
+        const options = {
+          key: data.keyId,
+          amount: data.amount,
+          currency: data.currency,
+          name: "Need2Done",
+          description: "Service Payment",
+          order_id: data.razorpayOrderId,
+          handler: async function (response) {
+            try {
+              // 3. Verify payment on backend
+              const verifyRes = await fetch('/api/payments/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  orderId: orderId
+                })
+              });
+
+              const verifyData = await verifyRes.json();
+
+              if (verifyData.success) {
+                // Success: Redirect to WhatsApp bot
+                window.location.href = `https://wa.me/${botPhone}?text=PAY_SUCCESS_${orderId}`;
+              } else {
+                alert('Payment verification failed. Please contact support.');
+                window.location.href = `https://wa.me/${botPhone}?text=PAY_FAILED_${orderId}`;
+              }
+            } catch (err) {
+              console.error('Verification Error:', err);
+              alert('An error occurred while verifying the payment.');
+              window.location.href = `https://wa.me/${botPhone}?text=PAY_FAILED_${orderId}`;
+            }
+          },
+          prefill: {
+            name: "Guest User",
+            contact: "9999999999"
+          },
+          theme: {
+            color: "#3399cc"
+          },
+          modal: {
+            ondismiss: function () {
+              // Reset button when user closes modal
+              payBtn.disabled = false;
+              spinner.style.display = 'none';
+              btnText.innerText = `Pay ₹${amount.toFixed(2)}`;
+            }
+          }
+        };
+
+        const rzp = new Razorpay(options);
+        rzp.on('payment.failed', function (response){
+           console.error('Payment Failed:', response.error);
+        });
+        rzp.open();
+
+      } catch (err) {
+        console.error('Payment Error:', err);
+        alert(err.message || 'Something went wrong while initiating payment.');
+        payBtn.disabled = false;
+        spinner.style.display = 'none';
+        btnText.innerText = `Pay ₹${amount.toFixed(2)}`;
+      }
     }
   </script>
 </body>

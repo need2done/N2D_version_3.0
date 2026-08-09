@@ -215,26 +215,26 @@ def handle_customer_interactive(
             payload = safe_parse_payload(order.get("payload"))
             total = float(payload.get("balance_due", order["total_amount"]))
 
-            # save payment method
-            mark_payment_method(order_db_id, "UPI")
+            from config import TRACKING_BASE_URL
 
-            upi_link = (
-                f"upi://pay?"
-                f"pa={UPI_ID}"
-                f"&pn=Need2Done"
-                f"&am={total}"
-                f"&cu=INR"
+            # save payment method
+            mark_payment_method(order_db_id, "ONLINE")
+
+            pay_link = (
+                f"{TRACKING_BASE_URL}/payment.html?"
+                f"orderId={order['order_id']}"
+                f"&amount={total}"
             )
 
             send_payment_button(
                 to=from_number,
                 body=(
-                    "💳 *UPI Payment*\n\n"
+                    "💳 *Online Payment (Razorpay)*\n\n"
                     f"💰 Amount : ₹{total}\n\n"
-                    "Tap the button below to pay 👇"
+                    "Tap the button below to pay securely 👇"
                 ),
                 button_text="Pay ₹" + str(total),
-                url=upi_link
+                url=pay_link
             )
 
             send_reply_buttons(

@@ -167,7 +167,7 @@ export default function CheckoutModal({ isOpen, onClose }) {
         ...prev,
         { sender: 'user', text: 'Pay Online 💳', time: 'Just now' }
       ]);
-      setShowRazorpay(true);
+      handleRazorpayPayment();
     }
   };
 
@@ -591,74 +591,6 @@ export default function CheckoutModal({ isOpen, onClose }) {
                     </AnimatePresence>
                   </div>
                 </div>
-
-                {/* Simulated Razorpay Overlay Pane */}
-                <AnimatePresence>
-                  {showRazorpay && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="absolute inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm"
-                    >
-                      <motion.div
-                        initial={{ scale: 0.95 }}
-                        animate={{ scale: 1 }}
-                        exit={{ scale: 0.95 }}
-                        className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl"
-                      >
-                        {/* Razorpay Header */}
-                        <div className="bg-[#0b2545] text-white px-5 py-4 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="font-black tracking-widest text-[#3399ff]">Razorpay</span>
-                            <span className="text-[10px] bg-[#3399ff]/20 text-[#3399ff] px-1.5 py-0.5 rounded font-bold">SECURE</span>
-                          </div>
-                          <button onClick={() => setShowRazorpay(false)} className="text-white/70 hover:text-white">
-                            <CloseIcon style={{ fontSize: 16 }} />
-                          </button>
-                        </div>
-
-                        {/* Razorpay Merchant Info */}
-                        <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-[#fafbfc]">
-                          <div>
-                            <p className="text-xs font-bold text-slate-800">Need2Done Food Delivery</p>
-                            <p className="text-[10px] text-slate-400">Order ID: {orderId}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-xs text-slate-400">Amount</p>
-                            <p className="text-sm font-black text-slate-800">₹{cart.grandTotal}</p>
-                          </div>
-                        </div>
-
-                        {/* Razorpay Payment options / Simulation */}
-                        <div className="p-5 space-y-4">
-                          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3.5 flex gap-3 items-start">
-                            <CreditCardIcon className="text-blue-600 flex-shrink-0" style={{ fontSize: 20 }} />
-                            <div className="text-xs text-blue-900 leading-normal">
-                              <p className="font-bold">Simulated Sandbox Environment</p>
-                              <p className="text-[11px] text-blue-700 mt-0.5">Click the button below to simulate a successful debit card payment through Razorpay API.</p>
-                            </div>
-                          </div>
-
-                          <button
-                            onClick={handleRazorpayPayment}
-                            disabled={razorpayLoading}
-                            className="w-full bg-[#3399ff] hover:bg-[#1a85f2] text-white font-bold py-3 px-4 rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-2 disabled:bg-blue-300"
-                          >
-                            {razorpayLoading ? (
-                              <>
-                                <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                                <span>Authorizing Payment...</span>
-                              </>
-                            ) : (
-                              <span>Simulate Success Payment — ₹{cart.grandTotal}</span>
-                            )}
-                          </button>
-                        </div>
-                      </motion.div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </div>
             )}
           </div>
