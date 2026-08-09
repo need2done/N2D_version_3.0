@@ -32,8 +32,13 @@ const AdminDashboard = () => {
   };
 
   useEffect(() => {
+    const token = localStorage.getItem('adminToken');
+    if (!token) {
+      navigate('/admin/login');
+      return;
+    }
     fetchProductsAndCategories();
-  }, []);
+  }, [navigate]);
 
   const handleBulkStock = async (stockValue, isGlobal = false) => {
     const actionName = stockValue > 0 ? "IN STOCK" : "OUT OF STOCK";

@@ -1308,53 +1308,41 @@ Share this with helper."""
             # Check if input is purely numeric
             if text.isdigit():
                 if active:
-                    # Case 1: OTP Handling (When status is PAID or RIDE-related)
-                    if active["status"] == "PAID" or active.get("engine_type") == "RIDE":
-                        
-                        # Task Engine OTP (6 digits)
-                        if active["status"] == "PAID" and len(text) == 6:
-                            if submit_otp(active["order_id"], text):
-                                # ... existing task completion logic ...
-                                log_event(active["id"], "OTP_SUBMITTED", f"OTP {text} submitted (Raw)", "HELPER")
-                                if complete_order(active["order_id"]):
-                                    log_event(active["id"], "ORDER_AUTO_COMPLETED", "Order completed via raw OTP", "SYSTEM")
-                                    send_message(phone, "✅ OTP verified.\n🎉 *Order Completed!*\n\nYou are now back ONLINE and ready for new orders.")
-                                    
-                                    # CUSTOMER THANK YOU
-                                    send_reply_buttons(
-                                        active["customer_number"],
-                                        f"🎉 *Order Completed!* 🎉\n\nThank you for choosing *Need2Done*! 🙏\nHow was your experience with {helper['name']}?",
-                                        [
-                                            {"id": f"RATE_5|{active['id']}", "title": "⭐⭐⭐⭐⭐"},
-                                            {"id": f"RATE_3|{active['id']}", "title": "⭐⭐⭐"},
-                                            {"id": f"RATE_1|{active['id']}", "title": "⭐"}
-                                        ]
-                                    )
-                                    return
-                            else:
-                                send_message(phone, "❌ Invalid OTP. Please check with the customer.")
+                    # Task Engine OTP (6 digits)
+                    if len(text) == 6:
+                        if submit_otp(active["order_id"], text):
+                            log_event(active["id"], "OTP_SUBMITTED", f"OTP {text} submitted (Raw)", "HELPER")
+                            if complete_order(active["order_id"]):
+                                log_event(active["id"], "ORDER_AUTO_COMPLETED", "Order completed via raw OTP", "SYSTEM")
+                                send_message(phone, "✅ OTP verified.\n🎉 *Order Completed!*\n\nYou are now back ONLINE and ready for new orders.")
+                                
+                                # CUSTOMER THANK YOU
+                                send_reply_buttons(
+                                    active["customer_number"],
+                                    f"🎉 *Order Completed!* 🎉\n\nThank you for choosing *Need2Done*! 🙏\nHow was your experience with {helper['name']}?",
+                                    [
+                                        {"id": f"RATE_5|{active['id']}", "title": "⭐⭐⭐⭐⭐"},
+                                        {"id": f"RATE_3|{active['id']}", "title": "⭐⭐⭐"},
+                                        {"id": f"RATE_1|{active['id']}", "title": "⭐"}
+                                    ]
+                                )
                                 return
-
-                        # Ride Engine OTP (4 digits)
-                        elif active.get("engine_type") == "RIDE" and len(text) == 4:
-                            # Auto-detect if it's START or END based on current status
-                            otp_type = 'START' if active["status"] == "HELPER_ARRIVED" else 'END'
-                            
-                            # We don't call verify_ride_otp here directly if we want to reuse the START/END block.
-                            # Instead, we just "fake" the message text and let it fall through to the START/END block below.
-                            text = f"{otp_type} {text}"
-                            upper = text.upper()
-                            # Do NOT return, let it fall through to the "if upper.startswith('START ')" block below.
-
-                        elif active["status"] == "PAID":
-                            # Numeric but not 6 digits - give specific hint instead of falling through
-                            send_message(phone, "ℹ️ Please enter the *6-digit OTP* provided by the customer.")
+                        else:
+                            send_message(phone, "❌ Invalid OTP. Please check with the customer.")
                             return
+
+                    # Ride Engine OTP (4 digits)
+                    elif active.get("engine_type") == "RIDE" and len(text) == 4:
+                        # Auto-detect if it's START or END based on current status
+                        otp_type = 'START' if active["status"] == "HELPER_ARRIVED" else 'END'
                         
-                        elif active.get("engine_type") == "RIDE":
-                            # Numeric but not 4 digits
-                            send_message(phone, "ℹ️ Please enter the *4-digit OTP* provided by the customer.")
-                            return
+                        text = f"{otp_type} {text}"
+                        upper = text.upper()
+
+                    elif active.get("engine_type") == "RIDE":
+                        # Numeric but not 4 digits for ride
+                        send_message(phone, "ℹ️ Please enter the *4-digit OTP* provided by the customer.")
+                        return
 
                     # Case 2: Bill Amount (When status is BILL_IMAGE_UPLOADED)
                     if active["status"] == "BILL_IMAGE_UPLOADED":

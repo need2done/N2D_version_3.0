@@ -32,7 +32,7 @@ export default function FoodAdminDashboard() {
   useEffect(() => {
     const token = localStorage.getItem('food_admin_token');
     if (!token) {
-      navigate('/food/admin/login');
+      navigate('/admin/login');
       return;
     }
 

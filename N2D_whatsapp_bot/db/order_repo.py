@@ -747,7 +747,7 @@ def submit_otp(order_id: str, otp_entered: str) -> bool:
             db.rollback()
             return False
             
-        if order['status'] != 'PAID':
+        if not order.get('otp'):
             db.rollback()
             return False
             
