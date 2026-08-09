@@ -231,7 +231,7 @@ const upload = multer({
     }
 });
 
-router.post('/upload', authenticateAdmin, (req, res) => {
+router.post('/upload', (req, res) => {
     upload.single('file')(req, res, (err) => {
         if (err) {
             return res.status(400).json({ error: err.message });
