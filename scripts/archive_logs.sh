@@ -78,10 +78,10 @@ echo "Performing daily MySQL database dump..."
 ENV_FILE="/need2done/app/Need2Done/.env"
 
 if [ -f "$ENV_FILE" ]; then
-    DB_USER=$(grep -i '^DB_USER=' "$ENV_FILE" | cut -d '=' -f2 | tr -d '\r"' "'")
-    DB_PASS=$(grep -i '^DB_PASSWORD=' "$ENV_FILE" | cut -d '=' -f2 | tr -d '\r"' "'")
-    DB_NAME=$(grep -i '^DB_NAME=' "$ENV_FILE" | cut -d '=' -f2 | tr -d '\r"' "'")
-    DB_HOST=$(grep -i '^DB_HOST=' "$ENV_FILE" | cut -d '=' -f2 | tr -d '\r"' "'")
+    DB_USER=$(grep -i '^DB_USER=' "$ENV_FILE" | cut -d '=' -f2 | sed -e 's/[\r"'\'']//g')
+    DB_PASS=$(grep -i '^DB_PASSWORD=' "$ENV_FILE" | cut -d '=' -f2 | sed -e 's/[\r"'\'']//g')
+    DB_NAME=$(grep -i '^DB_NAME=' "$ENV_FILE" | cut -d '=' -f2 | sed -e 's/[\r"'\'']//g')
+    DB_HOST=$(grep -i '^DB_HOST=' "$ENV_FILE" | cut -d '=' -f2 | sed -e 's/[\r"'\'']//g')
 fi
 
 DB_USER=${DB_USER:-n2d_user}
