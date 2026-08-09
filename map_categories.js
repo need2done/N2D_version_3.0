@@ -37,9 +37,13 @@ async function mapCats() {
   // Set default category_id = 1 for any remaining nulls
   await conn.query('UPDATE products SET category_id = 1 WHERE category_id IS NULL');
   
-  // Update broken Unsplash images for Almonds, Cashews, Raisins, Biscuits
-  await conn.query(`UPDATE products SET image_url = 'https://images.unsplash.com/photo-1508061253366-f7da158b6d4f?w=400&q=80' WHERE name LIKE '%Almond%' OR name LIKE '%Cashew%' OR name LIKE '%Raisin%'`);
-  await conn.query(`UPDATE products SET image_url = 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=400&q=80' WHERE name LIKE '%Biscuit%'`);
+  // Update broken Unsplash images to verified local high-res PNG images
+  await conn.query(`UPDATE products SET image_url = '/groceries/images/nuts.png' WHERE name LIKE '%Almond%' OR name LIKE '%Cashew%' OR name LIKE '%Raisin%' OR name LIKE '%Nut%'`);
+  await conn.query(`UPDATE products SET image_url = '/groceries/images/snacks.png' WHERE name LIKE '%Biscuit%' OR name LIKE '%Snack%' OR name LIKE '%Good Day%'`);
+  await conn.query(`UPDATE products SET image_url = '/groceries/images/spice.png' WHERE name LIKE '%Spice%' OR name LIKE '%Masala%' OR name LIKE '%Jeera%' OR name LIKE '%Cumin%' OR name LIKE '%Turmeric%' OR name LIKE '%Chili%'`);
+  await conn.query(`UPDATE products SET image_url = '/groceries/images/sugar.png' WHERE name LIKE '%Sugar%' OR name LIKE '%Salt%'`);
+  await conn.query(`UPDATE products SET image_url = '/groceries/images/oil.png' WHERE name LIKE '%Oil%' OR name LIKE '%Ghee%'`);
+  await conn.query(`UPDATE products SET image_url = '/groceries/images/rice.png' WHERE name LIKE '%Rice%' OR name LIKE '%Atta%' OR name LIKE '%Flour%' OR name LIKE '%Basmati%'`);
 
   console.log('Category mapping & image fix completed successfully!');
   await conn.end();
