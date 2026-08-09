@@ -49,7 +49,7 @@ const Footer = () => {
               </a>
             </div>
             <div className="mt-6">
-              <a href="https://wa.me/15556349916" target="_blank" rel="noopener noreferrer" className="inline-flex items-center px-6 py-3 bg-[#25D366] text-white font-bold rounded-xl hover:bg-[#20bd5a] hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
+              <a href="https://wa.me/917989862623" target="_blank" rel="noopener noreferrer" className="inline-flex items-center px-6 py-3 bg-[#25D366] text-white font-bold rounded-xl hover:bg-[#20bd5a] hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
                 <FaWhatsapp className="mr-2 text-xl" /> Chat on WhatsApp
               </a>
             </div>

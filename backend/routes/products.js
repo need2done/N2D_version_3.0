@@ -15,7 +15,7 @@ router.get('/', async (req, res) => {
         res.json({ 
             success: true, 
             products: rows,
-            bot_phone: process.env.ADMIN_PHONE_NUMBER || '15556349916' // Fallback to config admin/bot phone
+            bot_phone: process.env.ADMIN_PHONE_NUMBER || '917989862623' // Fallback to config admin/bot phone
         });
     } catch (err) {
         console.error('Error fetching products:', err);

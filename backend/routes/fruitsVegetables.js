@@ -49,14 +49,17 @@ function formatImageUrl(product) {
         'Premium Fruits': 'https://images.unsplash.com/photo-1528825871115-3581a5387919?w=600&h=600&fit=crop'
     };
 
-    const img = product.image || product.image_url;
-    const fallback = categoryFallbacks[product.category] || categoryFallbacks['Fresh Vegetables'];
+    let img = product.image || product.image_url;
+    if (!img) return categoryFallbacks[product.category] || categoryFallbacks['Fresh Vegetables'];
 
-    if (!img) return fallback;
     if (img.startsWith('http://') || img.startsWith('https://')) return img;
     if (img.startsWith('/uploads/')) return img;
+    if (img.startsWith('uploads/')) return `/${img}`;
     if (img.startsWith('/images/')) return `/fruits${img}`;
-    return fallback;
+    if (img.startsWith('images/')) return `/fruits/${img}`;
+    if (img.includes('.') && !img.includes('/')) return `/uploads/${img}`;
+
+    return categoryFallbacks[product.category] || categoryFallbacks['Fresh Vegetables'];
 }
 
 // 1. GET ALL (Public catalog)

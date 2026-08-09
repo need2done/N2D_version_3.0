@@ -7,7 +7,7 @@ const { authenticateAdmin } = require('../middleware/auth');
 // WhatsApp Configs
 const WA_TOKEN = process.env.WA_TOKEN;
 const WA_PHONE_ID = process.env.WA_PHONE_ID || '';
-const ADMIN_NUMBER = process.env.ADMIN_PHONE_NUMBER || '15556349916';
+const ADMIN_NUMBER = process.env.ADMIN_PHONE_NUMBER || '917989862623';
 const WA_API_URL = `https://graph.facebook.com/v19.0/${WA_PHONE_ID}/messages`;
 
 async function notifyAdminSupportResolved(customerName, customerPhone, id) {

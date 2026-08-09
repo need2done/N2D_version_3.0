@@ -37,7 +37,7 @@ const BookingConfirmation = () => {
         </p>
 
         <div className="space-y-4">
-          <button onClick={() => window.location.href = 'https://wa.me/15556349916'} className="w-full flex items-center justify-center bg-[#25D366] hover:bg-[#20bd5a] text-white font-black py-4 px-6 rounded-2xl transition-all shadow-lg hover:-translate-y-1">
+          <button onClick={() => window.location.href = 'https://wa.me/917989862623'} className="w-full flex items-center justify-center bg-[#25D366] hover:bg-[#20bd5a] text-white font-black py-4 px-6 rounded-2xl transition-all shadow-lg hover:-translate-y-1">
             <FaWhatsapp className="mr-2 text-2xl" /> Track on WhatsApp
           </button>
           

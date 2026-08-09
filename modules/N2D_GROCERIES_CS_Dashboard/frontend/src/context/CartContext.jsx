@@ -89,7 +89,7 @@ export const CartProvider = ({ children }) => {
     })();
 
     const encodedText = encodeURIComponent(message);
-    const whatsappNumber = "15556349916"; 
+    const whatsappNumber = "917989862623"; 
     const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodedText}`;
     
     window.open(whatsappUrl, '_blank');

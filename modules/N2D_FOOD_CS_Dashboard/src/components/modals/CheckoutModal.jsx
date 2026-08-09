@@ -107,7 +107,7 @@ export default function CheckoutModal({ isOpen, onClose }) {
     // Redirect to WhatsApp with the order ID to continue flow
     const message = `ORDER_${currentOrderId}`;
     const encoded = encodeURIComponent(message);
-    window.location.href = `https://wa.me/15556349916?text=${encoded}`;
+    window.location.href = `https://wa.me/917989862623?text=${encoded}`;
     
     cart.clearCart();
     onClose();

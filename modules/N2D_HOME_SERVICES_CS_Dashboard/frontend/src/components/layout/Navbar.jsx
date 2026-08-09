@@ -170,7 +170,7 @@ const Navbar = () => {
               )}
             </div>
 
-            <a href="https://wa.me/15556349916" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center text-gray-600 hover:text-green-600 transition-colors">
+            <a href="https://wa.me/917989862623" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center text-gray-600 hover:text-green-600 transition-colors">
               <FaWhatsapp size={24} className="text-green-500" />
               <span className="text-xs font-semibold mt-1">Help</span>
             </a>
