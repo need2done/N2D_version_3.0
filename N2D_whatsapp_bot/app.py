@@ -73,14 +73,17 @@ app = FastAPI(
     version="2.0"
 )
 
+# Create required directories if they don't exist
+os.makedirs(BASE_DIR / "templates", exist_ok=True)
+os.makedirs(BASE_DIR / "static", exist_ok=True)
+UPLOAD_FOLDER = str(BASE_DIR / "uploads" / "bills")
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
 # templates
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 # static files
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
-
-UPLOAD_FOLDER = str(BASE_DIR / "uploads" / "bills")
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
 # ============================================================
