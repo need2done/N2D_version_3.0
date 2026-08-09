@@ -181,7 +181,8 @@ router.post('/auth', loginRateLimiter, (req, res) => {
         res.cookie('admin_token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
+            sameSite: 'lax',
+            path: '/',
             maxAge: 60 * 60 * 24 * 1000 // 1 day
         });
         return res.json({ success: true, token });
