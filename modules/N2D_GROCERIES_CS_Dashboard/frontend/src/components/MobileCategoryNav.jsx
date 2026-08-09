@@ -32,10 +32,31 @@ const MobileCategoryNav = ({ activeCategory, setActiveCategory, searchQuery, isO
       .catch(err => console.error('Error fetching categories:', err));
   }, []);
 
+  const defaultCategories = [
+    { id: 1, name: 'Dairy, Bread & Eggs', icon: 'Milk' },
+    { id: 2, name: 'Oils & Cooking Items', icon: 'Droplet' },
+    { id: 3, name: 'Rice, Flour & Grains', icon: 'Wheat' },
+    { id: 4, name: 'Dal & Beans', icon: 'Bean' },
+    { id: 5, name: 'Spices & Masalas', icon: 'Flame' },
+    { id: 6, name: 'Salt, Sugar & Sweeteners', icon: 'Cookie' },
+    { id: 7, name: 'Nuts & Dry Fruits', icon: 'Nut' },
+    { id: 8, name: 'Snacks & Biscuits', icon: 'Cookie' },
+    { id: 9, name: 'Breakfast & Instant Food', icon: 'Coffee' },
+    { id: 10, name: 'Tea, Coffee & Beverages', icon: 'CupSoda' },
+    { id: 11, name: 'Frozen Food', icon: 'Snowflake' },
+    { id: 12, name: 'Meat & Fish', icon: 'Drumstick' },
+    { id: 13, name: 'Cleaning Essentials', icon: 'SprayCan' },
+    { id: 14, name: 'Personal Care', icon: 'Heart' },
+    { id: 15, name: 'Baby Care', icon: 'Baby' },
+    { id: 16, name: 'Household Needs', icon: 'Home' }
+  ];
+
+  const activeCategoriesList = categories.length > 0 ? categories : defaultCategories;
   const searchLower = (searchQuery || '').toLowerCase().trim();
   const displayCategories = searchLower 
-    ? categories.filter(c => c.name.toLowerCase().includes(searchLower))
-    : categories;
+    ? activeCategoriesList.filter(c => c.name.toLowerCase().includes(searchLower))
+    : activeCategoriesList;
+
 
   return (
     <>

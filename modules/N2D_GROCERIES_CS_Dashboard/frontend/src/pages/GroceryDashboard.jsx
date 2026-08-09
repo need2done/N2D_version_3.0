@@ -48,7 +48,7 @@ const GroceryDashboard = () => {
       (p.brand_name && p.brand_name.toLowerCase().includes(searchLower))
     );
   } else {
-    displayProducts = products.filter(p => p.category_id === activeCategory);
+    displayProducts = products.filter(p => Number(p.category_id) === Number(activeCategory));
   }
 
   const availableBrands = ['All', ...new Set(displayProducts.map(p => p.brand_name).filter(Boolean))];
