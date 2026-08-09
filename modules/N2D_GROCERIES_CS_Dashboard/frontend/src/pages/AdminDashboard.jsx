@@ -255,8 +255,16 @@ const AdminDashboard = () => {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-lg border border-gray-100 bg-white p-1 flex-shrink-0 flex items-center justify-center overflow-hidden">
-                          {product.image_url ? (
-                            <img src={product.image_url} alt={product.name} className="max-w-full max-h-full object-contain" />
+                          {product.image_url || product.image ? (
+                            <img 
+                              src={(product.image_url || product.image).startsWith('/images/') ? `/groceries${product.image_url || product.image}` : (product.image_url || product.image)} 
+                              alt={product.name} 
+                              className="max-w-full max-h-full object-contain" 
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&q=80';
+                              }}
+                            />
                           ) : (
                             <div className="text-gray-300"><Package size={20} /></div>
                           )}
