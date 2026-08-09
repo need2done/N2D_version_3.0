@@ -54,7 +54,9 @@ const QuickViewModal = ({ product, isOpen, onClose }) => {
     return img;
   };
 
-  const displayImage = getImageUrl(product.image || product.image_url);
+  const rawImg = product.image || product.image_url || (product.images && product.images[0] && product.images[0].image_url);
+  const displayImage = getImageUrl(rawImg);
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity">
