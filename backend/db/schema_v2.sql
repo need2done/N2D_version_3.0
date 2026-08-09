@@ -221,3 +221,16 @@ VALUES
 -- Initialize helper status for seeded helpers
 INSERT INTO helper_status (helper_id, status)
 SELECT id, 'UNAVAILABLE' FROM helpers;
+
+CREATE TABLE IF NOT EXISTS vendors (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    phone VARCHAR(50) NOT NULL,
+    service_category VARCHAR(100) NOT NULL,
+    address TEXT,
+    auto_assign TINYINT(1) DEFAULT 1,
+    status VARCHAR(50) DEFAULT 'Active',
+    lat DECIMAL(10, 8),
+    lng DECIMAL(11, 8),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
