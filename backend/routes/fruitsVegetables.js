@@ -209,16 +209,23 @@ const storage = multer.diskStorage({
     }
 });
 
-const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const allowedMimeTypes = [
+    'image/jpeg', 'image/pjpeg', 'image/png', 'image/webp', 'image/gif', 
+    'image/avif', 'image/heic', 'image/heif', 'image/svg+xml', 'image/bmp', 
+    'image/tiff', 'image/x-icon', 'application/octet-stream'
+];
 
 const upload = multer({
     storage,
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    limits: { fileSize: 15 * 1024 * 1024 }, // 15MB limit
     fileFilter: (req, file, cb) => {
-        if (allowedMimeTypes.includes(file.mimetype)) {
+        const ext = path.extname(file.originalname).toLowerCase();
+        const validExts = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif', '.heic', '.heif', '.svg', '.bmp', '.ico'];
+        
+        if (allowedMimeTypes.includes(file.mimetype) || validExts.includes(ext) || file.mimetype.startsWith('image/')) {
             cb(null, true);
         } else {
-            cb(new Error('Invalid file type. Only JPEG, PNG, WEBP, and GIF images are allowed.'));
+            cb(new Error('Invalid file type. Please upload a valid image file (JPEG, PNG, WEBP, AVIF, GIF, etc.).'));
         }
     }
 });
