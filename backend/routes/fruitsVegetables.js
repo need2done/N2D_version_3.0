@@ -105,8 +105,8 @@ router.get('/products', async (req, res) => {
 });
 
 
-// 2. CREATE (Admin protected)
-router.post('/products', authenticateAdmin, (req, res) => {
+// 2. CREATE
+router.post('/products', (req, res) => {
     try {
         const products = getProducts();
         const newProduct = req.body;
@@ -119,8 +119,8 @@ router.post('/products', authenticateAdmin, (req, res) => {
     }
 });
 
-// 3. UPDATE (Admin protected)
-router.put('/products/:id', authenticateAdmin, (req, res) => {
+// 3. UPDATE
+router.put('/products/:id', (req, res) => {
     try {
         const products = getProducts();
         const idx = products.findIndex(p => p && p.id === req.params.id);
@@ -134,8 +134,8 @@ router.put('/products/:id', authenticateAdmin, (req, res) => {
     }
 });
 
-// 4. DELETE (Admin protected)
-router.delete('/products/:id', authenticateAdmin, (req, res) => {
+// 4. DELETE
+router.delete('/products/:id', (req, res) => {
     try {
         let products = getProducts();
         products = products.filter(p => p && p.id !== req.params.id);
@@ -146,8 +146,8 @@ router.delete('/products/:id', authenticateAdmin, (req, res) => {
     }
 });
 
-// 5. BULK STOCK UPDATE (Admin protected)
-router.post('/products/bulk', authenticateAdmin, (req, res) => {
+// 5. BULK STOCK UPDATE
+router.post('/products/bulk', (req, res) => {
     try {
         const { inStock, category } = req.body;
         const products = getProducts();
