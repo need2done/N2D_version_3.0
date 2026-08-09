@@ -42,7 +42,7 @@ function formatImageUrl(product) {
         'Fresh Vegetables': 'https://images.unsplash.com/photo-1597362925123-77861d3fbac7?w=600&h=600&fit=crop',
         'Leafy Vegetables': 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=600&h=600&fit=crop',
         'Root Vegetables': 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=600&h=600&fit=crop',
-        'Herbs & Seasonings': 'https://images.unsplash.com/photo-1608683282713-994fff640027?w=600&h=600&fit=crop',
+        'Herbs & Seasonings': 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&h=600&fit=crop',
         'Fresh Fruits': 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=600&h=600&fit=crop',
         'Citrus Fruits': 'https://images.unsplash.com/photo-1534531141161-e416040974ed?w=600&h=600&fit=crop',
         'Seasonal Fruits': 'https://images.unsplash.com/photo-1550258987-190a2d41a8ba?w=600&h=600&fit=crop',
