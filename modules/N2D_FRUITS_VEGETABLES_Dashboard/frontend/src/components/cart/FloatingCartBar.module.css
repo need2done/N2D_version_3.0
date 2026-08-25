@@ -1,0 +1,122 @@
+.container {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 600px;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  z-index: 9999;
+  border: 1px solid var(--border-light);
+  animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes slideUp {
+  from { transform: translate(-50%, 100px); opacity: 0; }
+  to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+.leftSection {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.imageStack {
+  display: flex;
+  align-items: center;
+}
+
+.stackImage {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  border: 2px solid white;
+  object-fit: cover;
+  margin-left: -18px;
+  background-color: #f1f5f9;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.stackImage:first-child {
+  margin-left: 0;
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.itemCount {
+  font-weight: 700;
+  color: var(--text-main);
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.subText {
+  color: var(--primary-color);
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.goBtn {
+  background-color: var(--primary-color);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 1rem;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.1s, opacity 0.2s;
+  box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3); /* Green shadow */
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.goBtn:active {
+  transform: scale(0.95);
+}
+
+@media (max-width: 768px) {
+  .container {
+    width: calc(100% - 24px);
+    bottom: 20px; /* Fallback for safe-area */
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    padding: 10px 12px;
+  }
+  
+  .leftSection {
+    gap: 8px;
+  }
+  
+  .stackImage {
+    width: 36px;
+    height: 36px;
+    margin-left: -14px;
+  }
+  
+  .itemCount {
+    font-size: 0.9rem;
+  }
+  
+  .subText {
+    font-size: 0.75rem;
+  }
+  
+  .goBtn {
+    padding: 10px 16px;
+    font-size: 0.9rem;
+  }
+}

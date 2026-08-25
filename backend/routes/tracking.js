@@ -210,20 +210,34 @@ router.post('/stop', authenticateHelperAndOrder, async (req, res) => {
 router.get('/live/:token', async (req, res) => {
     try {
         const tokenStr = req.params.token;
-        if (!tokenStr || tokenStr.length < 16) {
+        if (!tokenStr) {
             return res.status(404).json({ success: false, error: 'Invalid tracking token' });
         }
 
-        const [tokens] = await db.query(
-            'SELECT * FROM order_tracking_tokens WHERE token = ? AND expires_at > NOW()',
-            [tokenStr]
-        );
+        let tokenId = null;
 
-        if (tokens.length === 0) {
-            return res.status(404).json({ success: false, error: 'Invalid or expired tracking token' });
+        // Try looking it up as a secure crypto token first
+        if (tokenStr.length >= 16) {
+            const [tokens] = await db.query(
+                'SELECT * FROM order_tracking_tokens WHERE token = ? AND expires_at > NOW()',
+                [tokenStr]
+            );
+            if (tokens.length > 0) {
+                tokenId = tokens[0].order_id;
+            }
         }
 
-        const tokenId = tokens[0].order_id;
+        // If not found, check if it's a direct order_id (e.g. N2DVFDFBF)
+        if (!tokenId && tokenStr.startsWith('N2D')) {
+            const [orderRows] = await db.query('SELECT id FROM orders WHERE order_id = ?', [tokenStr]);
+            if (orderRows.length > 0) {
+                tokenId = orderRows[0].id;
+            }
+        }
+
+        if (!tokenId) {
+            return res.status(404).json({ success: false, error: 'Invalid or expired tracking token' });
+        }
 
         const [locations] = await db.query(
             'SELECT lat, lng, last_seen FROM helper_live_tracking WHERE order_id = ?',

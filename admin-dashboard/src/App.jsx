@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, NavLink, Navigate, Outlet } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import LiveMap from './pages/LiveMap';
@@ -39,6 +39,35 @@ const DashboardLayout = () => {
     const closeSidebar = () => {
         setIsSidebarOpen(false);
     };
+
+    useEffect(() => {
+        let timeoutId;
+        const resetTimeout = () => {
+            if (timeoutId) clearTimeout(timeoutId);
+            // 10 minutes = 600,000 ms
+            timeoutId = setTimeout(() => {
+                handleLogout();
+            }, 600000);
+        };
+
+        resetTimeout();
+        const events = ['mousemove', 'mousedown', 'keypress', 'touchmove', 'scroll'];
+        
+        const handleActivity = () => {
+            resetTimeout();
+        };
+
+        events.forEach(event => {
+            window.addEventListener(event, handleActivity);
+        });
+
+        return () => {
+            if (timeoutId) clearTimeout(timeoutId);
+            events.forEach(event => {
+                window.removeEventListener(event, handleActivity);
+            });
+        };
+    }, []);
 
     return (
         <div className="dashboard-layout">

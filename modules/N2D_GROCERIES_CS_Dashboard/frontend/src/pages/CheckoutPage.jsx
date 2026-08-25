@@ -19,7 +19,7 @@ const CheckoutPage = () => {
       
       <main className="max-w-4xl mx-auto px-6 py-8">
         <button 
-          onClick={() => navigate('/')}
+          onClick={() => navigate({ pathname: '/', search: window.location.search })}
           className="flex items-center text-primary font-semibold mb-6 hover:underline"
         >
           <ArrowLeft size={16} className="mr-1" />
@@ -54,7 +54,7 @@ const CheckoutPage = () => {
           <button 
             onClick={() => {
               checkout();
-              navigate('/');
+              navigate({ pathname: '/', search: window.location.search });
             }}
             className="mt-8 bg-[#0C8346] text-white px-10 py-3 rounded-xl font-bold text-lg hover:bg-green-700 transition-colors shadow-lg shadow-green-200"
           >

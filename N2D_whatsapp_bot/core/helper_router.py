@@ -615,6 +615,8 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                         f"🆔 Order: {order['order_id']}\n"
                         f"👤 Rider: {helper['name']}\n"
                         f"📞 Phone: {phone}\n\n"
+                        f"📍 *Live Tracking:*\n"
+                        f"https://need2done.in/track/{order['order_id']}\n\n"
                         f"Your rider is on the way to pick you up!\n\n"
                         f"🛡️ *Safety Precautions:*\n"
                         f"• Please wear a helmet during the ride.\n"
@@ -628,14 +630,18 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                         f"👤 Professional : {helper['name']}\n"
                         f"📞 Contact      : {phone}\n"
                         f"🆔 Order ID      : {order['order_id']}\n\n"
-                        f"They are currently heading to your location."
+                        f"They are currently heading to your location.\n\n"
+                        f"📍 *Live Tracking:*\n"
+                        f"https://need2done.in/track/{order['order_id']}"
                     )
                 else:
                     send_message(
                         order["customer_number"],
                         f"🚗 *Your Order is on the way!*\n\n"
                         f"Your helper {helper['name']} is working on your order.\n"
-                        f"📞 Contact: {phone}"
+                        f"📞 Contact: {phone}\n\n"
+                        f"📍 *Live Tracking:*\n"
+                        f"https://need2done.in/track/{order['order_id']}"
                     )
 
                 # ------------------------------------------------
@@ -1326,6 +1332,9 @@ Share this with helper."""
                                         {"id": f"RATE_1|{active['id']}", "title": "⭐"}
                                     ]
                                 )
+                                return
+                            else:
+                                send_message(phone, "✅ OTP submitted. Waiting for finalization.")
                                 return
                         else:
                             send_message(phone, "❌ Invalid OTP. Please check with the customer.")

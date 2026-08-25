@@ -99,11 +99,11 @@ router.post('/:orderId', async (req, res) => {
             // Insert new cart items
             let totalAmount = 0;
             for (const item of items) {
-                const itemId = item.id !== undefined ? item.id : item.product_id;
-                const itemName = item.name !== undefined ? item.name : item.product_name;
-                const itemQty = item.qty !== undefined ? item.qty : item.quantity;
-                const itemPrice = item.price !== undefined ? item.price : 0;
-                const itemUnit = item.unit !== undefined ? item.unit : '';
+                const itemId = item.id ?? item.product_id;
+                const itemName = item.name ?? item.product_name;
+                const itemQty = item.qty ?? item.quantity ?? 1;
+                const itemPrice = item.price ?? 0;
+                const itemUnit = item.unit ?? '';
 
                 const itemTotal = parseFloat(itemPrice) * parseFloat(itemQty);
                 totalAmount += itemTotal;

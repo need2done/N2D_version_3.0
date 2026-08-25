@@ -439,7 +439,7 @@ def route_message(
                     send_message(user, "⚠️ Session expired. Please start again.")
                     return
             elif btn_id.startswith("CART_") or btn_id.startswith("CANCEL_") or btn_id.startswith("PLACE_") or btn_id.startswith("PAY_"):
-                if session.get("stage") != "IN_CASE" or session.get("service") not in (1, 7):
+                if session.get("stage") != "IN_CASE" or session.get("service") not in (1, 7, 9, 10):
                     reset_session(user)
                     send_message(user, "⚠️ Session expired. Please start again.")
                     return

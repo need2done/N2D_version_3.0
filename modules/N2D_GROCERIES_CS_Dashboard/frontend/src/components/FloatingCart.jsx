@@ -50,7 +50,7 @@ const FloatingCart = () => {
         </div>
 
         <button 
-          onClick={checkout}
+          onClick={() => navigate({ pathname: '/checkout', search: window.location.search })}
           className="bg-[#0C8346] text-white px-5 py-3 rounded-xl font-bold hover:bg-green-700 transition-colors flex items-center gap-2 shadow-sm shadow-green-200"
         >
           Checkout <ChevronRight size={18} />

@@ -17,6 +17,8 @@ dependencies:
   permission_handler: ^12.0.1
   app_links: ^6.4.0
   flutter_dotenv: ^5.2.1       # .env file loader for API keys
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
 
 dev_dependencies:
   flutter_test:
@@ -25,31 +27,31 @@ dev_dependencies:
   flutter_native_splash: ^2.4.5
 
 # ==========================================
-# App Icon Config (all Android sizes)
+# App Icon Config (Android & iOS)
 # Run: dart run flutter_launcher_icons
 # ==========================================
 flutter_launcher_icons:
   android: "launcher_icon"
-  ios: false
-  image_path: "assets/app_icon.png"
+  ios: true
+  image_path: "assets/brand_logo.png"
   min_sdk_android: 21
-  adaptive_icon_background: "#4F46E5"
-  adaptive_icon_foreground: "assets/app_icon.png"
+  adaptive_icon_background: "#0A111E"
+  adaptive_icon_foreground: "assets/brand_logo.png"
 
 # ==========================================
-# Splash Screen Config
+# Splash Screen Config (Android & iOS)
 # Run: dart run flutter_native_splash:create
 # ==========================================
 flutter_native_splash:
-  color: "#0f172a"                       # Dark navy background
-  color_dark: "#0f172a"
+  color: "#0A111E"                       # Dark navy background
+  color_dark: "#0A111E"
   image: assets/brand_logo.png           # Centered logo on splash
   android: true
-  ios: false
+  ios: true
   android_12:
     image: assets/brand_logo.png
-    icon_background_color: "#0f172a"
-    color: "#0f172a"
+    icon_background_color: "#0A111E"
+    color: "#0A111E"
 
 flutter:
   uses-material-design: true

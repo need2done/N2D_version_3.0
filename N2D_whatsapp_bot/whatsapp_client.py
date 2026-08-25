@@ -53,7 +53,10 @@ def get_access_token() -> str:
 def normalize_number(num: str) -> str:
     if not num:
         return ""
-    return re.sub(r"\D", "", str(num))
+    cleaned = re.sub(r"\D", "", str(num))
+    if len(cleaned) == 10:
+        return f"91{cleaned}"
+    return cleaned
 
 
 def message_url() -> str:

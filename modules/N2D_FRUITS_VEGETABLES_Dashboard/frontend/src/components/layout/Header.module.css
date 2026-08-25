@@ -1,0 +1,383 @@
+.header {
+  height: auto;
+  position: sticky;
+  top: 0;
+  background-color: var(--card-bg);
+  box-shadow: var(--shadow-sm);
+  z-index: 50;
+  border-bottom: 1px solid var(--border-color);
+  padding: 8px 0;
+  width: 100%;
+}
+
+.headerContainer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: var(--spacing-lg);
+}
+
+.leftSection {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem; /* Reduced gap slightly */
+}
+
+.menuBtn {
+  display: none;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+}
+
+.logoImg {
+  height: 60px;
+  width: auto;
+  object-fit: contain;
+}
+
+.locationContainer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 8px;
+  transition: background-color 0.2s;
+}
+
+.locationContainer:hover {
+  background-color: var(--bg-color);
+}
+
+.locationIconWrapper {
+  background-color: var(--primary-color);
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);
+}
+
+.locationTextWrapper {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.locationTitle {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: -2px;
+}
+
+.locationSubtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+  font-weight: 500;
+}
+
+.searchContainer {
+  flex: 1;
+  max-width: 600px;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 12px 16px 12px 48px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-full);
+  font-size: 1rem;
+  transition: var(--transition-fast);
+  background-color: var(--bg-color);
+  color: var(--text-main);
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px var(--primary-light);
+  background-color: var(--card-bg);
+}
+
+.searchIcon {
+  position: absolute;
+  left: 16px;
+  color: var(--text-muted);
+}
+
+.rightSection {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
+.cartButton {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  background-color: var(--primary-color);
+  color: white;
+  padding: 8px 16px;
+  border-radius: var(--border-radius-full);
+  font-weight: 600;
+  transition: var(--transition-fast);
+}
+
+.cartButton:hover {
+  background-color: var(--primary-dark);
+}
+
+.adminLoginBtn {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-main);
+  background-color: transparent;
+  padding: 8px 16px;
+  border-radius: var(--border-radius-full);
+  border: 1px solid var(--border-color);
+  text-decoration: none;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.adminLoginBtn:hover {
+  background-color: var(--bg-color);
+  border-color: var(--text-muted);
+}
+
+.cartCount {
+  background-color: white;
+  color: var(--primary-dark);
+  padding: 2px 8px;
+  border-radius: var(--border-radius-full);
+  font-size: 0.85rem;
+}
+
+@media (max-width: 1024px) {
+  .locationContainer {
+    display: none;
+  }
+}
+
+/* Modal Styles */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.locationModal {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+  padding: 24px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.modalHeader h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.closeBtn:hover {
+  background: var(--bg-color);
+}
+
+.modalBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.detectLocationBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: rgba(13, 110, 253, 0.1);
+  color: #0d6efd;
+  border: 1px solid rgba(13, 110, 253, 0.2);
+  padding: 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.detectLocationBtn:hover {
+  background-color: rgba(13, 110, 253, 0.15);
+}
+
+.divider {
+  text-align: center;
+  position: relative;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.divider::before, .divider::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 30%;
+  height: 1px;
+  background-color: var(--border-color);
+}
+
+.divider::before { left: 0; }
+.divider::after { right: 0; }
+
+.locationSearchBox {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.searchIconSmall {
+  position: absolute;
+  left: 12px;
+  color: var(--text-muted);
+}
+
+.locationSearchBox input {
+  width: 100%;
+  padding: 12px 12px 12px 38px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+.locationSearchBox input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px var(--primary-light);
+}
+
+.applyLocationBtn {
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+.applyLocationBtn:disabled {
+  background-color: #cbd5e1;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .header {
+    padding: 6px 0;
+  }
+
+  .headerContainer {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    justify-content: space-between;
+  }
+
+  .logoImg {
+    height: 40px; /* much more compact on mobile */
+  }
+
+  .searchContainer {
+    display: flex;
+    order: 3;
+    flex: 0 0 100%;
+    width: 100%;
+    max-width: 100%;
+    margin-top: 4px;
+    margin-bottom: 2px;
+  }
+
+  .searchInput {
+    padding: 10px 12px 10px 38px;
+    font-size: 0.9rem;
+  }
+
+  .searchIcon {
+    left: 12px;
+  }
+  
+  .leftSection {
+    gap: 0.5rem;
+    width: auto;
+  }
+
+  .rightSection {
+    gap: 0.5rem;
+    width: auto;
+  }
+
+  .menuBtn {
+    display: flex;
+    align-items: center;
+    background-color: transparent;
+    color: var(--primary-color);
+    padding: 4px;
+    border: none;
+    cursor: pointer;
+    margin-left: -4px;
+  }
+
+  .cartButton {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    gap: 4px;
+  }
+
+  .adminLoginBtn {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+}
