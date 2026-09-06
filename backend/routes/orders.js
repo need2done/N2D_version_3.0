@@ -114,8 +114,8 @@ router.get('/', authenticateAdmin, async (req, res) => {
             params.push(s, sStripped, s, s, s, s, s, s, s);
         } else {
             if (date) {
-                query += ` AND DATE(o.created_at) = ?`;
-                params.push(date);
+                query += ` AND (DATE(DATE_ADD(o.created_at, INTERVAL 330 MINUTE)) = ? OR DATE(o.created_at) = ?)`;
+                params.push(date, date);
             }
         }
 
