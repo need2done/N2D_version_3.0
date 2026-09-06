@@ -58,7 +58,14 @@ export default function Dashboard() {
         else if (filter === 'ANYWORK') svcQuery = 'Anywork';
         if (svcQuery) orderUrl += `service=${encodeURIComponent(svcQuery)}&`;
       }
-      if (dateFilter) orderUrl += `date=${dateFilter}&`;
+
+      if (searchQuery.trim()) {
+        orderUrl += `q=${encodeURIComponent(searchQuery.trim())}&`;
+      } else if (statusFilter === 'ACTIVE') {
+        // When active orders filter is selected, fetch across all dates so older active orders aren't hidden
+      } else if (dateFilter) {
+        orderUrl += `date=${dateFilter}&`;
+      }
       
       const orderRes = await fetch(orderUrl);
       const orderData = await orderRes.json();
@@ -93,7 +100,7 @@ export default function Dashboard() {
     fetchData();
     const interval = setInterval(fetchData, 15000);
     return () => clearInterval(interval);
-  }, [filter, dateFilter]);
+  }, [filter, statusFilter, searchQuery, dateFilter]);
 
   // Presets
   const applyPreset = (presetType) => {

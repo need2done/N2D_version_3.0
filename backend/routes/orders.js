@@ -82,7 +82,9 @@ async function sendWhatsAppButton(to, body, buttons) {
 router.get('/', authenticateAdmin, async (req, res) => {
 
     try {
-        const { status, engine_type, date, service } = req.query;
+        const { status, engine_type, date, service, search, q } = req.query;
+        const searchQueryParam = search || q;
+
         let query = `
             SELECT o.*, c.phone as customer_phone,
                    h.name as helper_name,
@@ -103,6 +105,17 @@ router.get('/', authenticateAdmin, async (req, res) => {
         `;
         const params = [];
 
+        if (searchQueryParam && searchQueryParam.trim()) {
+            const s = '%' + searchQueryParam.trim().replace(/^#/, '') + '%';
+            query += ` AND (o.order_id LIKE ? OR o.customer_name LIKE ? OR o.customer_number LIKE ? OR ot.items_text LIKE ? OR o.status LIKE ? OR h.name LIKE ? OR v.name LIKE ? OR o.service LIKE ?)`;
+            params.push(s, s, s, s, s, s, s, s);
+        } else {
+            if (date) {
+                query += ` AND DATE(o.created_at) = ?`;
+                params.push(date);
+            }
+        }
+
         if (status) {
             query += ` AND o.status = ?`;
             params.push(status);
@@ -114,10 +127,6 @@ router.get('/', authenticateAdmin, async (req, res) => {
         if (service) {
             query += ` AND o.service LIKE ?`;
             params.push('%' + service + '%');
-        }
-        if (date) {
-            query += ` AND DATE(o.created_at) = ?`;
-            params.push(date);
         }
 
         query += ` ORDER BY o.created_at DESC LIMIT 500`;
