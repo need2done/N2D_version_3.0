@@ -12,9 +12,10 @@ import Health from './pages/Health';
 import Support from './pages/Support';
 import Login from './pages/Login';
 import SettingsPage from './pages/Settings';
+import Services from './pages/Services';
 import Vendors from './pages/Vendors';
 import WalletPage from './pages/Wallet';
-import { LayoutDashboard, MapPinned, Users, Activity, Bell, Settings, DollarSign, BarChart3, ServerCrash, LifeBuoy, LogOut, Store, Wallet, Wrench, Menu, X } from 'lucide-react';
+import { LayoutDashboard, MapPinned, Users, Activity, Bell, Settings, DollarSign, BarChart3, ServerCrash, LifeBuoy, LogOut, Store, Wallet, Wrench, Menu, X, Layers } from 'lucide-react';
 import logo from './assets/logo.png';
 import './index.css';
 
@@ -97,6 +98,10 @@ const DashboardLayout = () => {
                         <LayoutDashboard size={20} />
                         Unified Dashboard
                     </NavLink>
+                    <NavLink to="/services" onClick={closeSidebar} className={({isActive}) => isActive ? "nav-link active" : "nav-link"}>
+                        <Layers size={20} />
+                        Services
+                    </NavLink>
                     <NavLink to="/earnings" onClick={closeSidebar} className={({isActive}) => isActive ? "nav-link active" : "nav-link"}>
                         <DollarSign size={20} />
                         Payments & Earnings
@@ -175,6 +180,7 @@ function App() {
                 <Route element={<ProtectedRoute />}>
                     <Route element={<DashboardLayout />}>
                         <Route path="/" element={<Dashboard />} />
+                        <Route path="/services" element={<Services />} />
                         <Route path="/earnings" element={<Earnings />} />
                         <Route path="/analysis" element={<Analysis />} />
                         <Route path="/map" element={<LiveMap />} />

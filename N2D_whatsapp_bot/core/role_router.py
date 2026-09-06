@@ -41,6 +41,13 @@ from router import route
 from db.helper_repo import is_helper
 from db.mysql_conn import get_db
 
+try:
+    from db.service_repo import is_service_active, SERVICE_NAMES
+except Exception:
+    def is_service_active(svc_id):
+        return svc_id in (2, 5, 6, 8, 10)
+    SERVICE_NAMES = {}
+
 def is_vendor(phone: str) -> bool:
     db = get_db()
     if not db: return False
@@ -1081,9 +1088,21 @@ def route_message(
                                 {"id": "NEW_ORDER", "title": "🔄 Start New Order"}
                             ]
                         )
-                    else:
-                        send_message(user, "❗ Please select a service (1–5).")
-                    return
+            target_svc = session.get("service")
+            if target_svc and not is_service_active(target_svc):
+                svc_title = SERVICE_NAMES.get(target_svc, "This service")
+                send_message(
+                    user, 
+                    f"🚀 *{svc_title}* is currently coming soon in your area!\n\n"
+                    "Currently available services:\n"
+                    "🏠 *Home Services*\n"
+                    "💊 *Medicines Service*\n"
+                    "👨‍🔧 *Custom Work / Any Work*\n\n"
+                    "Please select one of the available options below 👇"
+                )
+                session["service"] = None
+                send_rich_service_list(user, session.get("name"))
+                return
 
             session["stage"] = "IN_CASE"
             session["case_state"] = ""

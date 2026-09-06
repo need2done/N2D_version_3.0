@@ -124,7 +124,7 @@ const walletRoutes = require('./routes/wallet');
 const homeServicesRoutes = require('./routes/homeServices');
 const fruitsVegetablesRoutes = require('./routes/fruitsVegetables');
 const rideRoutes = require('./routes/ride');
-
+const serviceRoutes = require('./routes/serviceRoutes');
 
 // Groceries Backend Routers
 const groceryCategoryRoutes = require('../modules/N2D_GROCERIES_CS_Dashboard/backend/src/routes/categoryRoutes');
@@ -153,6 +153,7 @@ app.use('/api/wallet', walletRoutes);
 app.use('/api/home-services', homeServicesRoutes);
 app.use('/api/fruits-vegetables', fruitsVegetablesRoutes);
 app.use('/api/ride', rideRoutes);
+app.use('/api/services', serviceRoutes);
 
 
 // Groceries Backend Routes

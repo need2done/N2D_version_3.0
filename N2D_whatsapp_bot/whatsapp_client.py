@@ -23,6 +23,11 @@ try:
 except:
     get_order = None
 
+try:
+    from db.service_repo import get_active_service_rows
+except:
+    get_active_service_rows = None
+
 
 # =================================================
 # GLOBAL SESSION
@@ -267,6 +272,15 @@ def send_helper_auto_assign(
 def send_service_list(to: str):
     if not to:
         return None
+    rows = get_active_service_rows() if get_active_service_rows else []
+    if not rows:
+        rows = [
+            {"id": "SERVICE_10", "title": "🏠 Home Services", "description": "Book trusted home cleaning and repairs."},
+            {"id": "SERVICE_2", "title": "💊 Medicines", "description": "Buy health supplies or medicines."},
+            {"id": "SERVICE_5", "title": "👨‍🔧 Any Work", "description": "Pick/Drop parcels, run errands."},
+            {"id": "SERVICE_6", "title": "📞 Support", "description": "Talk to our team for assistance."},
+            {"id": "SERVICE_8", "title": "📦 My Orders", "description": "View recent order history."}
+        ]
     payload = {
         "messaging_product": "whatsapp",
         "to": normalize_number(to),
@@ -279,17 +293,7 @@ def send_service_list(to: str):
                 "sections": [
                     {
                         "title": "Need2Done Services ⚙️",
-                        "rows": [
-                            {"id": "SERVICE_1", "title": "🛒 Groceries", "description": "Order daily essentials or fresh food items."},
-                            {"id": "SERVICE_7", "title": "🥦 Vegetables & Fruits", "description": "Browse catalog and order fresh produce."},
-                            {"id": "SERVICE_9", "title": "🍔 Food", "description": "Order meals from favorite restaurants."},
-                            {"id": "SERVICE_10", "title": "🏠 Home Services", "description": "Book trusted home cleaning and repairs."},
-                            {"id": "SERVICE_2", "title": "💊 Medicines", "description": "Buy health supplies or medicines."},
-                            {"id": "SERVICE_4", "title": "🚗 Ride", "description": "Book a quick bike, auto, or car ride."},
-                            {"id": "SERVICE_5", "title": "👨‍🔧 Any Work", "description": "Pick/Drop parcels, run errands."},
-                            {"id": "SERVICE_6", "title": "📞 Support", "description": "Talk to our team for assistance."},
-                            {"id": "SERVICE_8", "title": "📦 My Orders", "description": "View recent order history."}
-                        ]
+                        "rows": rows
                     }
                 ]
             }
@@ -478,6 +482,16 @@ def send_rich_service_list(to: str, name: str = None):
     body = (
         f"{greeting}What do you need today? 👇"
     )
+
+    rows = get_active_service_rows() if get_active_service_rows else []
+    if not rows:
+        rows = [
+            {"id": "SERVICE_10", "title": "🏠 Home Services", "description": "Book trusted home cleaning and repair services."},
+            {"id": "SERVICE_2", "title": "💊 Medicines Service", "description": "Buy health supplies or medicines with prescription."},
+            {"id": "SERVICE_5", "title": "👨‍🔧 Any Work Service", "description": "Pick/Drop parcels, run errands, or custom tasks."},
+            {"id": "SERVICE_6", "title": "📞 Support", "description": "Talk to our team for any assistance or help."},
+            {"id": "SERVICE_8", "title": "📦 My Orders", "description": "View your recent order history and tracking."}
+        ]
     
     payload = {
         "messaging_product": "whatsapp",
@@ -491,17 +505,7 @@ def send_rich_service_list(to: str, name: str = None):
                 "sections": [
                     {
                         "title": "Need2Done Services",
-                        "rows": [
-                            {"id": "SERVICE_1", "title": "🛒 Groceries Service", "description": "Order daily essentials, milk, or fresh food items."},
-                            {"id": "SERVICE_7", "title": "🥦 Veggies & Fruits", "description": "Browse catalog, check live prices, and order fresh produce."},
-                            {"id": "SERVICE_9", "title": "🍔 Food Service", "description": "Order meals and food from your favorite restaurants."},
-                            {"id": "SERVICE_10", "title": "🏠 Home Services", "description": "Book trusted home cleaning and repair services."},
-                            {"id": "SERVICE_2", "title": "💊 Medicines Service", "description": "Buy health supplies or medicines with prescription."},
-                            {"id": "SERVICE_4", "title": "🚗 Ride Service", "description": "Book a quick bike, auto, or car for your travel."},
-                            {"id": "SERVICE_5", "title": "👨‍🔧 Any Work Service", "description": "Pick/Drop parcels, run errands, or custom tasks."},
-                            {"id": "SERVICE_6", "title": "📞 Support", "description": "Talk to our team for any assistance or help."},
-                            {"id": "SERVICE_8", "title": "📦 My Orders", "description": "View your recent order history and tracking."}
-                        ]
+                        "rows": rows
                     }
                 ]
             }
