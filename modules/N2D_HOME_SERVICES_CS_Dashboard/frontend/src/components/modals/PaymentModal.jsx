@@ -1,5 +1,20 @@
 import React, { useState } from 'react';
-import { FaCheckCircle, FaSpinner } from 'react-icons/fa';
+import { FaCheckCircle, FaSpinner, FaLock, FaShieldAlt } from 'react-icons/fa';
+import api from '../../services/api';
+
+const loadRazorpayScript = () => {
+  return new Promise((resolve) => {
+    if (window.Razorpay) {
+      resolve(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
 
 const PaymentModal = ({ isOpen, onClose, amount, onPaymentSuccess }) => {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -7,15 +22,87 @@ const PaymentModal = ({ isOpen, onClose, amount, onPaymentSuccess }) => {
 
   if (!isOpen) return null;
 
-  const handleSimulatePayment = () => {
+  const handleRazorpayPayment = async () => {
     setIsProcessing(true);
-    setTimeout(() => {
+    try {
+      const resLoaded = await loadRazorpayScript();
+      if (!resLoaded) {
+        alert('Razorpay SDK failed to load. Please check your internet connection.');
+        setIsProcessing(false);
+        return;
+      }
+
+      // Call backend to create Razorpay Order
+      const orderRes = await api.post('/payments/create-order', {
+        amount,
+        customerName: 'Customer',
+        customerPhone: 'Guest'
+      });
+
+      if (!orderRes.data || !orderRes.data.success) {
+        alert(orderRes.data?.error || 'Failed to initialize Razorpay payment order.');
+        setIsProcessing(false);
+        return;
+      }
+
+      const { keyId, razorpayOrderId, currency } = orderRes.data;
+
+      const options = {
+        key: keyId,
+        amount: Math.round(amount * 100),
+        currency: currency || 'INR',
+        name: 'Need2Done',
+        description: 'Home Services Booking Payment',
+        image: 'https://need2done.in/assets/logo.png',
+        order_id: razorpayOrderId,
+        handler: async function (response) {
+          try {
+            const verifyRes = await api.post('/payments/verify', {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature
+            });
+
+            if (verifyRes.data && verifyRes.data.success) {
+              setIsProcessing(false);
+              setSuccess(true);
+              setTimeout(() => {
+                onPaymentSuccess(response.razorpay_payment_id);
+              }, 1200);
+            } else {
+              setIsProcessing(false);
+              alert(verifyRes.data?.error || 'Payment verification failed.');
+            }
+          } catch (vErr) {
+            console.error("Verification error:", vErr);
+            setIsProcessing(false);
+            alert("Error verifying payment signature.");
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            setIsProcessing(false);
+          }
+        },
+        prefill: {
+          name: 'Need2Done Customer'
+        },
+        theme: {
+          color: '#4F46E5'
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', function (resp) {
+        setIsProcessing(false);
+        alert(`Payment Failed: ${resp.error?.description || 'Transaction declined.'}`);
+      });
+      rzp.open();
+    } catch (err) {
+      console.error("Razorpay Payment Error:", err);
       setIsProcessing(false);
-      setSuccess(true);
-      setTimeout(() => {
-        onPaymentSuccess();
-      }, 1500);
-    }, 2000);
+      alert("Error initializing Razorpay payment gateway.");
+    }
   };
 
   return (
@@ -25,21 +112,23 @@ const PaymentModal = ({ isOpen, onClose, amount, onPaymentSuccess }) => {
         
         {!success ? (
           <>
-            <div className="bg-blue-50 text-blue-700 p-4 rounded-2xl mb-6 text-center">
+            <div className="bg-indigo-50 text-indigo-700 p-4 rounded-2xl mb-6 text-center border border-indigo-100">
               <p className="text-sm font-medium mb-1">Amount to Pay</p>
               <p className="text-3xl font-black">₹{amount}</p>
             </div>
 
             <div className="space-y-3">
               <button 
-                onClick={handleSimulatePayment}
+                onClick={handleRazorpayPayment}
                 disabled={isProcessing}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-2xl transition-all shadow-md flex justify-center items-center"
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-2xl transition-all shadow-md flex justify-center items-center gap-2"
               >
                 {isProcessing ? (
-                  <><FaSpinner className="animate-spin mr-2" /> Processing...</>
+                  <><FaSpinner className="animate-spin mr-2" /> Connecting to Razorpay...</>
                 ) : (
-                  'Simulate Payment (UPI / Card)'
+                  <>
+                    <FaLock className="text-sm" /> Pay with Razorpay (UPI / Card)
+                  </>
                 )}
               </button>
               
@@ -53,8 +142,8 @@ const PaymentModal = ({ isOpen, onClose, amount, onPaymentSuccess }) => {
               )}
             </div>
             
-            <p className="text-xs text-gray-400 text-center mt-6">
-              * This is a local mock payment gateway.
+            <p className="text-xs text-gray-400 text-center mt-6 flex items-center justify-center gap-1">
+              <FaShieldAlt className="text-indigo-500" /> 256-bit Secure Razorpay Payment Gateway
             </p>
           </>
         ) : (
