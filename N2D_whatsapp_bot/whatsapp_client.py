@@ -426,7 +426,7 @@ def send_image(to: str, media_id: str, caption: str = ""):
 def send_rich_welcome(to: str, name: str = None):
     """
     Sends the rich welcome template with emojis and a button.
-    Matches the mockup provided by the user.
+    Matches active services dynamically.
     """
     if not to:
         return None
@@ -441,17 +441,27 @@ def send_rich_welcome(to: str, name: str = None):
         call_action = "What should I call you?"
         btn_id = "WELCOME_START"
         btn_title = "🚀 Get Started"
+
+    active_rows = get_active_service_rows() if get_active_service_rows else []
+    service_bullets = []
+    for r in active_rows:
+        if r.get("id") in ("SERVICE_6", "SERVICE_8"):
+            continue
+        service_bullets.append(f"{r['title']}")
     
+    if not service_bullets:
+        service_bullets = [
+            "🏠 Home Services",
+            "💊 Medicines Service",
+            "👨‍🔧 Any Work Service"
+        ]
+
+    bullets_text = "\n".join(service_bullets)
+
     body = (
         f"👋 {greeting}\n\n"
         "We help you get anything done locally:\n\n"
-        "🛒 *Groceries*\n"
-        "🥦 *Vegetables & Fruits*\n"
-        "🍔 *Food*\n"
-        "🏠 *Home Services*\n"
-        "💊 *Medicines*\n"
-        "🚗 *Ride Booking*\n"
-        "👨‍🔧 *Any Work / Parcel*\n\n"
+        f"{bullets_text}\n\n"
         "⚡ Fast delivery (30-60 mins)\n"
         "💳 Pay after delivery\n"
         "🤝 Trusted local helpers\n\n"

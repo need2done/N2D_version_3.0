@@ -10,7 +10,13 @@ Need2Done – Global Configuration (FINAL FIXED)
 """
 
 import os
+from pathlib import Path
 from urllib.parse import quote_plus
+from dotenv import load_dotenv
+
+BASE_DIR = Path(__file__).resolve().parent
+load_dotenv(BASE_DIR.parent / ".env", override=True)
+load_dotenv(BASE_DIR / ".env", override=False)
 
 
 # =================================================
