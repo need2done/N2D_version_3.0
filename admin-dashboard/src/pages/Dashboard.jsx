@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, MapPin, Activity, Download, FileText, Calendar, RotateCcw, Filter, RefreshCw, Search, X, Zap } from 'lucide-react';
+import { LayoutDashboard, Users, MapPin, Activity, Download, FileText, Calendar, RotateCcw, Filter, RefreshCw, Search, X, Zap, Eye, Phone, MessageSquare, ExternalLink, Clock, Store, ShieldCheck } from 'lucide-react';
 import { exportToExcel, exportToPDF } from '../utils/exportUtils';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -42,6 +42,28 @@ export default function Dashboard() {
   const [showVendorModal, setShowVendorModal] = useState(false);
   const [vendorTargetOrder, setVendorTargetOrder] = useState(null);
   const [selectedVendorId, setSelectedVendorId] = useState('');
+
+  // Order Details Modal State
+  const [selectedOrderDetail, setSelectedOrderDetail] = useState(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+
+  const openOrderDetails = async (orderIdOrDbId) => {
+    setLoadingDetail(true);
+    try {
+      const res = await fetch(`${API_URL}/orders/${orderIdOrDbId}`);
+      const data = await res.json();
+      if (data.success) {
+        setSelectedOrderDetail(data.order);
+      } else {
+        alert(data.error || 'Could not fetch order details');
+      }
+    } catch (err) {
+      console.error('Error fetching order detail:', err);
+      alert('Error connecting to server for order details');
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -321,8 +343,12 @@ export default function Dashboard() {
 
     const q = searchQuery.toLowerCase().trim();
     const cleanQ = q.replace(/^#/, '');
+    const strippedQ = cleanQ.replace(/[^a-zA-Z0-9]/g, '');
 
-    const orderIdMatch = (order.order_id || '').toLowerCase().includes(cleanQ);
+    const orderIdRaw = (order.order_id || '').toLowerCase();
+    const orderIdStripped = orderIdRaw.replace(/[^a-zA-Z0-9]/g, '');
+
+    const orderIdMatch = orderIdRaw.includes(cleanQ) || (strippedQ.length > 0 && orderIdStripped.includes(strippedQ));
     const custNameMatch = (order.customer_name || '').toLowerCase().includes(q);
     const custPhoneMatch = (order.customer_number || '').includes(q);
     const itemsMatch = (order.items_text || '').toLowerCase().includes(q);
@@ -595,7 +621,17 @@ export default function Dashboard() {
             )}
             {filteredOrders.map(order => (
               <tr key={order.id} style={order.ride_locked ? { background: '#fff5f5' } : {}}>
-                <td><strong>#{order.order_id}</strong><br/><small style={{ color: 'var(--text-muted)' }}>{new Date(order.created_at).toLocaleTimeString()}</small></td>
+                <td>
+                  <button 
+                    onClick={() => openOrderDetails(order.id)}
+                    style={{ background: 'none', border: 'none', color: '#38bdf8', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.95rem', padding: 0, textDecoration: 'underline' }}
+                    title="Click to view full order details"
+                  >
+                    #{order.order_id}
+                  </button>
+                  <br/>
+                  <small style={{ color: 'var(--text-muted)' }}>{new Date(order.created_at).toLocaleTimeString()}</small>
+                </td>
                 <td>
                   <span className={`badge ${order.engine_type === 'RIDE' ? 'ride' : 'task'}`}>
                     {order.engine_type}
@@ -674,6 +710,14 @@ export default function Dashboard() {
                   )}
                 </td>
                 <td style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                  <button 
+                    className="btn btn-outline" 
+                    style={{ fontSize: '0.8rem', padding: '0.35rem 0.6rem', display: 'flex', alignItems: 'center', gap: '4px' }} 
+                    onClick={() => openOrderDetails(order.id)}
+                    title="View full order details modal"
+                  >
+                    <Eye size={13} /> View Details
+                  </button>
                   {order.status === 'CONFIRMED' && (
                     <button className="btn btn-primary" style={{ fontSize: '0.8rem' }} onClick={() => handleAssign(order.id)}>👤 Assign</button>
                   )}
@@ -757,6 +801,194 @@ export default function Dashboard() {
                 }}
               >Assign Vendor</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 📋 ORDER DETAILS MODAL */}
+      {(selectedOrderDetail || loadingDetail) && (
+        <div className="modal-overlay" style={{ background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(6px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div className="modal-card animate-fade" style={{ maxWidth: '750px', width: '100%', maxHeight: '90vh', overflowY: 'auto', background: '#1e293b', border: '1px solid #334155', borderRadius: '16px', color: '#f8fafc', padding: '24px', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }}>
+            
+            {loadingDetail ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
+                <RefreshCw className="spin" size={32} style={{ marginBottom: '12px' }} />
+                <div>Loading complete order details...</div>
+              </div>
+            ) : selectedOrderDetail && (
+              <div>
+                {/* Modal Header */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #334155', paddingBottom: '16px', marginBottom: '20px' }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <h2 style={{ margin: 0, fontSize: '22px', fontWeight: '800', color: '#38bdf8' }}>
+                        Order #{selectedOrderDetail.order_id}
+                      </h2>
+                      <span className={`badge ${getStatusBadgeClass(selectedOrderDetail.status, selectedOrderDetail.ride_locked)}`}>
+                        {selectedOrderDetail.status}
+                      </span>
+                    </div>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#94a3b8' }}>
+                      Service: <strong>{selectedOrderDetail.service || 'General'}</strong> ({selectedOrderDetail.engine_type}) | Placed: {new Date(selectedOrderDetail.created_at).toLocaleString()}
+                    </p>
+                  </div>
+                  <button 
+                    onClick={() => setSelectedOrderDetail(null)} 
+                    style={{ background: '#334155', border: 'none', color: '#94a3b8', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Quick Action Links Bar */}
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '24px', background: '#0f172a', padding: '12px', borderRadius: '10px', border: '1px solid #334155' }}>
+                  {selectedOrderDetail.customer_number && (
+                    <a 
+                      href={`https://wa.me/${selectedOrderDetail.customer_number.replace(/\D/g, '')}`} 
+                      target="_blank" 
+                      rel="noreferrer"
+                      className="btn"
+                      style={{ background: '#25D366', color: '#fff', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px' }}
+                    >
+                      <MessageSquare size={14} /> Chat Customer (WhatsApp)
+                    </a>
+                  )}
+                  <a 
+                    href={`${API_URL.replace(/\/api$/, '')}/track/${selectedOrderDetail.order_id}`} 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="btn"
+                    style={{ background: '#3b82f6', color: '#fff', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px' }}
+                  >
+                    <ExternalLink size={14} /> Open Live Tracking Page
+                  </a>
+                </div>
+
+                {/* Grid Layout: Customer Info & Locations */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+                  
+                  {/* Customer Card */}
+                  <div style={{ background: '#0f172a', padding: '16px', borderRadius: '12px', border: '1px solid #334155' }}>
+                    <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#38bdf8', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Users size={16} /> Customer Details
+                    </h4>
+                    <div style={{ fontSize: '14px', lineHeight: '1.6' }}>
+                      <div>👤 <strong>Name:</strong> {selectedOrderDetail.customer_name || 'Guest'}</div>
+                      <div>📞 <strong>Phone:</strong> {selectedOrderDetail.customer_number || selectedOrderDetail.customer_phone || 'N/A'}</div>
+                      {selectedOrderDetail.address_text && (
+                        <div style={{ marginTop: '6px' }}>📍 <strong>Address:</strong> {selectedOrderDetail.address_text}</div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Locations / Engine Info */}
+                  <div style={{ background: '#0f172a', padding: '16px', borderRadius: '12px', border: '1px solid #334155' }}>
+                    <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#38bdf8', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <MapPin size={16} /> Location & Delivery
+                    </h4>
+                    <div style={{ fontSize: '14px', lineHeight: '1.6' }}>
+                      {selectedOrderDetail.engine_type === 'RIDE' ? (
+                        <>
+                          <div>🚗 <strong>Vehicle Type:</strong> {selectedOrderDetail.vehicle_type || selectedOrderDetail.ride_vehicle || 'BIKE'}</div>
+                          {selectedOrderDetail.pickup_lat && (
+                            <div style={{ marginTop: '4px' }}>
+                              📍 <strong>Pickup:</strong> <a href={`https://maps.google.com/?q=${selectedOrderDetail.pickup_lat},${selectedOrderDetail.pickup_lng}`} target="_blank" rel="noreferrer" style={{ color: '#38bdf8' }}>Google Maps</a>
+                            </div>
+                          )}
+                          {selectedOrderDetail.drop_lat && (
+                            <div style={{ marginTop: '4px' }}>
+                              🏁 <strong>Dropoff:</strong> <a href={`https://maps.google.com/?q=${selectedOrderDetail.drop_lat},${selectedOrderDetail.drop_lng}`} target="_blank" rel="noreferrer" style={{ color: '#34d399' }}>Google Maps</a>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div>📍 <strong>Address / Location:</strong> {selectedOrderDetail.address_text || 'Shared via WhatsApp GPS'}</div>
+                      )}
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Items & Description Section */}
+                <div style={{ background: '#0f172a', padding: '16px', borderRadius: '12px', border: '1px solid #334155', marginBottom: '20px' }}>
+                  <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#38bdf8', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    📦 Items & Task Description
+                  </h4>
+                  <div style={{ fontSize: '14px', background: '#1e293b', padding: '12px', borderRadius: '8px', border: '1px solid #334155', whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>
+                    {selectedOrderDetail.items_text || 'No items description provided.'}
+                  </div>
+
+                  {/* Media Gallery */}
+                  {(selectedOrderDetail.item_media_ids || selectedOrderDetail.bill_media_id) && (
+                    <div style={{ marginTop: '14px' }}>
+                      <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '600', marginBottom: '6px' }}>ORDER MEDIA & BILL PHOTOS:</div>
+                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                        {selectedOrderDetail.item_media_ids && selectedOrderDetail.item_media_ids.split(',').map((mId, idx) => (
+                          <a key={idx} href={`${API_URL.replace(/\/api$/, '')}/api/media/${mId}`} target="_blank" rel="noreferrer">
+                            <img src={`${API_URL.replace(/\/api$/, '')}/api/media/${mId}`} alt={`Item ${idx+1}`} style={{ width: '80px', height: '80px', borderRadius: '8px', objectFit: 'cover', border: '1px solid #38bdf8' }} />
+                          </a>
+                        ))}
+                        {selectedOrderDetail.bill_media_id && (
+                          <a href={`${API_URL.replace(/\/api$/, '')}/api/media/${selectedOrderDetail.bill_media_id}`} target="_blank" rel="noreferrer">
+                            <img src={`${API_URL.replace(/\/api$/, '')}/api/media/${selectedOrderDetail.bill_media_id}`} alt="Bill" style={{ width: '80px', height: '80px', borderRadius: '8px', objectFit: 'cover', border: '2px solid #10b981' }} />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Assignment & Financial Breakdown */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+                  
+                  {/* Assigned Helper & Vendor */}
+                  <div style={{ background: '#0f172a', padding: '16px', borderRadius: '12px', border: '1px solid #334155' }}>
+                    <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#38bdf8', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Users size={16} /> Assignment Info
+                    </h4>
+                    <div style={{ fontSize: '14px', lineHeight: '1.6' }}>
+                      <div>👤 <strong>Assigned Helper:</strong> {selectedOrderDetail.helper_name ? `${selectedOrderDetail.helper_name} (${selectedOrderDetail.helper_phone})` : 'Unassigned'}</div>
+                      <div>🏪 <strong>Assigned Vendor:</strong> {selectedOrderDetail.vendor_name ? `${selectedOrderDetail.vendor_name} (${selectedOrderDetail.vendor_phone})` : 'None'}</div>
+                      {selectedOrderDetail.otp && <div>🔑 <strong>Delivery OTP:</strong> <span style={{ background: '#059669', padding: '2px 8px', borderRadius: '4px', color: '#fff', fontWeight: 'bold' }}>{selectedOrderDetail.otp}</span></div>}
+                    </div>
+                  </div>
+
+                  {/* Financials */}
+                  <div style={{ background: '#0f172a', padding: '16px', borderRadius: '12px', border: '1px solid #334155' }}>
+                    <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#38bdf8', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      💳 Financial Breakdown
+                    </h4>
+                    <div style={{ fontSize: '14px', lineHeight: '1.6' }}>
+                      <div>💰 <strong>Total Amount:</strong> <span style={{ fontSize: '18px', fontWeight: '800', color: '#34d399' }}>₹{selectedOrderDetail.total_amount || selectedOrderDetail.bill_amount || 0}</span></div>
+                      <div>💳 <strong>Payment Status:</strong> {selectedOrderDetail.status === 'COMPLETED' || selectedOrderDetail.status === 'PAID' ? 'PAID ✅' : 'PENDING ⏳'}</div>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Order Timeline Log */}
+                {selectedOrderDetail.timeline && selectedOrderDetail.timeline.length > 0 && (
+                  <div style={{ background: '#0f172a', padding: '16px', borderRadius: '12px', border: '1px solid #334155' }}>
+                    <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#38bdf8', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Clock size={16} /> Order Activity Timeline
+                    </h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {selectedOrderDetail.timeline.map((t, idx) => (
+                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', background: '#1e293b', padding: '8px 12px', borderRadius: '6px' }}>
+                          <span><strong>{t.event_type}:</strong> {t.event_text}</span>
+                          <span style={{ color: '#94a3b8', fontSize: '11px' }}>{new Date(t.created_at).toLocaleTimeString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Footer Buttons */}
+                <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                  <button className="btn btn-outline" onClick={() => setSelectedOrderDetail(null)}>Close</button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

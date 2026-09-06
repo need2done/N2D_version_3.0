@@ -106,9 +106,12 @@ router.get('/', authenticateAdmin, async (req, res) => {
         const params = [];
 
         if (searchQueryParam && searchQueryParam.trim()) {
-            const s = '%' + searchQueryParam.trim().replace(/^#/, '') + '%';
-            query += ` AND (o.order_id LIKE ? OR o.customer_name LIKE ? OR o.customer_number LIKE ? OR ot.items_text LIKE ? OR o.status LIKE ? OR h.name LIKE ? OR v.name LIKE ? OR o.service LIKE ?)`;
-            params.push(s, s, s, s, s, s, s, s);
+            const rawQ = searchQueryParam.trim().replace(/^#/, '');
+            const strippedQ = rawQ.replace(/[^a-zA-Z0-9]/g, '');
+            const s = '%' + rawQ + '%';
+            const sStripped = '%' + (strippedQ || rawQ) + '%';
+            query += ` AND (o.order_id LIKE ? OR REPLACE(o.order_id, '-', '') LIKE ? OR o.customer_name LIKE ? OR o.customer_number LIKE ? OR ot.items_text LIKE ? OR o.status LIKE ? OR h.name LIKE ? OR v.name LIKE ? OR o.service LIKE ?)`;
+            params.push(s, sStripped, s, s, s, s, s, s, s);
         } else {
             if (date) {
                 query += ` AND DATE(o.created_at) = ?`;
@@ -140,24 +143,54 @@ router.get('/', authenticateAdmin, async (req, res) => {
 });
 
 // ==========================================
-// GET /api/orders/:id — Single order detail (Protected)
+// GET /api/orders/:id — Single order detail with full timeline & media
 // ==========================================
-router.get('/:id', authenticateInternalOrToken, async (req, res) => {
-
+router.get('/:id', async (req, res) => {
     try {
-        const [rows] = await db.query(`
-            SELECT o.*, c.phone as customer_phone,
-                   h.name as helper_name, h.phone as helper_phone
+        const orderIdParam = req.params.id;
+        const cleanParam = orderIdParam.replace(/^#/, '');
+        const strippedParam = cleanParam.replace(/[^a-zA-Z0-9]/g, '');
+        let query = `
+            SELECT o.*, c.phone as customer_phone, c.name as customer_db_name,
+                   h.name as helper_name, h.phone as helper_phone, h.vehicle_type as helper_vehicle,
+                   v.name as vendor_name, v.phone as vendor_phone,
+                   ot.items_text, ot.address_text,
+                   (SELECT GROUP_CONCAT(media_id) FROM order_images WHERE order_id = o.id AND image_type = 'ITEM') as item_media_ids,
+                   (SELECT media_id FROM order_images WHERE order_id = o.id AND image_type = 'BILL' LIMIT 1) as bill_media_id,
+                   orid.vehicle_type as ride_vehicle, orid.pickup_lat, orid.pickup_lng, 
+                   orid.drop_lat, orid.drop_lng, orid.locked as ride_locked
             FROM orders o
             LEFT JOIN customers c ON o.customer_id = c.id
             LEFT JOIN helpers h ON o.helper_id = h.id
-            WHERE o.id = ?
-        `, [req.params.id]);
+            LEFT JOIN vendors v ON o.vendor_id = v.id
+            LEFT JOIN order_tasks ot ON o.id = ot.order_id
+            LEFT JOIN order_rides orid ON o.id = orid.order_id
+            WHERE o.id = ? OR o.order_id = ? OR REPLACE(o.order_id, '-', '') = ?
+        `;
 
+        const [rows] = await db.query(query, [orderIdParam, cleanParam, strippedParam]);
         if (rows.length === 0) return res.status(404).json({ success: false, error: 'Order not found' });
-        res.json({ success: true, order: rows[0] });
+
+        const order = rows[0];
+
+        // Fetch timeline logs
+        try {
+            const [timeline] = await db.query('SELECT * FROM order_timeline WHERE order_id = ? ORDER BY created_at ASC', [order.id]);
+            order.timeline = timeline || [];
+        } catch (tErr) {
+            order.timeline = [];
+        }
+
+        // Parse payload JSON safely
+        try {
+            if (order.payload && typeof order.payload === 'string') {
+                order.parsed_payload = JSON.parse(order.payload);
+            }
+        } catch (e) {}
+
+        res.json({ success: true, order });
     } catch (err) {
-        console.error('Error fetching order:', err);
+        console.error('Error fetching order details:', err);
         res.status(500).json({ success: false, error: 'DB error' });
     }
 });
