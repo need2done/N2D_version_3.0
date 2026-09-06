@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, MapPin, Activity, Download, FileText, Calendar, RotateCcw, Filter, RefreshCw } from 'lucide-react';
+import { LayoutDashboard, Users, MapPin, Activity, Download, FileText, Calendar, RotateCcw, Filter, RefreshCw, Search, X, Zap } from 'lucide-react';
 import { exportToExcel, exportToPDF } from '../utils/exportUtils';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -25,6 +25,8 @@ export default function Dashboard() {
   const [error, setError] = useState(null);
   
   const [filter, setFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState('ALL'); // ALL, ACTIVE, DRAFT, COMPLETED, CANCELLED
+  const [searchQuery, setSearchQuery] = useState('');
   const [activePreset, setActivePreset] = useState('TODAY');
 
   const getLocalDate = () => {
@@ -294,6 +296,43 @@ export default function Dashboard() {
       default: return '';
     }
   };
+  // Dynamic order filtering (Global Search + Status Filter)
+  const filteredOrders = orders.filter(order => {
+    // Status Filter
+    if (statusFilter === 'ACTIVE') {
+      if (order.status === 'COMPLETED' || order.status === 'CANCELLED') return false;
+    } else if (statusFilter === 'DRAFT') {
+      if (order.status !== 'DRAFT') return false;
+    } else if (statusFilter === 'COMPLETED') {
+      if (order.status !== 'COMPLETED' && order.status !== 'PAID') return false;
+    } else if (statusFilter === 'CANCELLED') {
+      if (order.status !== 'CANCELLED') return false;
+    }
+
+    // Global Search Query Filter
+    if (!searchQuery.trim()) return true;
+
+    const q = searchQuery.toLowerCase().trim();
+    const cleanQ = q.replace(/^#/, '');
+
+    const orderIdMatch = (order.order_id || '').toLowerCase().includes(cleanQ);
+    const custNameMatch = (order.customer_name || '').toLowerCase().includes(q);
+    const custPhoneMatch = (order.customer_number || '').includes(q);
+    const itemsMatch = (order.items_text || '').toLowerCase().includes(q);
+    const statusMatch = (order.status || '').toLowerCase().includes(q);
+    const helperNameMatch = (order.helper_name || '').toLowerCase().includes(q);
+    const helperPhoneMatch = (order.helper_phone || '').includes(q);
+    const vendorNameMatch = (order.vendor_name || '').toLowerCase().includes(q);
+    const serviceMatch = (order.service || '').toLowerCase().includes(q);
+    const engineMatch = (order.engine_type || '').toLowerCase().includes(q);
+
+    return orderIdMatch || custNameMatch || custPhoneMatch || itemsMatch || statusMatch || helperNameMatch || helperPhoneMatch || vendorNameMatch || serviceMatch || engineMatch;
+  });
+
+  const activeOrdersCount = orders.filter(o => o.status !== 'COMPLETED' && o.status !== 'CANCELLED').length;
+  const draftOrdersCount = orders.filter(o => o.status === 'DRAFT').length;
+  const completedOrdersCount = orders.filter(o => o.status === 'COMPLETED' || o.status === 'PAID').length;
+  const cancelledOrdersCount = orders.filter(o => o.status === 'CANCELLED').length;
 
   return (
     <div>
@@ -396,6 +435,114 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* 🔍 GLOBAL SEARCH & STATUS FILTER TOOLBAR */}
+      <div className="card" style={{ padding: '1.25rem', marginBottom: '1.5rem', background: 'var(--surface-card, #1e293b)' }}>
+        {/* Search Input Bar */}
+        <div style={{ position: 'relative', marginBottom: '1rem' }}>
+          <Search size={20} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary, #3b82f6)' }} />
+          <input 
+            type="text"
+            className="input"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="🔍 Global Search: Type Order ID (#N2D...), Customer Name, Phone, Items, Helper, or Status..."
+            style={{
+              width: '100%',
+              padding: '0.75rem 2.75rem 0.75rem 2.8rem',
+              fontSize: '0.95rem',
+              borderRadius: '12px',
+              border: searchQuery ? '2px solid var(--primary, #3b82f6)' : '1px solid var(--border, #334155)',
+              background: 'var(--background, #0f172a)',
+              color: 'var(--text-main, #f8fafc)',
+              boxShadow: searchQuery ? '0 0 12px rgba(59, 130, 246, 0.25)' : 'none',
+              transition: 'all 0.2s'
+            }}
+          />
+          {searchQuery && (
+            <button 
+              onClick={() => setSearchQuery('')}
+              style={{
+                position: 'absolute',
+                right: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                color: 'var(--text-muted, #94a3b8)',
+                cursor: 'pointer',
+                fontSize: '16px'
+              }}
+            >
+              <X size={18} />
+            </button>
+          )}
+        </div>
+
+        {/* Status Filter Tabs & Counts */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginRight: '0.25rem' }}>
+              Status Filter:
+            </span>
+
+            <button
+              className={`btn ${statusFilter === 'ALL' ? 'btn-primary' : 'btn-outline'}`}
+              style={{ padding: '0.4rem 0.85rem', fontSize: '0.825rem', borderRadius: '20px' }}
+              onClick={() => setStatusFilter('ALL')}
+            >
+              ALL ({orders.length})
+            </button>
+
+            <button
+              className={`btn ${statusFilter === 'ACTIVE' ? 'btn-primary' : 'btn-outline'}`}
+              style={{ 
+                padding: '0.4rem 0.85rem', 
+                fontSize: '0.825rem', 
+                borderRadius: '20px',
+                background: statusFilter === 'ACTIVE' ? '#10b981' : 'transparent',
+                borderColor: '#10b981',
+                color: statusFilter === 'ACTIVE' ? '#ffffff' : '#34d399',
+                fontWeight: '700'
+              }}
+              onClick={() => setStatusFilter('ACTIVE')}
+            >
+              <Zap size={14} style={{ marginRight: '4px' }} />
+              ACTIVE ORDERS ({activeOrdersCount})
+            </button>
+
+            <button
+              className={`btn ${statusFilter === 'DRAFT' ? 'btn-primary' : 'btn-outline'}`}
+              style={{ padding: '0.4rem 0.85rem', fontSize: '0.825rem', borderRadius: '20px' }}
+              onClick={() => setStatusFilter('DRAFT')}
+            >
+              DRAFT ({draftOrdersCount})
+            </button>
+
+            <button
+              className={`btn ${statusFilter === 'COMPLETED' ? 'btn-primary' : 'btn-outline'}`}
+              style={{ padding: '0.4rem 0.85rem', fontSize: '0.825rem', borderRadius: '20px' }}
+              onClick={() => setStatusFilter('COMPLETED')}
+            >
+              COMPLETED ({completedOrdersCount})
+            </button>
+
+            <button
+              className={`btn ${statusFilter === 'CANCELLED' ? 'btn-primary' : 'btn-outline'}`}
+              style={{ padding: '0.4rem 0.85rem', fontSize: '0.825rem', borderRadius: '20px' }}
+              onClick={() => setStatusFilter('CANCELLED')}
+            >
+              CANCELLED ({cancelledOrdersCount})
+            </button>
+          </div>
+
+          {(searchQuery || statusFilter !== 'ALL') && (
+            <div style={{ fontSize: '0.85rem', color: '#38bdf8', fontWeight: 600 }}>
+              Showing {filteredOrders.length} of {orders.length} orders
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Main Orders Table */}
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -403,7 +550,23 @@ export default function Dashboard() {
             <h3 style={{ margin: 0, fontSize: '1.15rem' }}>Master Order Stream (N2D)</h3>
             <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Live order lifecycle stream. Auto-refreshes every 15s.</p>
           </div>
-          <span className="badge task">{orders.length} Active Orders</span>
+          <button 
+            className="btn btn-outline"
+            style={{
+              padding: '0.4rem 0.85rem',
+              fontSize: '0.825rem',
+              borderRadius: '20px',
+              border: '1px solid #10b981',
+              color: '#34d399',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+            onClick={() => setStatusFilter(statusFilter === 'ACTIVE' ? 'ALL' : 'ACTIVE')}
+          >
+            <Zap size={14} /> {activeOrdersCount} ACTIVE ORDERS
+          </button>
         </div>
 
         <table>
@@ -420,10 +583,10 @@ export default function Dashboard() {
             </tr>
           </thead>
           <tbody>
-            {orders.length === 0 && (
-              <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)' }}>No orders found matching the selected filter.</td></tr>
+            {filteredOrders.length === 0 && (
+              <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)' }}>No orders found matching the search or selected filter.</td></tr>
             )}
-            {orders.map(order => (
+            {filteredOrders.map(order => (
               <tr key={order.id} style={order.ride_locked ? { background: '#fff5f5' } : {}}>
                 <td><strong>#{order.order_id}</strong><br/><small style={{ color: 'var(--text-muted)' }}>{new Date(order.created_at).toLocaleTimeString()}</small></td>
                 <td>
