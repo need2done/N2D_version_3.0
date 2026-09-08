@@ -25,44 +25,63 @@ GEMINI_MODELS = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-flash-latest"]
 
 
 
+import base64
+
 def transcribe_audio_sarvam_or_whisper(audio_bytes: bytes, filename: str = "audio.ogg") -> str:
     """
-    Transcribes voice notes (Ogg/mp3/wav) using Sarvam AI STT (Telugu/Hindi) or OpenAI Whisper fallback.
+    Transcribes voice notes (Ogg/mp3/wav).
+    Primary Engine: Google Gemini 3.6 Flash (100% FREE - 0 cost)
+    Secondary Backup: Sarvam AI STT (saaras:v4 single call)
     """
     if not audio_bytes:
         return ""
 
-    # Try Sarvam AI STT (Optimized for Indian Languages like Telugu/Hindi/English)
-    if SARVAM_API_KEY:
-        headers = {"api-subscription-key": SARVAM_API_KEY}
-        files = {"file": (filename, audio_bytes, "audio/ogg")}
-        # Try active models: saaras:v4 then saaras:v3
-        for model in ["saaras:v4", "saaras:v3", "saarika:v2.5"]:
+    # 1. Primary Engine: Google Gemini 3.6 Flash Multimodal Audio STT (100% FREE)
+    api_key = os.environ.get("GEMINI_API_KEY", os.environ.get("GOOGLE_API_KEY", ""))
+    if api_key:
+        for model in GEMINI_MODELS:
             try:
-                data = {"language_code": "unknown", "model": model}
-                res = requests.post(SARVAM_STT_URL, headers=headers, files=files, data=data, timeout=12)
+                b64_audio = base64.b64encode(audio_bytes).decode("utf-8")
+                mime_type = "audio/ogg"
+                if filename.endswith(".mp3"): mime_type = "audio/mp3"
+                elif filename.endswith(".wav"): mime_type = "audio/wav"
+
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+                payload = {
+                    "contents": [{
+                        "parts": [
+                            {"inlineData": {"mimeType": mime_type, "data": b64_audio}},
+                            {"text": "Transcribe this Telugu, English, or Hyderabadi Hindi voice note exactly into text. Output ONLY the raw transcript text, no markdown or comments."}
+                        ]
+                    }],
+                    "generationConfig": {"temperature": 0.1, "maxOutputTokens": 200}
+                }
+                res = requests.post(url, json=payload, timeout=12)
                 if res.status_code == 200:
-                    result = res.json()
-                    transcript = result.get("transcript", "").strip()
-                    if transcript:
-                        print(f"[AI_STT_SARVAM] Transcribed audio via {model}: {transcript}")
-                        return transcript
+                    res_json = res.json()
+                    parts = res_json.get('candidates', [{}])[0].get('content', {}).get('parts', [])
+                    text_response = "".join([p.get('text', '') for p in parts if 'text' in p]).strip()
+                    if text_response:
+                        print(f"[AI_STT_FREE_GEMINI] Transcribed audio via {model}: {text_response}")
+                        return text_response
             except Exception as e:
-                print(f"[AI_STT_ERROR] Sarvam AI STT ({model}) notice: {e}")
+                print(f"[AI_STT_FREE_GEMINI_ERROR] Notice: {e}")
 
-
-    # Fallback to OpenAI Whisper API if OpenAI Key is present
-    if OPENAI_API_KEY:
+    # 2. Secondary Backup: Sarvam AI STT (Single call to active saaras:v4 model)
+    if SARVAM_API_KEY:
         try:
-            headers = {"Authorization": f"Bearer {OPENAI_API_KEY}"}
+            headers = {"api-subscription-key": SARVAM_API_KEY}
             files = {"file": (filename, audio_bytes, "audio/ogg")}
-            data = {"model": "whisper-1", "prompt": "Telugu, Hyderabadi Hindi, English custom work order for Need2Done Bhongir"}
-            res = requests.post("https://api.openai.com/v1/audio/transcriptions", headers=headers, files=files, data=data, timeout=10)
+            data = {"language_code": "unknown", "model": "saaras:v4"}
+            res = requests.post(SARVAM_STT_URL, headers=headers, files=files, data=data, timeout=12)
             if res.status_code == 200:
-                transcript = res.json().get("text", "").strip()
-                print(f"[AI_STT_WHISPER] Transcribed audio: {transcript}")
-                return transcript
+                transcript = res.json().get("transcript", "").strip()
+                if transcript:
+                    print(f"[AI_STT_SARVAM] Transcribed audio via saaras:v4: {transcript}")
+                    return transcript
         except Exception as e:
+            print(f"[AI_STT_ERROR] Sarvam AI STT notice: {e}")
+
             print(f"[AI_STT_ERROR] OpenAI Whisper notice: {e}")
 
     return ""
