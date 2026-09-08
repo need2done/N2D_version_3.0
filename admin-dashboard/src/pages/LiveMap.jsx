@@ -92,7 +92,8 @@ export default function LiveMap() {
             onClick={() => setMapEngine(prev => prev === 'carto' ? 'ola' : 'carto')}
             style={{ fontSize: '0.85rem', padding: '0.5rem 0.9rem', backgroundColor: mapEngine === 'ola' ? '#10b981' : '#374151', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
           >
-            🗺️ Map Engine: {mapEngine === 'ola' ? 'Ola Maps India (Active)' : 'CARTO Voyager'}
+            🗺️ Map Engine: {mapEngine === 'ola' ? 'Esri HD Street Map (Active)' : 'CARTO Voyager'}
+
           </button>
           <div className="badge success" style={{ padding: '0.6rem 1rem' }}>
              LIVE
@@ -114,8 +115,8 @@ export default function LiveMap() {
           
           {mapEngine === 'ola' ? (
             <TileLayer
-              attribution='&copy; <a href="https://olamaps.io">Ola Maps</a>'
-              url={`https://api.olamaps.io/tiles/v1/styles/default-light-standard/{z}/{x}/{y}.png?api_key=${OLA_API_KEY}`}
+              attribution='&copy; <a href="https://server.arcgisonline.com" target="_blank" rel="noreferrer">Esri World Street Map</a> | Need2Done'
+              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
             />
           ) : (
             <TileLayer
@@ -123,6 +124,7 @@ export default function LiveMap() {
               url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
             />
           )}
+
 
           {sessions.map(session => {
             const lat = parseFloat(session.lat);

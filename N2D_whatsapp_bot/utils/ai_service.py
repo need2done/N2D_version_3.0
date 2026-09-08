@@ -32,21 +32,24 @@ def transcribe_audio_sarvam_or_whisper(audio_bytes: bytes, filename: str = "audi
     if not audio_bytes:
         return ""
 
-    # Try Sarvam AI STT (Optimized for Indian Languages like Telugu/Hindi)
+    # Try Sarvam AI STT (Optimized for Indian Languages like Telugu/Hindi/English)
     if SARVAM_API_KEY:
-        try:
-            headers = {"api-subscription-key": SARVAM_API_KEY}
-            files = {"file": (filename, audio_bytes, "audio/ogg")}
-            data = {"language_code": "te-IN", "model": "saarika:v1"}
-            res = requests.post(SARVAM_STT_URL, headers=headers, files=files, data=data, timeout=10)
-            if res.status_code == 200:
-                result = res.json()
-                transcript = result.get("transcript", "").strip()
-                if transcript:
-                    print(f"[AI_STT_SARVAM] Transcribed Telugu audio: {transcript}")
-                    return transcript
-        except Exception as e:
-            print(f"[AI_STT_ERROR] Sarvam AI STT notice: {e}")
+        headers = {"api-subscription-key": SARVAM_API_KEY}
+        files = {"file": (filename, audio_bytes, "audio/ogg")}
+        # Try active models: saaras:v4 then saaras:v3
+        for model in ["saaras:v4", "saaras:v3", "saarika:v2.5"]:
+            try:
+                data = {"language_code": "unknown", "model": model}
+                res = requests.post(SARVAM_STT_URL, headers=headers, files=files, data=data, timeout=12)
+                if res.status_code == 200:
+                    result = res.json()
+                    transcript = result.get("transcript", "").strip()
+                    if transcript:
+                        print(f"[AI_STT_SARVAM] Transcribed audio via {model}: {transcript}")
+                        return transcript
+            except Exception as e:
+                print(f"[AI_STT_ERROR] Sarvam AI STT ({model}) notice: {e}")
+
 
     # Fallback to OpenAI Whisper API if OpenAI Key is present
     if OPENAI_API_KEY:
