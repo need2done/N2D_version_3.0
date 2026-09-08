@@ -55,6 +55,29 @@ def get_access_token() -> str:
 # UTILS
 # =================================================
 
+def download_whatsapp_media(media_id: str) -> Optional[bytes]:
+    """
+    Downloads audio/media bytes from Meta WhatsApp Cloud API using media_id.
+    """
+    if not media_id:
+        return None
+    try:
+        token = get_access_token()
+        headers = {"Authorization": f"Bearer {token}"}
+        # Step 1: Get media URL
+        media_info_url = f"https://graph.facebook.com/{GRAPH_API_VERSION}/{media_id}"
+        res = _http.get(media_info_url, headers=headers, timeout=10)
+        if res.status_code == 200:
+            download_url = res.json().get("url")
+            if download_url:
+                # Step 2: Download binary content
+                media_res = _http.get(download_url, headers=headers, timeout=15)
+                if media_res.status_code == 200:
+                    return media_res.content
+    except Exception as e:
+        print(f"[WA_MEDIA_ERROR] Failed downloading media {media_id}: {e}")
+    return None
+
 def normalize_number(num: str) -> str:
     if not num:
         return ""

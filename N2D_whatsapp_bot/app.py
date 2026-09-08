@@ -204,7 +204,10 @@ async def webhook(request: Request):
                     elif msg_type == "document":
                         text = "DOCUMENT"
                     elif msg_type in ("audio", "voice"):
-                        text = "AUDIO"
+                        audio_obj = msg.get("audio", {}) or msg.get("voice", {})
+                        media_id = audio_obj.get("id", "")
+                        text = f"AUDIO:{media_id}" if media_id else "AUDIO"
+
 
                     profile_name = ""
                     contacts = value.get("contacts", [])

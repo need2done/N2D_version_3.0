@@ -59,10 +59,13 @@
             document.body.innerHTML = '<div class="expired-msg"><h2>❌ Invalid tracking link</h2></div>';
         }
 
-        const map = L.map('map').setView([12.9716, 77.5946], 14);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap'
+        const OLA_MAPS_KEY = "JjCr6EG5iWD7a7qzfp5pECZA4t9bnLT8ObU8R3Gy";
+        const map = L.map('map').setView([17.5116, 78.8890], 14);
+        L.tileLayer(`https://api.olamaps.io/tiles/v1/styles/default-light-standard/{z}/{x}/{y}.png?api_key=${OLA_MAPS_KEY}`, {
+            attribution: '© <a href="https://maps.olaelectric.com" target="_blank" style="color:#00c853;font-weight:bold;">Ola Maps India</a> | Need2Done',
+            maxZoom: 19
         }).addTo(map);
+
 
         let marker = null;
         let polyline = null;

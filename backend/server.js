@@ -275,8 +275,10 @@ app.get('/track/:token', (req, res) => {
                 <script>
                     const API_BASE = window.location.origin;
                     const token = window.location.pathname.split('/track/')[1];
-                    const map = L.map('map').setView([17.385, 78.486], 14);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution: '© OpenStreetMap'}).addTo(map);
+                    const OLA_MAPS_KEY = 'JjCr6EG5iWD7a7qzfp5pECZA4t9bnLT8ObU8R3Gy';
+                    const map = L.map('map').setView([17.5116, 78.8890], 14);
+                    L.tileLayer('https://api.olamaps.io/tiles/v1/styles/default-light-standard/{z}/{x}/{y}.png?api_key=' + OLA_MAPS_KEY, {attribution: '© Ola Maps India | Need2Done'}).addTo(map);
+
                     const markerIcon = L.divIcon({
                         html: '<div style="background-color: #4F46E5; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.3);"></div>',
                         className: '',
