@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Lock, User, ShieldCheck, Shield, Star, CheckCircle } from 'lucide-react';
 import logo from '../assets/logo.png';
 import './Login.css';
+import { API_URL } from '../config';
 
 export default function Login() {
     const [username, setUsername] = useState('');
@@ -17,8 +18,8 @@ export default function Login() {
         setLoading(true);
 
         try {
-            const VITE_API_URL = import.meta.env.VITE_API_URL || '/api';
-            const response = await fetch(`${VITE_API_URL}/auth/login`, {
+            const response = await fetch(`${API_URL}/auth/login`, {
+
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

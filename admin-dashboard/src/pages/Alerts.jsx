@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AlertTriangle, CheckCircle2, RefreshCw, Phone, Trash2, Bell } from 'lucide-react';
+import { API_URL } from '../config';
 
-const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 export default function Alerts() {
   const [alerts, setAlerts] = useState([]);

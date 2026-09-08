@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Layers, CheckCircle2, XCircle, RefreshCw, Sparkles, ShieldCheck, Power } from 'lucide-react';
 import './Settings.css'; // Re-use sleek settings styling
+import { API_URL as API_BASE } from '../config';
 
 const Services = () => {
     const [services, setServices] = useState([]);
@@ -8,9 +9,8 @@ const Services = () => {
     const [updatingId, setUpdatingId] = useState(null);
     const [message, setMessage] = useState(null);
 
-    const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
-
     const fetchServices = async () => {
+
         setLoading(true);
         try {
             const token = localStorage.getItem('adminToken');

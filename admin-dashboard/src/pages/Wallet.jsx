@@ -3,8 +3,8 @@ import axios from 'axios';
 import { Wallet, Search, CreditCard, History, X, ArrowUpRight, ArrowDownRight, Zap, Download, FileText } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { exportToExcel, exportToPDF } from '../utils/exportUtils';
+import { API_URL } from '../config';
 
-const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 export default function WalletPage() {
     const [helpers, setHelpers] = useState([]);

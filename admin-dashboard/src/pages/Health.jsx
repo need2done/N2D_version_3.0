@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Server, Database, MessageCircle, Activity, Cpu, HardDrive, Layers, ShieldAlert, CheckCircle, RefreshCw, Radio } from 'lucide-react';
+import { API_URL } from '../config';
 
-const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 const ProcessRow = ({ name, pid, type, status, cpu, memory, uptime }) => (
   <tr style={{ transition: 'all 0.2s ease' }}>

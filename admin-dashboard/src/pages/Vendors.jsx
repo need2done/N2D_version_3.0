@@ -3,6 +3,8 @@ import axios from 'axios';
 import { Plus, Search, Edit2, Trash2, X, Store } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { API_URL } from '../config';
+
 
 export default function Vendors() {
     const [vendors, setVendors] = useState([]);
@@ -18,9 +20,8 @@ export default function Vendors() {
         status: 'Active'
     });
 
-    const API_URL = import.meta.env.VITE_API_URL || '/api';
-
     useEffect(() => {
+
         fetchVendors();
     }, []);
 

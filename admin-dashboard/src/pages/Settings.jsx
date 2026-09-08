@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Settings as SettingsIcon, Save, Plus, Trash2, Edit2, X, Shield, Users, Smartphone, ToggleRight, Tag, Bell } from 'lucide-react';
 import './Settings.css';
+import { API_URL as VITE_API_URL } from '../config';
+
 
 export default function Settings() {
     const [activeTab, setActiveTab] = useState('agents');
@@ -65,7 +67,6 @@ export default function Settings() {
     const [surges, setSurges] = useState([]);
     const [surgeForm, setSurgeForm] = useState({ service: 'RIDE', amount: '' });
 
-    const VITE_API_URL = import.meta.env.VITE_API_URL || '/api';
 
     // Fetch settings on mount
     useEffect(() => {

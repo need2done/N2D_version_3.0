@@ -40,7 +40,8 @@ const customerIcon = new L.divIcon({
 });
 
 
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+import { API_URL } from '../config';
+
 
 export default function LiveMap() {
   const [sessions, setSessions] = useState([]);

@@ -4,8 +4,8 @@ import {
     DollarSign, Clock, MapPin, Search, Filter, RefreshCw, Layers, Plus, Trash2, ArrowRight, Eye, X, Check, Edit3, User, Phone, ShoppingCart, Truck
 } from 'lucide-react';
 import '../index.css';
+import { API_URL as API_BASE } from '../config';
 
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 export default function CustomWorkAdmin() {
     const [activeTab, setActiveTab] = useState('orders'); // 'orders', 'rates', 'cards', 'safety', 'disputes'

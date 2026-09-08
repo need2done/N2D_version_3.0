@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { LayoutDashboard, Users, MapPin, Activity, Download, FileText, Calendar, RotateCcw, Filter, RefreshCw, Search, X, Zap, Eye, Phone, MessageSquare, ExternalLink, Clock, Store, ShieldCheck } from 'lucide-react';
 import { exportToExcel, exportToPDF } from '../utils/exportUtils';
+import { API_URL } from '../config';
 
-const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 const StatCard = ({ title, value, Icon, color, bgColor }) => (
   <div className="card" style={{ flex: 1, margin: '0 0.5rem 1rem 0.5rem', minWidth: '220px' }}>

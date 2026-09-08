@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Wrench, Plus, RefreshCw, UserCheck, Search, X } from 'lucide-react';
+import { API_URL } from '../config';
 
-const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 export default function HomeServiceHelpers() {
   const [helpers, setHelpers] = useState([]);
