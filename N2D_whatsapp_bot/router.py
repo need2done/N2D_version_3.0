@@ -29,6 +29,7 @@ from cases.case4_medicine import handle as case4
 from cases.case_ride import handle as case_ride
 from cases.case7_veg_fruits import handle as case7
 from cases.case10_home_services import handle as case10
+from cases.case_custom_work import handle as case_custom_work
 
 
 # =================================================
@@ -76,16 +77,15 @@ def route(
 
         # 3 = Parcel (Merged into Any Work Service)
         if service == 3:
-            return case1(session, text, raw)
+            return case_custom_work(session, text, raw)
 
         # 4 = Ride Service
         if service == 4:
             return case_ride(session, text, raw)
 
-        # 5 = Any Work Service (Reuse case1 logic)
-        # Handles Parcel, Errands, custom tasks
-        if service == 5:
-            return case1(session, text, raw)
+        # 5 = Custom Work / Any Work Service
+        if service == 5 or service == 11:
+            return case_custom_work(session, text, raw)
 
         # 9 = Food Service
         if service == 9:

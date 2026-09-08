@@ -45,7 +45,8 @@ const API_URL = import.meta.env.VITE_API_URL || '/api';
 export default function LiveMap() {
   const [sessions, setSessions] = useState([]);
   const [error, setError] = useState(null);
-  const [mapEngine, setMapEngine] = useState('carto'); // 'carto' or 'ola'
+  const [mapEngine, setMapEngine] = useState('ola'); // 'ola' or 'carto'
+  const OLA_API_KEY = 'JjCr6EG5iWD7a7qzfp5pECZA4t9bnLT8ObU8R3Gy';
 
   const fetchActiveSessions = async () => {
     try {
@@ -72,7 +73,8 @@ export default function LiveMap() {
     return () => clearInterval(interval);
   }, []);
 
-  const defaultCenter = [12.9716, 77.5946];
+  // Bhongir, Telangana Pilot Center
+  const defaultCenter = [17.5116, 78.8890];
 
   return (
     <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
@@ -80,7 +82,7 @@ export default function LiveMap() {
         <div>
           <h3 style={{ margin: 0, fontWeight: 700, color: 'var(--text-primary)' }}>Live Tracking Center</h3>
           <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            Monitoring {sessions.length} active delivery routes (Powered by Ola Maps)
+            Monitoring {sessions.length} active delivery routes (Powered by Ola Maps - Bhongir Pilot)
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
@@ -89,7 +91,7 @@ export default function LiveMap() {
             onClick={() => setMapEngine(prev => prev === 'carto' ? 'ola' : 'carto')}
             style={{ fontSize: '0.85rem', padding: '0.5rem 0.9rem', backgroundColor: mapEngine === 'ola' ? '#10b981' : '#374151', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
           >
-            🗺️ Map Engine: {mapEngine === 'ola' ? 'Ola Maps (India)' : 'CARTO Voyager'}
+            🗺️ Map Engine: {mapEngine === 'ola' ? 'Ola Maps India (Active)' : 'CARTO Voyager'}
           </button>
           <div className="badge success" style={{ padding: '0.6rem 1rem' }}>
              LIVE
@@ -103,7 +105,7 @@ export default function LiveMap() {
       <div className="card" style={{ height: '70vh', padding: 0, overflow: 'hidden', borderRadius: '1.5rem', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--border-color)' }}>
         <MapContainer 
           center={defaultCenter} 
-          zoom={13} 
+          zoom={14} 
           style={{ height: '100%', width: '100%', background: '#f8fafc' }}
           zoomControl={false}
         >
@@ -112,7 +114,7 @@ export default function LiveMap() {
           {mapEngine === 'ola' ? (
             <TileLayer
               attribution='&copy; <a href="https://olamaps.io">Ola Maps</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              url={`https://api.olamaps.io/tiles/v1/styles/default-light-standard/{z}/{x}/{y}.png?api_key=${OLA_API_KEY}`}
             />
           ) : (
             <TileLayer

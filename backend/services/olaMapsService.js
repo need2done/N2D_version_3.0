@@ -6,6 +6,7 @@
 const OLA_CONFIG = {
     CLIENT_ID: process.env.OLA_MAPS_CLIENT_ID || '8388c2f1-84fd-4f7a-9e81-e9e0f6ad03aa',
     CLIENT_SECRET: process.env.OLA_MAPS_CLIENT_SECRET || 'aaa90d76a15e4a41a13e2b8261a266e4',
+    API_KEY: process.env.OLA_MAPS_API_KEY || 'JjCr6EG5iWD7a7qzfp5pECZA4t9bnLT8ObU8R3Gy',
     TOKEN_URL: 'https://account.olamaps.io/realms/olamaps/protocol/openid-connect/token',
     API_BASE_URL: 'https://api.olamaps.io'
 };
@@ -78,11 +79,12 @@ async function getOlaRouteDistance(originLat, originLng, destLat, destLng) {
             };
         }
 
-        // Call Ola Maps Directions API
-        const url = `${OLA_CONFIG.API_BASE_URL}/routing/v1/directions?origin=${originLat},${originLng}&destination=${destLat},${destLng}&mode=driving`;
+        // Call Ola Maps Directions API using API_KEY and Bearer Token
+        const url = `${OLA_CONFIG.API_BASE_URL}/routing/v1/directions?origin=${originLat},${originLng}&destination=${destLat},${destLng}&mode=driving&api_key=${OLA_CONFIG.API_KEY}`;
         const res = await fetch(url, {
             headers: {
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Bearer ${token}`,
+                'X-API-KEY': OLA_CONFIG.API_KEY
             }
         });
 
