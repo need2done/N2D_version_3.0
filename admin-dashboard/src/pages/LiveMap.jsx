@@ -40,7 +40,7 @@ const customerIcon = new L.divIcon({
 });
 
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 export default function LiveMap() {
   const [sessions, setSessions] = useState([]);
@@ -158,7 +158,7 @@ export default function LiveMap() {
                             <b>Status:</b> <span className="badge info" style={{ fontSize: '0.7rem' }}>{session.order_status}</span><br />
                             <div style={{ marginTop: '8px' }}>
                               <a 
-                                href={`http://localhost:5000/track/${session.display_id}`} 
+                                href={`/track/${session.display_id}`} 
                                 target="_blank" 
                                 rel="noreferrer"
                                 style={{ display: 'inline-block', backgroundColor: '#4338ca', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', textDecoration: 'none', fontWeight: 'bold' }}

@@ -17,7 +17,7 @@ export default function Login() {
         setLoading(true);
 
         try {
-            const VITE_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+            const VITE_API_URL = import.meta.env.VITE_API_URL || '/api';
             const response = await fetch(`${VITE_API_URL}/auth/login`, {
                 method: 'POST',
                 headers: {
