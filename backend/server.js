@@ -167,6 +167,10 @@ app.use('/api/groceries/admin', groceryAdminRoutes);
 const foodAdminRoutes = require('./routes/foodAdmin');
 app.use('/api/food/admin', foodAdminRoutes);
 
+// Custom Work Routes
+const customWorkRoutes = require('./routes/customWork');
+app.use('/api/custom-work', customWorkRoutes);
+
 // Razorpay Payment Routes
 const paymentRoutes = require('./routes/payments');
 app.use('/api/payments', paymentRoutes);
