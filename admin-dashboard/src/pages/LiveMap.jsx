@@ -45,6 +45,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 export default function LiveMap() {
   const [sessions, setSessions] = useState([]);
   const [error, setError] = useState(null);
+  const [mapEngine, setMapEngine] = useState('carto'); // 'carto' or 'ola'
 
   const fetchActiveSessions = async () => {
     try {
@@ -79,10 +80,17 @@ export default function LiveMap() {
         <div>
           <h3 style={{ margin: 0, fontWeight: 700, color: 'var(--text-primary)' }}>Live Tracking Center</h3>
           <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            Monitoring {sessions.length} active delivery routes
+            Monitoring {sessions.length} active delivery routes (Powered by Ola Maps)
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <button 
+            className="btn btn-secondary" 
+            onClick={() => setMapEngine(prev => prev === 'carto' ? 'ola' : 'carto')}
+            style={{ fontSize: '0.85rem', padding: '0.5rem 0.9rem', backgroundColor: mapEngine === 'ola' ? '#10b981' : '#374151', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+          >
+            🗺️ Map Engine: {mapEngine === 'ola' ? 'Ola Maps (India)' : 'CARTO Voyager'}
+          </button>
           <div className="badge success" style={{ padding: '0.6rem 1rem' }}>
              LIVE
           </div>
@@ -101,11 +109,17 @@ export default function LiveMap() {
         >
           <ZoomControl position="bottomright" />
           
-          {/* PREMIUM CARTO VOYAGER THEME */}
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-          />
+          {mapEngine === 'ola' ? (
+            <TileLayer
+              attribution='&copy; <a href="https://olamaps.io">Ola Maps</a>'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+          ) : (
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+              url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+            />
+          )}
 
           {sessions.map(session => {
             const lat = parseFloat(session.lat);
@@ -125,7 +139,7 @@ export default function LiveMap() {
                 {/* HELPER MARKER */}
                 <Marker position={helperPos} icon={helperIcon}>
                   <Popup>
-                    <div style={{ minWidth: '180px' }}>
+                    <div style={{ minWidth: '200px' }}>
                       <div style={{ borderBottom: '1px solid #eee', marginBottom: '8px', paddingBottom: '4px' }}>
                         <strong style={{ color: '#4338ca' }}>{session.helper_name}</strong>
                         <div style={{ fontSize: '0.75rem', color: '#666' }}>
@@ -140,8 +154,18 @@ export default function LiveMap() {
                            </>
                         ) : (
                           <>
-                            <b>Service:</b> {session.service}<br />
+                            <b>Service:</b> {session.service || 'Custom Work'}<br />
                             <b>Status:</b> <span className="badge info" style={{ fontSize: '0.7rem' }}>{session.order_status}</span><br />
+                            <div style={{ marginTop: '8px' }}>
+                              <a 
+                                href={`http://localhost:5000/track/${session.display_id}`} 
+                                target="_blank" 
+                                rel="noreferrer"
+                                style={{ display: 'inline-block', backgroundColor: '#4338ca', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', textDecoration: 'none', fontWeight: 'bold' }}
+                              >
+                                🔗 Open Tracking Link
+                              </a>
+                            </div>
                           </>
                         )}
                         <hr style={{ margin: '8px 0', border: '0', borderTop: '1px solid #eee' }} />

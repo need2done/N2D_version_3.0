@@ -15,7 +15,8 @@ import SettingsPage from './pages/Settings';
 import Services from './pages/Services';
 import Vendors from './pages/Vendors';
 import WalletPage from './pages/Wallet';
-import { LayoutDashboard, MapPinned, Users, Activity, Bell, Settings, DollarSign, BarChart3, ServerCrash, LifeBuoy, LogOut, Store, Wallet, Wrench, Menu, X, Layers } from 'lucide-react';
+import CustomWorkAdmin from './pages/CustomWorkAdmin';
+import { LayoutDashboard, MapPinned, Users, Activity, Bell, Settings, DollarSign, BarChart3, ServerCrash, LifeBuoy, LogOut, Store, Wallet, Wrench, Menu, X, Layers, Briefcase } from 'lucide-react';
 import logo from './assets/logo.png';
 import './index.css';
 
@@ -102,6 +103,10 @@ const DashboardLayout = () => {
                         <Layers size={20} />
                         Services
                     </NavLink>
+                    <NavLink to="/custom-work" onClick={closeSidebar} className={({isActive}) => isActive ? "nav-link active" : "nav-link"}>
+                        <Briefcase size={20} />
+                        Custom Work Admin
+                    </NavLink>
                     <NavLink to="/earnings" onClick={closeSidebar} className={({isActive}) => isActive ? "nav-link active" : "nav-link"}>
                         <DollarSign size={20} />
                         Payments & Earnings
@@ -181,6 +186,7 @@ function App() {
                     <Route element={<DashboardLayout />}>
                         <Route path="/" element={<Dashboard />} />
                         <Route path="/services" element={<Services />} />
+                        <Route path="/custom-work" element={<CustomWorkAdmin />} />
                         <Route path="/earnings" element={<Earnings />} />
                         <Route path="/analysis" element={<Analysis />} />
                         <Route path="/map" element={<LiveMap />} />
