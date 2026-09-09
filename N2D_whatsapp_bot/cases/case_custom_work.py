@@ -31,6 +31,18 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
         text_clean = (text or "").strip()
         user = session.get("user_id") or session.get("phone") or session.get("user")
 
+        # Global Location Pin Listener for Custom Work
+        if raw and raw.get("type") == "location":
+            loc = raw.get("location", {})
+            lat = loc.get("latitude")
+            lng = loc.get("longitude")
+            if lat and lng:
+                session["drop_lat"] = lat
+                session["drop_lng"] = lng
+                session["drop_location_name"] = loc.get("name") or loc.get("address") or f"Location Pin ({lat:.4f}, {lng:.4f})"
+                task_text = session.get("pending_task_text") or session.get("task_description") or "Custom Errand Task"
+                return _generate_price_quote(session, task_text, user, lat=lat, lng=lng)
+
         # Step 1: Init / Task Description Intake
         if step == "INIT":
             session["custom_work_step"] = "WAITING_DETAILS"
@@ -167,7 +179,8 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
         if step == "CONFIRM_QUOTE":
             if text_clean.upper() in ["YES", "Y", "CONFIRM", "OK", "1", "CW_ACCEPT_QUOTE"]:
                 task_text = session.get("task_description", "Custom Errand Task")
-                quoted = session.get("quoted_fee", 119)
+                quoted = session.get("quoted_fee", 141)
+                has_shop = session.get("has_shopping", False)
                 
                 # Ensure data dict exists for order_finalizer
                 if "data" not in session or not isinstance(session["data"], dict):
@@ -187,11 +200,23 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                 session["stage"] = "COMPLETED"
 
                 tracking_url = f"{TRACKING_BASE_URL}/track/{order_id}"
+                
+                item_pay_note = (
+                    "💳 *Payment Method & Amount Payable on Delivery:*\n"
+                    "• *Actual Store Receipt Bill* (Advanced by Helper at store/pump)\n"
+                    f"• *Quoted Service Fee:* ₹{quoted}\n"
+                    "• Pay via *Cash to Helper* or *Instant UPI* upon delivery."
+                ) if has_shop or any(w in task_text.lower() for w in ['petrol', 'fuel', 'buy', 'bring', 'grocery', 'medicine']) else (
+                    "💳 *Payment Method & Amount Payable on Delivery:*\n"
+                    f"• *Quoted Service Fee:* ₹{quoted}\n"
+                    "• Pay via *Cash to Helper* or *Instant UPI* upon delivery."
+                )
+
                 body = (
                     f"✅ *Order Confirmed! (#{order_id})*\n"
                     f"━━━━━━━━━━━━━━━━━━━━━\n"
-                    f"A helper is being assigned to your location in Bhongir.\n"
-                    f"💰 *Quoted Fee:* ₹{quoted}\n\n"
+                    f"🛵 *Helper Dispatch:* Assigning nearest verified Need2Done helper in Bhongir zone...\n\n"
+                    f"{item_pay_note}\n\n"
                     f"Thank you for choosing Need2Done!"
                 )
                 if user:
@@ -201,6 +226,17 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                         button_text="📍 Track Order",
                         url=tracking_url
                     )
+                    return None
+                return body
+            elif text_clean.upper() in ["CW_SHARE_LOC", "LOCATION", "LOC"]:
+                body = (
+                    "📍 *Share Live WhatsApp Location Pin*\n"
+                    "━━━━━━━━━━━━━━━━━━━━━\n"
+                    "Tap the attachment icon (📎) in WhatsApp and select *Location* to send your location pin.\n\n"
+                    "We will calculate exact road routing distance via Ola Maps!"
+                )
+                if user:
+                    send_message(user, body)
                     return None
                 return body
             elif text_clean.upper() in ["CW_EDIT_TASK", "EDIT"]:
@@ -230,9 +266,9 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
         traceback.print_exc()
         return "An error occurred while processing your request. Please try again."
 
-def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optional[str] = None) -> Optional[str]:
+def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optional[str] = None, lat: Optional[float] = None, lng: Optional[float] = None) -> Optional[str]:
     """
-    Helper function to run Gemini Flash NLP Intent Classification & calculate quote with interactive buttons.
+    Helper function to run Gemini Flash NLP Intent Classification & calculate quote with itemized fee breakdown.
     """
     session["task_description"] = task_text
     session["custom_work_step"] = "CONFIRM_QUOTE"
@@ -240,6 +276,10 @@ def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optiona
     # 1. AI Intent Classification via Gemini Flash
     ai_intent = classify_custom_work_intent_gemini(task_text)
     task_type = ai_intent.get("task_type", "unique_custom_task")
+    pickup_loc = ai_intent.get("pickup_location") or "Nearest Store / Fuel Station (Bhongir)"
+    drop_loc = session.get("drop_location_name") or ai_intent.get("drop_location") or "Your location (Bhongir)"
+    has_shopping = ai_intent.get("has_shopping", False)
+    session["has_shopping"] = has_shopping
 
     # Check Safety Shield Flag
     if ai_intent.get("safety_flag") == "BLOCKED_RESTRICTED":
@@ -255,16 +295,19 @@ def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optiona
             return None
         return body
 
-    service_fee = 119
+    service_fee = 141
     est_dist = 4.5
+    breakdown_list = []
 
-    # 2. Call Node.js Pricing Engine Endpoint if running locally
+    # 2. Call Node.js Pricing Engine Endpoint
     try:
         payload = {
             "taskType": task_type,
-            "distanceKm": 4.5,
+            "distanceKm": 4.5 if not (lat and lng) else 0,
+            "dropLat": lat,
+            "dropLng": lng,
             "hasAccessCoordination": ai_intent.get("has_access_coordination", False),
-            "hasShopping": ai_intent.get("has_shopping", False),
+            "hasShopping": has_shopping,
             "itemLines": ai_intent.get("item_lines_count", 0),
             "extraStops": ai_intent.get("extra_stops", 0),
             "description": task_text
@@ -274,28 +317,70 @@ def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optiona
             data = res.json()
             if data.get("success"):
                 summary = data.get("summary", {})
-                service_fee = summary.get("serviceFee", 119)
+                service_fee = summary.get("serviceFee", 141)
                 est_dist = data.get('calculatedDistanceKm', 4.5)
+                breakdown_list = data.get("breakdown", [])
     except Exception as e:
         print(f"[CUSTOM_WORK_BOT] Pricing engine notice: {e}")
 
     session["quoted_fee"] = service_fee
 
+    # Build Breakdown Text
+    breakdown_lines = []
+    if breakdown_list:
+        for item in breakdown_list:
+            lbl = item.get("label", "")
+            amt = item.get("amount", 0)
+            breakdown_lines.append(f"• {lbl}: ₹{int(amt)}")
+    else:
+        # Standard Fallback Breakdown
+        extra_dist_km = max(0.0, round(est_dist - 3.0, 1))
+        dist_charge = int(extra_dist_km * 8)
+        base_fee = service_fee - dist_charge
+        breakdown_lines = [
+            f"• Base Errand Fee (incl. 3km & 15m handling): ₹{base_fee}",
+            f"• Route Distance Charge ({extra_dist_km} km extra @ ₹8/km): ₹{dist_charge}"
+        ]
+
+    breakdown_text = "\n".join(breakdown_lines)
+
+    # Item Payment & Purchase Policy
+    if has_shopping or any(w in task_text.lower() for w in ['petrol', 'fuel', 'buy', 'bring', 'grocery', 'medicine', 'store']):
+        goods_policy = (
+            "🛒 *Item Purchase & Goods Payment Policy:*\n"
+            "• *Who pays for petrol/items?* The assigned Helper advances cash at the store/pump on your behalf.\n"
+            "• *Upon Delivery:* You reimburse Helper for: *Actual Store Receipt Amount + Quoted Service Fee (₹" + str(service_fee) + ")*.\n"
+            "• *Payment Options:* Cash to Helper (COD) or Instant UPI on delivery."
+        )
+    else:
+        goods_policy = (
+            "📦 *Pickup & Delivery Policy:*\n"
+            "• Direct errand pickup & dropoff (no store purchase required).\n"
+            "• *Upon Delivery:* You pay the Helper: *Quoted Service Fee (₹" + str(service_fee) + ")* via Cash or UPI."
+        )
+
+    cat_title = task_type.replace('_', ' ').title()
     body = (
-        f"🧾 *Custom Work Price Quote*\n"
+        f"🧾 *Need2Done Custom Work Quote*\n"
         f"━━━━━━━━━━━━━━━━━━━━━\n"
         f"📝 *Task:* {task_text[:120]}\n"
-        f"🏷️ *Category:* {task_type.replace('_', ' ').title()}\n"
-        f"🛣️ *Est. Distance:* {est_dist} km\n"
-        f"⏱️ *Included Time:* Up to 15 mins handling\n\n"
+        f"🏷️ *Category:* {cat_title}\n\n"
+        f"📍 *Pickup:* {pickup_loc}\n"
+        f"🏁 *Drop:* {drop_loc}\n"
+        f"🛣️ *Est. Route Distance:* {est_dist} km (via Ola Maps road route)\n"
+        f"⏱️ *Included Handling:* Up to 15 mins\n\n"
+        f"📊 *Itemized Fee Breakdown:*\n"
+        f"{breakdown_text}\n"
+        f"━━━━━━━━━━━━━━━━━━━━━\n"
         f"💵 *Quoted Service Fee:* *₹{service_fee}*\n"
-        f"_(No percentage markups on merchant goods)_"
+        f"_(No percentage markups on merchant goods)_\n\n"
+        f"{goods_policy}"
     )
 
     buttons = [
         {"id": "CW_ACCEPT_QUOTE", "title": "✅ Confirm & Dispatch"},
-        {"id": "CW_EDIT_TASK", "title": "✏️ Edit Task"},
-        {"id": "CW_CANCEL_TASK", "title": "❌ Cancel"}
+        {"id": "CW_SHARE_LOC", "title": "📍 Share Location Pin"},
+        {"id": "CW_EDIT_TASK", "title": "✏️ Edit Task"}
     ]
 
     if user:
