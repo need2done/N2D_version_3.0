@@ -199,14 +199,15 @@ def finalize_order(session: dict) -> str | None:
 
         if not existing_order_id:
             prefix_map = {
-                1: "N2DGR",   # Groceries
-                7: "N2DVF",   # Vegetables & Fruits
-                9: "N2DFD",   # Food Service
-                2: "N2DMD",   # Medicines
-                4: "N2DRD",   # Ride
-                3: "N2DAW",   # AnyWork
-                5: "N2DAW",   # AnyWork
-                10: "N2DHS"   # Home Services
+                1: "N2DGR_",   # Groceries
+                7: "N2DVF_",   # Vegetables & Fruits
+                9: "N2DFD_",   # Food Service
+                2: "N2DMD_",   # Medicines
+                4: "N2DRD_",   # Ride
+                3: "N2DCW_",   # AnyWork / Custom Work
+                5: "N2DCW_",   # AnyWork / Custom Work
+                11: "N2DCW_",  # AnyWork / Custom Work
+                10: "N2DHS_"   # Home Services
             }
             order_prefix = prefix_map.get(service_id, "N2D")
             order_code = f"{order_prefix}{uuid.uuid4().hex[:4].upper()}"

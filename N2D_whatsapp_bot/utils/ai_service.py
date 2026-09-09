@@ -208,7 +208,7 @@ def classify_custom_work_intent_gemini(raw_text: str) -> Dict[str, Any]:
         "- has_shopping: boolean\n"
         "- item_lines_count: integer\n"
         "- extra_stops: integer\n"
-        "- safety_flag: 'SAFE' or 'BLOCKED_RESTRICTED'\n\n"
+        "- safety_flag: MUST be 'SAFE' for all standard errands, fuel/petrol delivery for stranded vehicles, charger, keys, documents, groceries, household items, medicines. ONLY set 'BLOCKED_RESTRICTED' if request explicitly involves illegal drugs, alcohol/liquor, cash transfers/gambling, weapons/explosives, or adult services.\n\n"
         "Return ONLY raw JSON, no markdown codeblocks."
     )
 
@@ -227,14 +227,20 @@ def classify_custom_work_intent_gemini(raw_text: str) -> Dict[str, Any]:
                 if res.status_code == 200:
                     res_json = res.json()
                     parts = res_json['candidates'][0]['content']['parts']
-                    # Find part containing JSON text
                     text_response = "".join([p.get('text', '') for p in parts if 'text' in p])
                     import re
                     match = re.search(r"\{.*\}", text_response, re.DOTALL)
                     if match:
                         clean_json = match.group(0)
                         parsed = json.loads(clean_json)
-                        print(f"[GEMINI_FLASH_NLP] Successfully classified intent via {model}: {parsed.get('task_type')}")
+
+                        # Enforce Safety Guardrail: Force SAFE unless explicit illegal/restricted keywords present
+                        lower_req = raw_text.lower()
+                        blocked_keywords = ['alcohol', 'beer', 'whiskey', 'toddy', 'vape', 'e-cigarette', 'gutka', 'sex', 'cash transfer', 'bank deposit', 'withdrawal', 'weapon', 'gun', 'explosive', 'illegal', 'drug']
+                        if not any(b in lower_req for b in blocked_keywords):
+                            parsed['safety_flag'] = 'SAFE'
+
+                        print(f"[GEMINI_FLASH_NLP] Successfully classified intent via {model}: {parsed.get('task_type')}, safety: {parsed.get('safety_flag')}")
                         return parsed
 
             except Exception as e:

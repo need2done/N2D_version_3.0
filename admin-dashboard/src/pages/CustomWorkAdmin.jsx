@@ -55,7 +55,7 @@ export default function CustomWorkAdmin() {
     // Sample/Live Custom Work Orders
     const [orders, setOrders] = useState([
         {
-            id: 'CW-8092',
+            id: 'N2DCW_8092',
             taskType: 'Buy & Bring',
             customerName: 'Kamesh Sharma',
             phone: '+91 98765 43210',
@@ -73,7 +73,7 @@ export default function CustomWorkAdmin() {
             itemsList: ['Sona Masoori Rice 5kg', 'Toor Dal 1kg', 'Sunflower Oil 1L']
         },
         {
-            id: 'CW-8091',
+            id: 'N2DCW_8091',
             taskType: 'Direct Pickup',
             customerName: 'Sujatha Rao',
             phone: '+91 91234 56789',
@@ -91,7 +91,7 @@ export default function CustomWorkAdmin() {
             itemsList: ['Laptop Charger & Keys']
         },
         {
-            id: 'CW-8090',
+            id: 'N2DCW_8090',
             taskType: 'Unique Custom Task',
             customerName: 'Vikram Reddy',
             phone: '+91 99887 76655',
@@ -483,11 +483,17 @@ export default function CustomWorkAdmin() {
 
             {/* INSPECT ORDER DRAWER MODAL */}
             {selectedOrder && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.75)', display: 'flex', justifyContent: 'flex-end', zIndex: 9999 }}>
-                    <div style={{ width: '100%', maxWidth: '480px', backgroundColor: '#1e293b', height: '100%', padding: '24px', overflowY: 'auto', borderLeft: '1px solid #334155', color: '#f8fafc' }}>
+                <div 
+                    onClick={() => setSelectedOrder(null)}
+                    style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.75)', display: 'flex', justifyContent: 'flex-end', zIndex: 9999, cursor: 'pointer' }}
+                >
+                    <div 
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ width: '100%', maxWidth: '480px', backgroundColor: '#1e293b', height: '100%', padding: '24px', overflowY: 'auto', borderLeft: '1px solid #334155', color: '#f8fafc', cursor: 'default' }}
+                    >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid #334155', paddingBottom: '16px' }}>
                             <h3 style={{ fontSize: '20px', fontWeight: '800', color: '#f59e0b', margin: 0 }}>Order Details: {selectedOrder.id}</h3>
-                            <X size={24} style={{ cursor: 'pointer', color: '#94a3b8' }} onClick={() => setSelectedOrder(null)} />
+                            <X size={24} style={{ cursor: 'pointer', color: '#94a3b8' }} onClick={(e) => { e.stopPropagation(); setSelectedOrder(null); }} />
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -526,7 +532,8 @@ export default function CustomWorkAdmin() {
                             )}
 
                             <button 
-                                onClick={() => setSelectedOrder(null)}
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setSelectedOrder(null); }}
                                 style={{ backgroundColor: '#3b82f6', color: '#fff', padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', cursor: 'pointer', marginTop: '16px' }}
                             >
                                 Close Drawer

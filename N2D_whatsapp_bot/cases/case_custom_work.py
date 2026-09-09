@@ -181,7 +181,7 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                     order_id = finalize_order(session, payment_method='COD')
                 except Exception as finalize_err:
                     print(f"[CUSTOM_WORK] Error finalizing order: {finalize_err}")
-                    order_id = f"CW-{user[-4:] if user else '101'}"
+                    order_id = f"N2DCW_{user[-4:] if user else '101'}"
 
                 session["custom_work_step"] = "DONE"
                 session["stage"] = "COMPLETED"
