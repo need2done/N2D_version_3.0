@@ -146,7 +146,10 @@ function calculateCustomWorkPrice(params) {
             customerFare = baseBuy + (timeBlocks * CONFIG.EXTRA_TIME_BLOCK);
             helperPayout = Math.max(minPayout, 45 + shopHelper + extraStoreHelper + (dist * CONFIG.PER_KM_BIKE_HELPER)) + (timeBlocks * CONFIG.EXTRA_TIME_BLOCK_HELPER);
             
-            breakdown.push({ label: 'Base Buy & Bring Fare', amount: baseBuy });
+            breakdown.push({ label: 'Base Shopping Errand Fee', amount: CONFIG.SERVICE_BASE });
+            breakdown.push({ label: 'Shopping & Purchasing Effort', amount: shopFee });
+            if (stores > 0) breakdown.push({ label: `Additional Stores (${stores} extra @ ₹20)`, amount: extraStoreFee });
+            if (dist > 0) breakdown.push({ label: `Route Distance (${dist} km @ ₹8/km)`, amount: dist * CONFIG.PER_KM_BIKE });
             if (timeBlocks > 0) breakdown.push({ label: `Extra Shopping Time (${timeBlocks} x 15m)`, amount: timeBlocks * CONFIG.EXTRA_TIME_BLOCK });
             break;
 
@@ -174,7 +177,11 @@ function calculateCustomWorkPrice(params) {
             customerFare = baseMulti + (timeBlocks * CONFIG.EXTRA_TIME_BLOCK);
             helperPayout = Math.max(minPayout, 45 + stopHelperTotal + accessHelperAddon + shoppingHelperAddon + (dist * CONFIG.PER_KM_BIKE_HELPER)) + (timeBlocks * CONFIG.EXTRA_TIME_BLOCK_HELPER);
             
-            breakdown.push({ label: 'Base Multi-Stop Fare', amount: baseMulti });
+            breakdown.push({ label: 'Base Multi-Stop Service Fee', amount: CONFIG.SERVICE_BASE });
+            if (stops > 0) breakdown.push({ label: `Additional Stop Fee (${stops} extra @ ₹20)`, amount: stopFeeTotal });
+            if (shoppingAddon > 0) breakdown.push({ label: 'Shopping & Purchasing Effort', amount: shoppingAddon });
+            if (accessAddon > 0) breakdown.push({ label: 'Access & Coordination Fee', amount: accessAddon });
+            if (dist > 0) breakdown.push({ label: `Route Distance (${dist} km @ ₹8/km)`, amount: dist * CONFIG.PER_KM_BIKE });
             if (timeBlocks > 0) breakdown.push({ label: `Extra Time (${timeBlocks} x 15m)`, amount: timeBlocks * CONFIG.EXTRA_TIME_BLOCK });
             break;
 
