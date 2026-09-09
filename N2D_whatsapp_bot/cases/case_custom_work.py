@@ -1,12 +1,13 @@
 """
 =================================================
-Need2Done – Custom Work Service Case Handler (v2.0)
+Need2Done – Custom Work Service Case Handler (v3.0)
 Bhongir Pilot Interactive WhatsApp Handler
 =================================================
 ✔ Audio download & Gemini / Sarvam STT voice recognition
 ✔ Auto-translated and cleaned voice transcripts
-✔ Interactive WhatsApp reply buttons for voice confirmation & price quote
-✔ Auto-order creation & helper dispatch via finalize_order
+✔ Step-by-step Pickup & Drop Location Collection (Pin or Address)
+✔ Ola Maps road distance & itemized fee calculation
+✔ Explicit item payment policy & helper dispatch
 """
 
 import requests
@@ -15,6 +16,7 @@ import traceback
 from typing import Optional, Dict, Any
 
 from utils.ai_service import classify_custom_work_intent_gemini, transcribe_audio_sarvam_or_whisper, process_voice_note_with_translation
+from utils.location import to_map_link, get_road_distance, haversine
 from whatsapp_client import download_whatsapp_media, send_reply_buttons, send_message, send_url_button
 from core.order_finalizer import finalize_order
 from config import TRACKING_BASE_URL
@@ -24,28 +26,24 @@ NODE_BACKEND_URL = "http://localhost:5000/api/custom-work/quote"
 
 def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str, Any]]) -> Optional[str]:
     """
-    Handles customer interactions during Custom Work ordering flow in WhatsApp with Interactive Buttons & Bilingual Voice STT.
+    Handles customer interactions during Custom Work ordering flow in WhatsApp.
+    Collects Pickup & Drop Locations, calculates exact distance via Ola Maps, and provides itemized quote.
     """
     try:
         step = session.get("custom_work_step", "INIT")
         text_clean = (text or "").strip()
         user = session.get("user_id") or session.get("phone") or session.get("user")
 
-        # Global Location Pin Listener for Custom Work
-        if raw and raw.get("type") == "location":
-            loc = raw.get("location", {})
-            lat = loc.get("latitude")
-            lng = loc.get("longitude")
-            if lat and lng:
-                session["drop_lat"] = lat
-                session["drop_lng"] = lng
-                session["drop_location_name"] = loc.get("name") or loc.get("address") or f"Location Pin ({lat:.4f}, {lng:.4f})"
-                task_text = session.get("pending_task_text") or session.get("task_description") or "Custom Errand Task"
-                return _generate_price_quote(session, task_text, user, lat=lat, lng=lng)
-
         # Step 1: Init / Task Description Intake
         if step == "INIT":
             session["custom_work_step"] = "WAITING_DETAILS"
+            session.pop("pickup_location", None)
+            session.pop("drop_location", None)
+            session.pop("pickup_lat", None)
+            session.pop("pickup_lng", None)
+            session.pop("drop_lat", None)
+            session.pop("drop_lng", None)
+
             body = (
                 "💼 *Need2Done Custom Work (Bhongir Pilot)*\n"
                 "━━━━━━━━━━━━━━━━━━━━━\n"
@@ -63,7 +61,6 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
 
         # Step 2: Intake Details (Text or Audio Voice Note)
         if step == "WAITING_DETAILS":
-            # Interactive guide button clicks
             if text_clean == "CW_VOICE_GUIDE":
                 if user:
                     send_message(user, "🎙️ *Voice Note Instructions:*\n\nHold the microphone button in WhatsApp and describe your task clearly in **Telugu, Hindi, English, or Teluglish**.")
@@ -73,7 +70,7 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                     send_message(user, "✍️ Please type your task description in plain text below:")
                     return None
 
-            # Check if input is a Voice Note Audio
+            # Voice Note Audio Intake
             if text_clean.startswith("AUDIO") or (raw and raw.get("type") in ["audio", "voice"]):
                 media_id = ""
                 if text_clean.startswith("AUDIO:"):
@@ -109,11 +106,9 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                             from utils.ai_service import clean_and_translate_transcript
                             eng_text = clean_and_translate_transcript(orig_text)
 
-                        # Save English translation as pending task text for pricing & helper dispatch
                         session["pending_task_text"] = eng_text or orig_text
                         session["custom_work_step"] = "CONFIRM_AUDIO_TRANSCRIPT"
 
-                        # Check if original transcript and English translation are distinct
                         if orig_text and eng_text and orig_text.strip() != eng_text.strip():
                             body = (
                                 f"🎙️ *Voice Note Transcribed:*\n"
@@ -132,7 +127,7 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                             )
 
                         buttons = [
-                            {"id": "CW_CONFIRM_VOICE", "title": "✅ Confirm & Quote"},
+                            {"id": "CW_CONFIRM_VOICE", "title": "✅ Confirm & Proceed"},
                             {"id": "CW_RETRY_VOICE", "title": "🔄 Record Again"}
                         ]
                         if user:
@@ -140,29 +135,23 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                             return None
                         return body
 
-                # If audio download failed
-                body = (
-                    "⚠️ *Audio standard intake notice*\n"
-                    "━━━━━━━━━━━━━━━━━━━━━\n"
-                    "Please type your custom work task in plain text or send a clear voice note."
-                )
+                body = "⚠️ Please type your task description in plain text or send a clear voice note."
                 if user:
                     send_message(user, body)
                     return None
                 return body
 
-            # Standard Text Input
             if len(text_clean) < 3:
                 return "Please provide a brief description of your task (at least a few words)."
 
             session["pending_task_text"] = text_clean
-            return _generate_price_quote(session, text_clean, user)
+            return prompt_for_locations_or_quote(session, text_clean, user)
 
-        # Step 3: Voice Note Transcript Confirmation (Interactive Button / Text Option)
+        # Step 3: Voice Note Transcript Confirmation
         if step == "CONFIRM_AUDIO_TRANSCRIPT":
             if text_clean.upper() in ["1", "YES", "Y", "CONFIRM", "OK", "CW_CONFIRM_VOICE"]:
                 task_text = session.get("pending_task_text", "Custom Errand Task")
-                return _generate_price_quote(session, task_text, user)
+                return prompt_for_locations_or_quote(session, task_text, user)
             else:
                 session["custom_work_step"] = "WAITING_DETAILS"
                 body = (
@@ -175,22 +164,92 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                     return None
                 return body
 
-        # Step 4: Final Price Quote Confirmation (Interactive Buttons)
+        # Step 4: Collect Pickup Location
+        if step == "WAITING_PICKUP_LOCATION":
+            if text_clean == "CW_SEND_LOC_GUIDE":
+                if user:
+                    send_message(user, "📍 *Location Pin Instructions:*\n\nTap the attachment icon (📎) in WhatsApp and select *Location* to send your live location pin.")
+                    return None
+
+            p_name = session.get("pickup_name_label", "Pickup Point")
+            if raw and raw.get("type") == "location":
+                loc = raw.get("location", {})
+                lat = loc.get("latitude")
+                lng = loc.get("longitude")
+                if lat and lng:
+                    session["pickup_lat"] = lat
+                    session["pickup_lng"] = lng
+                    session["pickup_location"] = to_map_link(lat, lng, name=p_name, address=loc.get("address"))
+            elif len(text_clean) >= 3 and text_clean.upper() not in ["CW_CANCEL_TASK"]:
+                session["pickup_location"] = f"{text_clean}, Bhongir"
+            else:
+                return f"📍 Please type your exact pickup address for '{p_name}' or send a location pin."
+
+            # Now prompt for Drop Location
+            d_name = session.get("drop_name_label", "Drop-off Point")
+            session["custom_work_step"] = "WAITING_DROP_LOCATION"
+            body = (
+                f"🏁 *Step 2 of 2: Drop-off Location Needed*\n"
+                f"━━━━━━━━━━━━━━━━━━━━━\n"
+                f"✅ *Pickup set:* {session['pickup_location']}\n\n"
+                f"Please provide the **DROP-OFF location** for *'{d_name}'*:\n"
+                f"• Tap 📎 in WhatsApp to send **Location Pin** 📍, or\n"
+                f"• Type exact street address / landmark below."
+            )
+            buttons = [
+                {"id": "CW_SEND_LOC_GUIDE", "title": "📍 Share Location Pin"},
+                {"id": "CW_CANCEL_TASK", "title": "❌ Cancel"}
+            ]
+            if user:
+                send_reply_buttons(to=user, body=body, buttons=buttons)
+                return None
+            return body
+
+        # Step 5: Collect Drop Location
+        if step == "WAITING_DROP_LOCATION":
+            if text_clean == "CW_SEND_LOC_GUIDE":
+                if user:
+                    send_message(user, "📍 *Location Pin Instructions:*\n\nTap the attachment icon (📎) in WhatsApp and select *Location* to send your live location pin.")
+                    return None
+
+            d_name = session.get("drop_name_label", "Drop-off Point")
+            if raw and raw.get("type") == "location":
+                loc = raw.get("location", {})
+                lat = loc.get("latitude")
+                lng = loc.get("longitude")
+                if lat and lng:
+                    session["drop_lat"] = lat
+                    session["drop_lng"] = lng
+                    session["drop_location"] = to_map_link(lat, lng, name=d_name, address=loc.get("address"))
+            elif len(text_clean) >= 3 and text_clean.upper() not in ["CW_CANCEL_TASK"]:
+                session["drop_location"] = f"{text_clean}, Bhongir"
+            else:
+                return f"🏁 Please type your exact drop-off address for '{d_name}' or send a location pin."
+
+            # Both locations collected -> Generate exact quote!
+            task_text = session.get("pending_task_text") or session.get("task_description") or "Custom Errand Task"
+            return _generate_price_quote(session, task_text, user)
+
+        # Step 6: Final Price Quote Confirmation
         if step == "CONFIRM_QUOTE":
             if text_clean.upper() in ["YES", "Y", "CONFIRM", "OK", "1", "CW_ACCEPT_QUOTE"]:
                 task_text = session.get("task_description", "Custom Errand Task")
-                quoted = session.get("quoted_fee", 141)
+                quoted = session.get("quoted_fee", 119)
                 has_shop = session.get("has_shopping", False)
-                
-                # Ensure data dict exists for order_finalizer
+                p_loc = session.get("pickup_location", "Shared via WhatsApp")
+                d_loc = session.get("drop_location", "Shared via WhatsApp")
+                dist = session.get("calculated_distance", 2.5)
+
                 if "data" not in session or not isinstance(session["data"], dict):
                     session["data"] = {}
                 session["data"]["items"] = [task_text]
                 session["data"]["estimated_cost"] = quoted
                 session["data"]["service_name"] = "AnyWork"
+                session["data"]["pickup_location"] = p_loc
+                session["data"]["drop_location"] = d_loc
+                session["data"]["location"] = d_loc
 
                 try:
-                    # Finalize order, insert to DB and notify helper/admin
                     order_id = finalize_order(session, payment_method='COD')
                 except Exception as finalize_err:
                     print(f"[CUSTOM_WORK] Error finalizing order: {finalize_err}")
@@ -215,7 +274,10 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                 body = (
                     f"✅ *Order Confirmed! (#{order_id})*\n"
                     f"━━━━━━━━━━━━━━━━━━━━━\n"
-                    f"🛵 *Helper Dispatch:* Assigning nearest verified Need2Done helper in Bhongir zone...\n\n"
+                    f"🛵 *Helper Dispatch:* Assigning nearest verified Need2Done helper in Bhongir...\n\n"
+                    f"📍 *Pickup:* {p_loc}\n"
+                    f"🏁 *Drop:* {d_loc}\n"
+                    f"🛣️ *Route Distance:* {dist} km (via Ola Maps)\n\n"
                     f"{item_pay_note}\n\n"
                     f"Thank you for choosing Need2Done!"
                 )
@@ -228,28 +290,11 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                     )
                     return None
                 return body
-            elif text_clean.upper() in ["CW_SHARE_LOC", "LOCATION", "LOC"]:
-                body = (
-                    "📍 *Share Live WhatsApp Location Pin*\n"
-                    "━━━━━━━━━━━━━━━━━━━━━\n"
-                    "Tap the attachment icon (📎) in WhatsApp and select *Location* to send your location pin.\n\n"
-                    "We will calculate exact road routing distance via Ola Maps!"
-                )
-                if user:
-                    send_message(user, body)
-                    return None
-                return body
-            elif text_clean.upper() in ["CW_EDIT_TASK", "EDIT"]:
-                session["custom_work_step"] = "WAITING_DETAILS"
-                body = (
-                    "✏️ *Editing Task Description*\n"
-                    "━━━━━━━━━━━━━━━━━━━━━\n"
-                    "Please type your revised task description or send a new voice note."
-                )
-                if user:
-                    send_message(user, body)
-                    return None
-                return body
+            elif text_clean.upper() in ["CW_EDIT_LOCATIONS", "EDIT_LOC", "CW_EDIT_TASK", "EDIT"]:
+                task_text = session.get("task_description", "Custom Errand Task")
+                session.pop("pickup_location", None)
+                session.pop("drop_location", None)
+                return prompt_for_locations_or_quote(session, task_text, user)
             else:
                 session["custom_work_step"] = "INIT"
                 session["stage"] = "MENU"
@@ -266,22 +311,14 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
         traceback.print_exc()
         return "An error occurred while processing your request. Please try again."
 
-def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optional[str] = None, lat: Optional[float] = None, lng: Optional[float] = None) -> Optional[str]:
+def prompt_for_locations_or_quote(session: Dict[str, Any], task_text: str, user: Optional[str] = None) -> Optional[str]:
     """
-    Helper function to run Gemini Flash NLP Intent Classification & calculate quote with itemized fee breakdown.
+    Intelligently determines whether task requires Pickup & Drop location collection from customer before quoting.
     """
     session["task_description"] = task_text
-    session["custom_work_step"] = "CONFIRM_QUOTE"
-
-    # 1. AI Intent Classification via Gemini Flash
     ai_intent = classify_custom_work_intent_gemini(task_text)
-    task_type = ai_intent.get("task_type", "unique_custom_task")
-    pickup_loc = ai_intent.get("pickup_location") or "Nearest Store / Fuel Station (Bhongir)"
-    drop_loc = session.get("drop_location_name") or ai_intent.get("drop_location") or "Your location (Bhongir)"
-    has_shopping = ai_intent.get("has_shopping", False)
-    session["has_shopping"] = has_shopping
+    session["ai_intent"] = ai_intent
 
-    # Check Safety Shield Flag
     if ai_intent.get("safety_flag") == "BLOCKED_RESTRICTED":
         session["custom_work_step"] = "INIT"
         session["stage"] = "MENU"
@@ -295,17 +332,97 @@ def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optiona
             return None
         return body
 
-    service_fee = 141
-    est_dist = 4.5
+    task_type = ai_intent.get("task_type", "unique_custom_task")
+    p_name = ai_intent.get("pickup_location") or "Pickup Point"
+    d_name = ai_intent.get("drop_location") or "Drop-off Point"
+    has_shopping = ai_intent.get("has_shopping", False)
+    session["has_shopping"] = has_shopping
+
+    session["pickup_name_label"] = p_name
+    session["drop_name_label"] = d_name
+
+    requires_two_locs = task_type in ["retrieve", "direct_pickup", "multi_stop"] or (not has_shopping and p_name not in ["Pickup Point", "Nearest Store"])
+
+    # 1. Ask for Pickup Location if missing
+    if requires_two_locs and not session.get("pickup_location"):
+        session["custom_work_step"] = "WAITING_PICKUP_LOCATION"
+        body = (
+            f"📍 *Step 1 of 2: Pickup Location Needed*\n"
+            f"━━━━━━━━━━━━━━━━━━━━━\n"
+            f"📝 *Task:* {task_text[:100]}\n\n"
+            f"Please provide the **PICKUP location** for *'{p_name}'*:\n"
+            f"• Tap 📎 in WhatsApp to send **Location Pin** 📍, or\n"
+            f"• Type exact street address / landmark below."
+        )
+        buttons = [
+            {"id": "CW_SEND_LOC_GUIDE", "title": "📍 Share Location Pin"},
+            {"id": "CW_CANCEL_TASK", "title": "❌ Cancel"}
+        ]
+        if user:
+            send_reply_buttons(to=user, body=body, buttons=buttons)
+            return None
+        return body
+
+    # 2. Ask for Drop Location if missing
+    if not session.get("drop_location"):
+        session["custom_work_step"] = "WAITING_DROP_LOCATION"
+        if not session.get("pickup_location"):
+            session["pickup_location"] = "Nearest Store / Fuel Station (Bhongir)"
+
+        body = (
+            f"🏁 *{'Step 2 of 2: ' if requires_two_locs else ''}Drop-off Location Needed*\n"
+            f"━━━━━━━━━━━━━━━━━━━━━\n"
+            f"📝 *Task:* {task_text[:100]}\n\n"
+            f"Please provide the **DROP-OFF / DELIVERY location** for *'{d_name}'*:\n"
+            f"• Tap 📎 in WhatsApp to send **Location Pin** 📍, or\n"
+            f"• Type exact street address / landmark below."
+        )
+        buttons = [
+            {"id": "CW_SEND_LOC_GUIDE", "title": "📍 Share Location Pin"},
+            {"id": "CW_CANCEL_TASK", "title": "❌ Cancel"}
+        ]
+        if user:
+            send_reply_buttons(to=user, body=body, buttons=buttons)
+            return None
+        return body
+
+    # 3. Both locations available -> Generate quote!
+    return _generate_price_quote(session, task_text, user)
+
+def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optional[str] = None) -> Optional[str]:
+    """
+    Calculates final quote using exact Pickup & Drop locations and Ola Maps routing distance.
+    """
+    session["task_description"] = task_text
+    session["custom_work_step"] = "CONFIRM_QUOTE"
+
+    ai_intent = session.get("ai_intent") or classify_custom_work_intent_gemini(task_text)
+    task_type = ai_intent.get("task_type", "unique_custom_task")
+    has_shopping = session.get("has_shopping", False)
+
+    pickup_loc = session.get("pickup_location") or ai_intent.get("pickup_location") or "Nearest Store / Fuel Station (Bhongir)"
+    drop_loc = session.get("drop_location") or ai_intent.get("drop_location") or "Customer Location (Bhongir)"
+
+    p_lat = session.get("pickup_lat")
+    p_lng = session.get("pickup_lng")
+    d_lat = session.get("drop_lat")
+    d_lng = session.get("drop_lng")
+
+    est_dist = 2.5
+    if p_lat and p_lng and d_lat and d_lng:
+        est_dist = round(get_road_distance(p_lat, p_lng, d_lat, d_lng), 1)
+
+    service_fee = 119
     breakdown_list = []
 
-    # 2. Call Node.js Pricing Engine Endpoint
     try:
         payload = {
             "taskType": task_type,
-            "distanceKm": 4.5 if not (lat and lng) else 0,
-            "dropLat": lat,
-            "dropLng": lng,
+            "pickupLat": p_lat,
+            "pickupLng": p_lng,
+            "dropLat": d_lat,
+            "dropLng": d_lng,
+            "distanceKm": est_dist,
             "hasAccessCoordination": ai_intent.get("has_access_coordination", False),
             "hasShopping": has_shopping,
             "itemLines": ai_intent.get("item_lines_count", 0),
@@ -317,13 +434,14 @@ def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optiona
             data = res.json()
             if data.get("success"):
                 summary = data.get("summary", {})
-                service_fee = summary.get("serviceFee", 141)
-                est_dist = data.get('calculatedDistanceKm', 4.5)
+                service_fee = summary.get("serviceFee", 119)
+                est_dist = data.get('calculatedDistanceKm', est_dist)
                 breakdown_list = data.get("breakdown", [])
     except Exception as e:
         print(f"[CUSTOM_WORK_BOT] Pricing engine notice: {e}")
 
     session["quoted_fee"] = service_fee
+    session["calculated_distance"] = est_dist
 
     # Build Breakdown Text
     breakdown_lines = []
@@ -333,18 +451,16 @@ def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optiona
             amt = item.get("amount", 0)
             breakdown_lines.append(f"• {lbl}: ₹{int(amt)}")
     else:
-        # Standard Fallback Breakdown
         extra_dist_km = max(0.0, round(est_dist - 3.0, 1))
         dist_charge = int(extra_dist_km * 8)
         base_fee = service_fee - dist_charge
         breakdown_lines = [
-            f"• Base Errand Fee (incl. 3km & 15m handling): ₹{base_fee}",
+            f"• Base Fare (incl. 3km & 15m handling): ₹{base_fee}",
             f"• Route Distance Charge ({extra_dist_km} km extra @ ₹8/km): ₹{dist_charge}"
         ]
 
     breakdown_text = "\n".join(breakdown_lines)
 
-    # Item Payment & Purchase Policy
     if has_shopping or any(w in task_text.lower() for w in ['petrol', 'fuel', 'buy', 'bring', 'grocery', 'medicine', 'store']):
         goods_policy = (
             "🛒 *Item Purchase & Goods Payment Policy:*\n"
@@ -355,7 +471,7 @@ def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optiona
     else:
         goods_policy = (
             "📦 *Pickup & Delivery Policy:*\n"
-            "• Direct errand pickup & dropoff (no store purchase required).\n"
+            "• Helper will collect item at Pickup location and deliver directly to Drop location.\n"
             "• *Upon Delivery:* You pay the Helper: *Quoted Service Fee (₹" + str(service_fee) + ")* via Cash or UPI."
         )
 
@@ -379,8 +495,8 @@ def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optiona
 
     buttons = [
         {"id": "CW_ACCEPT_QUOTE", "title": "✅ Confirm & Dispatch"},
-        {"id": "CW_SHARE_LOC", "title": "📍 Share Location Pin"},
-        {"id": "CW_EDIT_TASK", "title": "✏️ Edit Task"}
+        {"id": "CW_EDIT_LOCATIONS", "title": "📍 Edit Locations"},
+        {"id": "CW_CANCEL_TASK", "title": "❌ Cancel"}
     ]
 
     if user:
