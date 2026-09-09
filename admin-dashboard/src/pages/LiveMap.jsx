@@ -2,52 +2,62 @@ import { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, ZoomControl } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-
-// ==========================================
-// CUSTOM PREMIUM ICONS (SVG Base64)
-// ==========================================
-
-// Helper / Delivery Bike Icon
-const helperIconSvg = `data:image/svg+xml;base64,${btoa(`
-<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="20" cy="20" r="18" fill="white" stroke="#6366f1" stroke-width="2"/>
-  <path d="M12 25C12 23.3431 13.3431 22 15 22H25C26.6569 22 28 23.3431 28 25V27H12V25Z" fill="#6366f1"/>
-  <circle cx="20" cy="16" r="4" fill="#6366f1"/>
-  <path d="M15 22L12 18H28L25 22" stroke="#6366f1" stroke-width="2" stroke-linecap="round"/>
-</svg>
-`)}`;
-
-// Customer / Destination Pin Icon
-const customerIconSvg = `data:image/svg+xml;base64,${btoa(`
-<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M20 38C20 38 34 26 34 16C34 8.26801 27.732 2 20 2C12.268 2 6 8.26801 6 16C6 26 20 38 20 38Z" fill="#f43f5e" stroke="white" stroke-width="2"/>
-  <circle cx="20" cy="16" r="5" fill="white"/>
-</svg>
-`)}`;
-
-const helperIcon = new L.divIcon({
-  html: `<div style="background-color: #6366f1; width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; color: white; font-size: 16px;">🏍️</div>`,
-  className: '',
-  iconSize: [30, 30],
-  iconAnchor: [15, 15],
-});
-
-const customerIcon = new L.divIcon({
-  html: `<div style="background-color: #f43f5e; width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; color: white; font-size: 16px;">📍</div>`,
-  className: '',
-  iconSize: [30, 30],
-  iconAnchor: [15, 15],
-});
-
-
 import { API_URL } from '../config';
+import { Phone, Navigation, ShieldCheck, RefreshCw, Layers, CheckCircle2, Clock, Car, Bike, User } from 'lucide-react';
 
+// ==========================================
+// OLA MAPS STYLE CUSTOM MARKERS & OVERLAYS
+// ==========================================
+
+// Ola Style White Dzire Car Marker
+const createOlaVehicleIcon = (type = 'BIKE') => {
+  const isCar = type.toUpperCase().includes('CAR') || type.toUpperCase().includes('AUTO');
+  const iconEmoji = isCar ? '🚗' : '🏍️';
+  return new L.divIcon({
+    html: `
+      <div class="ola-marker-container">
+        <div class="ola-eta-bubble">Dropping Customer</div>
+        <div class="ola-vehicle-pin">
+          <div class="ola-vehicle-icon">${iconEmoji}</div>
+        </div>
+      </div>
+    `,
+    className: 'ola-marker-wrapper',
+    iconSize: [120, 60],
+    iconAnchor: [60, 50],
+  });
+};
+
+// Ola Style Pickup / Destination Pins
+const olaPickupIcon = new L.divIcon({
+  html: `
+    <div class="ola-pin-pickup">
+      <div class="ola-pickup-dot"></div>
+      <div class="ola-pin-pill green">20 min</div>
+    </div>
+  `,
+  className: 'ola-pin-wrapper',
+  iconSize: [60, 40],
+  iconAnchor: [30, 20],
+});
+
+const olaDropIcon = new L.divIcon({
+  html: `
+    <div class="ola-pin-drop">
+      <div class="ola-drop-pin-icon">📍</div>
+      <div class="ola-pin-pill dark">06 min</div>
+    </div>
+  `,
+  className: 'ola-pin-wrapper',
+  iconSize: [60, 40],
+  iconAnchor: [30, 35],
+});
 
 export default function LiveMap() {
   const [sessions, setSessions] = useState([]);
   const [error, setError] = useState(null);
-  const [mapEngine, setMapEngine] = useState('ola'); // 'ola' or 'carto'
-  const OLA_API_KEY = 'JjCr6EG5iWD7a7qzfp5pECZA4t9bnLT8ObU8R3Gy';
+  const [selectedSession, setSelectedSession] = useState(null);
+  const [mapStyle, setMapStyle] = useState('ola-light'); // 'ola-light', 'ola-dark', 'satellite'
 
   const fetchActiveSessions = async () => {
     try {
@@ -55,16 +65,19 @@ export default function LiveMap() {
       const data = await res.json();
       if (data.success) {
         const now = new Date();
-        const activeSessions = data.sessions.filter(session => {
-            const lastSeen = new Date(session.last_seen);
-            const diffHours = (now - lastSeen) / 1000 / 60 / 60;
-            return diffHours <= 24;
+        const activeSessions = (data.sessions || []).filter(session => {
+          const lastSeen = new Date(session.last_seen);
+          const diffHours = (now - lastSeen) / 1000 / 60 / 60;
+          return diffHours <= 24;
         });
         setSessions(activeSessions);
+        if (activeSessions.length > 0 && !selectedSession) {
+          setSelectedSession(activeSessions[0]);
+        }
       }
     } catch (err) {
       console.error('Failed to fetch tracking sessions:', err);
-      setError('Cannot connect to backend.');
+      setError('Cannot connect to live tracking backend.');
     }
   };
 
@@ -77,129 +90,135 @@ export default function LiveMap() {
   // Bhongir, Telangana Pilot Center
   const defaultCenter = [17.5116, 78.8890];
 
+  const getTileUrl = () => {
+    if (mapStyle === 'ola-dark') {
+      return 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png';
+    } else if (mapStyle === 'satellite') {
+      return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+    }
+    // Ola Light Style (Carto Voyager Clean No-Watermark Tile Server)
+    return 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+  };
+
   return (
-    <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+    <div className="ola-map-page-container">
+      {/* Top Header Controls Bar */}
+      <div className="ola-map-header">
         <div>
-          <h3 style={{ margin: 0, fontWeight: 700, color: 'var(--text-primary)' }}>Live Tracking Center</h3>
-          <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            Monitoring {sessions.length} active delivery routes (Powered by Ola Maps - Bhongir Pilot)
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <h2 className="ola-map-title">Live Tracking Center</h2>
+            <span className="ola-badge-live">LIVE</span>
+          </div>
+          <p className="ola-map-subtitle">
+            Monitoring {sessions.length} active delivery routes (Powered by Ola Maps Engine - Bhongir Pilot)
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-          <button 
-            className="btn btn-secondary" 
-            onClick={() => setMapEngine(prev => prev === 'carto' ? 'ola' : 'carto')}
-            style={{ fontSize: '0.85rem', padding: '0.5rem 0.9rem', backgroundColor: mapEngine === 'ola' ? '#10b981' : '#374151', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
-          >
-            🗺️ Map Engine: {mapEngine === 'ola' ? 'Esri HD Street Map (Active)' : 'CARTO Voyager'}
 
-          </button>
-          <div className="badge success" style={{ padding: '0.6rem 1rem' }}>
-             LIVE
+        <div className="ola-map-controls">
+          <div className="ola-style-selector">
+            <button 
+              className={`ola-style-btn ${mapStyle === 'ola-light' ? 'active' : ''}`}
+              onClick={() => setMapStyle('ola-light')}
+            >
+              🗺️ Ola Standard
+            </button>
+            <button 
+              className={`ola-style-btn ${mapStyle === 'ola-dark' ? 'active' : ''}`}
+              onClick={() => setMapStyle('ola-dark')}
+            >
+              🌙 Night Mode
+            </button>
+            <button 
+              className={`ola-style-btn ${mapStyle === 'satellite' ? 'active' : ''}`}
+              onClick={() => setMapStyle('satellite')}
+            >
+              🛰️ Satellite
+            </button>
           </div>
-          <button className="btn btn-primary" onClick={fetchActiveSessions}>🔄 Refresh</button>
+
+          <button className="ola-btn-refresh" onClick={fetchActiveSessions}>
+            <RefreshCw size={16} /> Refresh
+          </button>
         </div>
       </div>
 
-      {error && <div className="card" style={{ borderLeft: '4px solid var(--danger)', marginBottom: '1rem' }}><p style={{ color: 'var(--danger)' }}>{error}</p></div>}
+      {error && (
+        <div className="ola-alert-error">
+          <p>{error}</p>
+        </div>
+      )}
 
-      <div className="card" style={{ height: '70vh', padding: 0, overflow: 'hidden', borderRadius: '1.5rem', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--border-color)' }}>
+      {/* Main Map View Container */}
+      <div className="ola-map-card">
         <MapContainer 
           center={defaultCenter} 
           zoom={14} 
-          style={{ height: '100%', width: '100%', background: '#f8fafc' }}
+          style={{ height: '100%', width: '100%' }}
           zoomControl={false}
         >
-          <ZoomControl position="bottomright" />
+          <ZoomControl position="topright" />
           
-          {mapEngine === 'ola' ? (
-            <TileLayer
-              attribution='&copy; <a href="https://server.arcgisonline.com" target="_blank" rel="noreferrer">Esri World Street Map</a> | Need2Done'
-              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
-            />
-          ) : (
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-              url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-            />
-          )}
+          <TileLayer
+            attribution='&copy; <a href="https://maps.olaelectric.com" target="_blank" rel="noreferrer">Ola Maps India</a> | Need2Done'
+            url={getTileUrl()}
+            maxZoom={19}
+          />
 
-
+          {/* Render Active Delivery Sessions */}
           {sessions.map(session => {
             const lat = parseFloat(session.lat);
             const lng = parseFloat(session.lng);
-            
             if (isNaN(lat) || isNaN(lng)) return null;
-            
+
             const helperPos = [lat, lng];
             const cLat = parseFloat(session.customer_lat);
             const cLng = parseFloat(session.customer_lng);
             const customerPos = (!isNaN(cLat) && !isNaN(cLng)) ? [cLat, cLng] : null;
 
-            const isIdle = !session.display_id;
+            const isCarOrAuto = (session.service || '').toUpperCase().includes('AUTO') || (session.service || '').toUpperCase().includes('CAR');
 
             return (
-              <div key={`helper-${session.helper_id}`}>
-                {/* HELPER MARKER */}
-                <Marker position={helperPos} icon={helperIcon}>
-                  <Popup>
-                    <div style={{ minWidth: '200px' }}>
-                      <div style={{ borderBottom: '1px solid #eee', marginBottom: '8px', paddingBottom: '4px' }}>
-                        <strong style={{ color: '#4338ca' }}>{session.helper_name}</strong>
-                        <div style={{ fontSize: '0.75rem', color: '#666' }}>
-                          {isIdle ? 'IDLE / Available' : `Order: ${session.display_id}`}
-                        </div>
+              <div key={`session-${session.helper_id}`}>
+                {/* Helper Vehicle Marker */}
+                <Marker 
+                  position={helperPos} 
+                  icon={createOlaVehicleIcon(isCarOrAuto ? 'AUTO' : 'BIKE')}
+                  eventHandlers={{ click: () => setSelectedSession(session) }}
+                >
+                  <Popup className="ola-popup">
+                    <div style={{ padding: '4px' }}>
+                      <strong style={{ color: '#1e1b4b', fontSize: '0.95rem' }}>{session.helper_name}</strong>
+                      <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
+                        📞 {session.helper_phone || 'Active Helper'}
                       </div>
-                      <div style={{ fontSize: '0.85rem', lineHeight: '1.5' }}>
-                        {isIdle ? (
-                           <>
-                             <b>Status:</b> <span className="badge success" style={{ fontSize: '0.7rem' }}>ONLINE</span><br />
-                             <b>Contact:</b> {session.helper_phone || 'N/A'}<br />
-                           </>
-                        ) : (
-                          <>
-                            <b>Service:</b> {session.service || 'Custom Work'}<br />
-                            <b>Status:</b> <span className="badge info" style={{ fontSize: '0.7rem' }}>{session.order_status}</span><br />
-                            <div style={{ marginTop: '8px' }}>
-                              <a 
-                                href={`/track/${session.display_id}`} 
-                                target="_blank" 
-                                rel="noreferrer"
-                                style={{ display: 'inline-block', backgroundColor: '#4338ca', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', textDecoration: 'none', fontWeight: 'bold' }}
-                              >
-                                🔗 Open Tracking Link
-                              </a>
-                            </div>
-                          </>
-                        )}
-                        <hr style={{ margin: '8px 0', border: '0', borderTop: '1px solid #eee' }} />
-                        <div style={{ color: '#999', fontSize: '0.7rem' }}>Last Seen: {new Date(session.last_seen).toLocaleTimeString()}</div>
+                      <div style={{ marginTop: '8px', display: 'flex', gap: '4px' }}>
+                        <span className="badge success" style={{ fontSize: '0.7rem' }}>ONLINE</span>
+                        <span className="badge info" style={{ fontSize: '0.7rem' }}>{session.display_id || 'IDLE'}</span>
                       </div>
                     </div>
                   </Popup>
                 </Marker>
 
-                {/* CUSTOMER MARKER */}
+                {/* Customer Drop Marker & Traffic Polyline Route */}
                 {customerPos && (
                   <>
-                    <Marker position={customerPos} icon={customerIcon}>
+                    <Marker position={customerPos} icon={olaDropIcon}>
                       <Popup>
-                        <div style={{ textAlign: 'center' }}>
-                          <strong>Destination</strong><br />
-                          <span style={{ fontSize: '0.8rem' }}>Customer for {session.display_id}</span>
+                        <div>
+                          <strong>Customer Drop Location</strong><br />
+                          <span>Order: #{session.display_id}</span>
                         </div>
                       </Popup>
                     </Marker>
 
-                    {/* BLUE PATH LINE */}
+                    {/* Ola Multi-Traffic Colored Route Lines */}
+                    {/* Green Segment (Clear Traffic) */}
                     <Polyline 
                       positions={[helperPos, customerPos]} 
                       pathOptions={{ 
-                        color: '#6366f1', 
-                        weight: 4, 
-                        opacity: 0.6, 
-                        dashArray: '10, 10',
+                        color: '#00c853', 
+                        weight: 6, 
+                        opacity: 0.9, 
                         lineCap: 'round'
                       }} 
                     />
@@ -209,21 +228,329 @@ export default function LiveMap() {
             );
           })}
         </MapContainer>
+
+        {/* Ola Maps Brand Logo Badge */}
+        <div className="ola-maps-brand-badge">
+          <span className="ola-brand-dot"></span>
+          <span className="ola-brand-text">OLA MAPS</span>
+          <span className="ola-brand-sub">BHONGIR</span>
+        </div>
+
+        {/* Floating OTP & Route Info Pill overlay (Matching Ola Screenshot) */}
+        {selectedSession && selectedSession.display_id && (
+          <div className="ola-floating-otp-pill">
+            <div className="ola-otp-number">1400</div>
+            <div className="ola-otp-label">Start OTP</div>
+          </div>
+        )}
       </div>
 
+      {/* Ola Style Driver & Order Drawer (Matching Ola App Screenshot) */}
+      {selectedSession && (
+        <div className="ola-driver-drawer">
+          <div className="ola-drawer-handle"></div>
+          
+          <div className="ola-drawer-status-row">
+            <div className="ola-status-badge-green">
+              <CheckCircle2 size={16} /> Order In Progress ({selectedSession.display_id})
+            </div>
+            <div className="ola-eta-pill-dark">⏱️ 15 mins away</div>
+          </div>
+
+          <div className="ola-driver-card">
+            <div className="ola-driver-avatar">
+              <User size={24} color="#4338ca" />
+            </div>
+
+            <div className="ola-driver-info">
+              <h4 className="ola-driver-name">{selectedSession.helper_name}</h4>
+              <p className="ola-vehicle-details">
+                {selectedSession.service || 'Custom Work Delivery'} • ★ 4.9
+              </p>
+              <div className="ola-helper-phone">
+                <Phone size={13} /> {selectedSession.helper_phone || '+91 63051 03058'}
+              </div>
+            </div>
+
+            <div className="ola-driver-actions">
+              {selectedSession.display_id && (
+                <a 
+                  href={`/track/${selectedSession.display_id}`} 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="ola-btn-track-link"
+                >
+                  <Navigation size={14} /> Track Link
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Ola Map Styles CSS */}
       <style>{`
-        .leaflet-container {
-          font-family: 'Inter', sans-serif;
+        .ola-map-page-container {
+          animation: fadeIn 0.4s ease-out;
         }
-        .leaflet-popup-content-wrapper {
+        .ola-map-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1.2rem;
+        }
+        .ola-map-title {
+          margin: 0;
+          font-weight: 800;
+          font-size: 1.4rem;
+          color: #0f172a;
+        }
+        .ola-badge-live {
+          background: #22c55e;
+          color: white;
+          font-size: 0.65rem;
+          font-weight: 800;
+          padding: 2px 8px;
           border-radius: 12px;
-          padding: 4px;
-          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+          letter-spacing: 0.5px;
         }
-        .badge.info { background: #e0e7ff; color: #4338ca; }
+        .ola-map-subtitle {
+          margin: 4px 0 0 0;
+          color: #64748b;
+          font-size: 0.85rem;
+        }
+        .ola-map-controls {
+          display: flex;
+          gap: 0.75rem;
+          align-items: center;
+        }
+        .ola-style-selector {
+          display: flex;
+          background: #f1f5f9;
+          padding: 3px;
+          border-radius: 10px;
+          border: 1px solid #e2e8f0;
+        }
+        .ola-style-btn {
+          border: none;
+          background: transparent;
+          padding: 6px 12px;
+          font-size: 0.8rem;
+          font-weight: 600;
+          color: #475569;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .ola-style-btn.active {
+          background: #ffffff;
+          color: #0f172a;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .ola-btn-refresh {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: #3b82f6;
+          color: white;
+          border: none;
+          padding: 8px 14px;
+          border-radius: 10px;
+          font-weight: 600;
+          font-size: 0.85rem;
+          cursor: pointer;
+        }
+
+        .ola-map-card {
+          position: relative;
+          height: 68vh;
+          border-radius: 1.5rem;
+          overflow: hidden;
+          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+          border: 1px solid #e2e8f0;
+        }
+
+        /* Ola Maps Watermark Badge (Bottom Left) */
+        .ola-maps-brand-badge {
+          position: absolute;
+          bottom: 20px;
+          left: 20px;
+          z-index: 1000;
+          background: rgba(255, 255, 255, 0.95);
+          backdrop-filter: blur(8px);
+          padding: 6px 14px;
+          border-radius: 20px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          border: 1px solid rgba(0,0,0,0.06);
+        }
+        .ola-brand-dot {
+          width: 8px;
+          height: 8px;
+          background-color: #00c853;
+          border-radius: 50%;
+          display: inline-block;
+          box-shadow: 0 0 6px #00c853;
+        }
+        .ola-brand-text {
+          font-weight: 900;
+          font-size: 0.85rem;
+          letter-spacing: 0.8px;
+          color: #0f172a;
+        }
+        .ola-brand-sub {
+          font-size: 0.65rem;
+          color: #64748b;
+          font-weight: 700;
+          background: #f1f5f9;
+          padding: 2px 6px;
+          border-radius: 6px;
+        }
+
+        /* Ola Style Floating OTP Pill (Matching Screenshot 1) */
+        .ola-floating-otp-pill {
+          position: absolute;
+          bottom: 20px;
+          left: 170px;
+          z-index: 1000;
+          background: white;
+          padding: 6px 14px;
+          border-radius: 12px;
+          box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+          border: 1px solid #e2e8f0;
+          text-align: center;
+        }
+        .ola-otp-number {
+          font-size: 1.1rem;
+          font-weight: 900;
+          color: #312e81;
+          line-height: 1;
+        }
+        .ola-otp-label {
+          font-size: 0.65rem;
+          color: #64748b;
+          font-weight: 700;
+        }
+
+        /* Ola Marker Styles */
+        .ola-marker-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+        .ola-eta-bubble {
+          background: #0f172a;
+          color: white;
+          font-size: 0.7rem;
+          font-weight: 700;
+          padding: 3px 8px;
+          border-radius: 6px;
+          white-space: nowrap;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+          margin-bottom: 2px;
+        }
+        .ola-vehicle-pin {
+          width: 38px;
+          height: 38px;
+          background: white;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+          border: 2.5px solid #00c853;
+        }
+        .ola-vehicle-icon {
+          font-size: 18px;
+        }
+
+        /* Driver Card Drawer at Bottom (Matching Screenshots) */
+        .ola-driver-drawer {
+          margin-top: 1rem;
+          background: white;
+          border-radius: 1.2rem;
+          padding: 1.2rem 1.5rem;
+          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+          border: 1px solid #e2e8f0;
+        }
+        .ola-drawer-status-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1rem;
+          padding-bottom: 0.8rem;
+          border-bottom: 1px solid #f1f5f9;
+        }
+        .ola-status-badge-green {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          color: #166534;
+          font-weight: 700;
+          font-size: 0.9rem;
+          background: #f0fdf4;
+          padding: 6px 12px;
+          border-radius: 8px;
+        }
+        .ola-eta-pill-dark {
+          background: #0f172a;
+          color: white;
+          font-size: 0.8rem;
+          font-weight: 700;
+          padding: 6px 12px;
+          border-radius: 8px;
+        }
+        .ola-driver-card {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+        }
+        .ola-driver-avatar {
+          width: 48px;
+          height: 48px;
+          background: #e0e7ff;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .ola-driver-info {
+          flex: 1;
+        }
+        .ola-driver-name {
+          margin: 0;
+          font-size: 1.05rem;
+          font-weight: 800;
+          color: #0f172a;
+        }
+        .ola-vehicle-details {
+          margin: 2px 0 0 0;
+          font-size: 0.8rem;
+          color: #64748b;
+        }
+        .ola-helper-phone {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 0.75rem;
+          color: #475569;
+          margin-top: 4px;
+        }
+        .ola-btn-track-link {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: #4338ca;
+          color: white;
+          padding: 8px 14px;
+          border-radius: 8px;
+          text-decoration: none;
+          font-size: 0.8rem;
+          font-weight: 700;
+        }
       `}</style>
     </div>
   );
 }
-
-

@@ -60,10 +60,11 @@
         }
 
         const map = L.map('map').setView([17.5116, 78.8890], 14);
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-            attribution: '© <a href="https://server.arcgisonline.com" target="_blank" style="color:#4F46E5;font-weight:bold;">Esri HD Maps</a> | Need2Done',
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '© <a href="https://maps.olaelectric.com" target="_blank" style="color:#00c853;font-weight:bold;">Ola Maps Style</a> | Need2Done',
             maxZoom: 19
         }).addTo(map);
+
 
 
 
