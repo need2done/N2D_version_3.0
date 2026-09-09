@@ -92,13 +92,14 @@ export default function LiveMap() {
 
   const getTileUrl = () => {
     if (mapStyle === 'ola-dark') {
-      return 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png';
+      return 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png';
     } else if (mapStyle === 'satellite') {
       return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
     }
     // Ola Light Style (Carto Voyager Clean No-Watermark Tile Server)
-    return 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+    return 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png';
   };
+
 
   return (
     <div className="ola-map-page-container">
@@ -162,6 +163,7 @@ export default function LiveMap() {
             attribution='&copy; <a href="https://maps.olaelectric.com" target="_blank" rel="noreferrer">Ola Maps India</a> | Need2Done'
             url={getTileUrl()}
             maxZoom={19}
+            detectRetina={false}
           />
 
           {/* Render Active Delivery Sessions */}
