@@ -67,18 +67,37 @@ def clean_and_translate_transcript(raw_transcript: str) -> str:
     cleaned = re.sub(r'[\"\'\(\)]', '', raw_transcript).strip()
     return cleaned
 
-def transcribe_audio_sarvam_or_whisper(audio_bytes: bytes, filename: str = "audio.ogg") -> str:
+def process_voice_note_with_translation(audio_bytes: bytes, filename: str = "voice.ogg") -> Dict[str, str]:
     """
-    Transcribes voice notes (Ogg/mp3/wav).
-    Primary Engine: Google Gemini Flash Multimodal Audio STT (100% FREE - 0 cost)
-    Secondary Backup: Sarvam AI STT (saaras:v4)
+    Transcribes audio voice notes and returns a dict with:
+    - original_text: Verbatim spoken transcript in native script (Telugu/Hindi/English)
+    - english_text: Simple, clear English translation suitable for customer & delivery worker.
     """
+    result = {
+        "original_text": "",
+        "english_text": ""
+    }
     if not audio_bytes:
-        return ""
+        return result
 
-    # 1. Primary Engine: Google Gemini Flash Multimodal Audio STT (100% FREE)
     api_key = os.environ.get("GEMINI_API_KEY", os.environ.get("GOOGLE_API_KEY", ""))
-    if api_key:
+    raw_original = ""
+
+    # 1. Primary Native STT: Sarvam AI STT (Returns exact Telugu script / Devanagari Hindi / English)
+    if SARVAM_API_KEY:
+        try:
+            headers = {"api-subscription-key": SARVAM_API_KEY}
+            files = {"file": (filename, audio_bytes, "audio/ogg")}
+            data = {"language_code": "unknown", "model": "saaras:v4"}
+            res = requests.post(SARVAM_STT_URL, headers=headers, files=files, data=data, timeout=10)
+            if res.status_code == 200:
+                raw_original = res.json().get("transcript", "").strip()
+                print(f"[SARVAM_NATIVE_STT] '{raw_original}'")
+        except Exception as e:
+            print(f"[SARVAM_STT_NOTICE] {e}")
+
+    # Fallback to Gemini Multimodal Audio STT for native transcript
+    if not raw_original and api_key:
         for model in GEMINI_MODELS:
             try:
                 b64_audio = base64.b64encode(audio_bytes).decode("utf-8")
@@ -87,11 +106,15 @@ def transcribe_audio_sarvam_or_whisper(audio_bytes: bytes, filename: str = "audi
                 elif filename.endswith(".wav"): mime_type = "audio/wav"
 
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+                prompt = (
+                    "Transcribe this audio recording exactly into its native spoken language/script (Telugu script, Devanagari Hindi, or English).\n"
+                    "Output ONLY the raw verbatim transcript, no markdown, no quotes or commentary."
+                )
                 payload = {
                     "contents": [{
                         "parts": [
                             {"inlineData": {"mimeType": mime_type, "data": b64_audio}},
-                            {"text": "Transcribe and translate this audio recording into clear, natural English or Teluglish task text. If the speaker spoke in Telugu, Hindi, or English, output the clean translated task description so a delivery helper can understand it easily. Output ONLY the raw task text without markdown, quotes, or commentary."}
+                            {"text": prompt}
                         ]
                     }],
                     "generationConfig": {"temperature": 0.1, "maxOutputTokens": 200}
@@ -100,31 +123,60 @@ def transcribe_audio_sarvam_or_whisper(audio_bytes: bytes, filename: str = "audi
                 if res.status_code == 200:
                     res_json = res.json()
                     parts = res_json.get('candidates', [{}])[0].get('content', {}).get('parts', [])
-                    text_response = "".join([p.get('text', '') for p in parts if 'text' in p]).strip()
-                    if text_response:
-                        cleaned = clean_and_translate_transcript(text_response)
-                        print(f"[AI_STT_FREE_GEMINI] Transcribed audio via {model}: {cleaned}")
-                        return cleaned
+                    raw_original = "".join([p.get('text', '') for p in parts if 'text' in p]).strip()
+                    if raw_original:
+                        break
             except Exception as e:
-                print(f"[AI_STT_FREE_GEMINI_ERROR] Notice via {model}: {e}")
+                print(f"[GEMINI_AUDIO_STT_ERROR] {e}")
 
-    # 2. Secondary Backup: Sarvam AI STT (Single call to active saaras:v4 model)
-    if SARVAM_API_KEY:
-        try:
-            headers = {"api-subscription-key": SARVAM_API_KEY}
-            files = {"file": (filename, audio_bytes, "audio/ogg")}
-            data = {"language_code": "unknown", "model": "saaras:v4"}
-            res = requests.post(SARVAM_STT_URL, headers=headers, files=files, data=data, timeout=12)
-            if res.status_code == 200:
-                transcript = res.json().get("transcript", "").strip()
-                if transcript:
-                    cleaned = clean_and_translate_transcript(transcript)
-                    print(f"[AI_STT_SARVAM] Transcribed audio via saaras:v4: {cleaned}")
-                    return cleaned
-        except Exception as e:
-            print(f"[AI_STT_ERROR] Sarvam AI STT notice: {e}")
+    if not raw_original:
+        return result
 
-    return ""
+    result["original_text"] = raw_original
+
+    # 2. Get Simple, Clear English Translation via Gemini Flash
+    if api_key:
+        for model in GEMINI_MODELS:
+            try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+                prompt = (
+                    "You are the Need2Done Delivery Assistant.\n"
+                    "Translate the following spoken customer request into simple, clear English that normal people and delivery drivers can easily understand.\n\n"
+                    "Example 1 Input: 'मेरे घर में पानी खत्म हो गया। मुझे एक बिसलेरी वाटर कैन चाहिए। एक कैन लेके आ जाना मेरे घर में।'\n"
+                    "Example 1 Output: 'We have run out of water at my house, I need a Bisleri water can; please bring one can to my house.'\n\n"
+                    "Example 2 Input: 'నేను ఇప్పుడు భోనగిరి పోస్ట్ ఆఫీస్ దగ్గర ఉన్నాను. నాకు ఆధార్ కార్డ్ జిరాక్స్ కావాలి.'\n"
+                    "Example 2 Output: 'I am currently near Bhongir Post Office. I need an Aadhaar card Xerox.'\n\n"
+                    f"Spoken Request: {raw_original}\n\n"
+                    "Output ONLY the clear English translation, without extra quotes or markdown."
+                )
+                payload = {
+                    "contents": [{"parts": [{"text": prompt}]}],
+                    "generationConfig": {"temperature": 0.1, "maxOutputTokens": 150}
+                }
+                res = requests.post(url, json=payload, timeout=8)
+                if res.status_code == 200:
+                    res_json = res.json()
+                    parts = res_json.get('candidates', [{}])[0].get('content', {}).get('parts', [])
+                    translated = "".join([p.get('text', '') for p in parts if 'text' in p]).strip()
+                    translated = re.sub(r'^["\']|["\']$', '', translated).strip()
+                    if translated:
+                        result["english_text"] = translated
+                        print(f"[GEMINI_ENGLISH_TRANSLATION] '{raw_original}' -> '{translated}'")
+                        break
+            except Exception as e:
+                print(f"[GEMINI_TRANSLATE_ERROR] {e}")
+
+    if not result["english_text"]:
+        result["english_text"] = clean_and_translate_transcript(raw_original)
+
+    return result
+
+def transcribe_audio_sarvam_or_whisper(audio_bytes: bytes, filename: str = "audio.ogg") -> str:
+    """
+    Transcribes voice notes (Ogg/mp3/wav).
+    """
+    res = process_voice_note_with_translation(audio_bytes, filename)
+    return res.get("english_text") or res.get("original_text") or ""
 
 def classify_custom_work_intent_gemini(raw_text: str) -> Dict[str, Any]:
     """

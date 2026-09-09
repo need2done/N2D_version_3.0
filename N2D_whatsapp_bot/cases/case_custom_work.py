@@ -14,16 +14,17 @@ import json
 import traceback
 from typing import Optional, Dict, Any
 
-from utils.ai_service import classify_custom_work_intent_gemini, transcribe_audio_sarvam_or_whisper
+from utils.ai_service import classify_custom_work_intent_gemini, transcribe_audio_sarvam_or_whisper, process_voice_note_with_translation
 from whatsapp_client import download_whatsapp_media, send_reply_buttons, send_message, send_url_button
 from core.order_finalizer import finalize_order
 from config import TRACKING_BASE_URL
+import re
 
 NODE_BACKEND_URL = "http://localhost:5000/api/custom-work/quote"
 
 def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str, Any]]) -> Optional[str]:
     """
-    Handles customer interactions during Custom Work ordering flow in WhatsApp with Interactive Buttons.
+    Handles customer interactions during Custom Work ordering flow in WhatsApp with Interactive Buttons & Bilingual Voice STT.
     """
     try:
         step = session.get("custom_work_step", "INIT")
@@ -53,7 +54,7 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
             # Interactive guide button clicks
             if text_clean == "CW_VOICE_GUIDE":
                 if user:
-                    send_message(user, "🎙️ *Voice Note Instructions:*\n\nHold the microphone button in WhatsApp and describe your task clearly in **Telugu, English, or Teluglish**.")
+                    send_message(user, "🎙️ *Voice Note Instructions:*\n\nHold the microphone button in WhatsApp and describe your task clearly in **Telugu, Hindi, English, or Teluglish**.")
                     return None
             elif text_clean == "CW_TEXT_GUIDE":
                 if user:
@@ -71,8 +72,11 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                 if media_id:
                     audio_bytes = download_whatsapp_media(media_id)
                     if audio_bytes:
-                        transcript = transcribe_audio_sarvam_or_whisper(audio_bytes, "voice.ogg")
-                        if not transcript or len(transcript.strip()) < 2:
+                        voice_res = process_voice_note_with_translation(audio_bytes, "voice.ogg")
+                        orig_text = voice_res.get("original_text", "").strip()
+                        eng_text = voice_res.get("english_text", "").strip()
+
+                        if not orig_text and not eng_text:
                             body = (
                                 "⚠️ *Could not hear audio clearly*\n"
                                 "━━━━━━━━━━━━━━━━━━━━━\n"
@@ -88,15 +92,28 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                                 return None
                             return body
 
-                        # Save transcript & ask confirmation using interactive buttons
-                        session["pending_task_text"] = transcript
+                        # Save English translation as pending task text for pricing & helper dispatch
+                        session["pending_task_text"] = eng_text or orig_text
                         session["custom_work_step"] = "CONFIRM_AUDIO_TRANSCRIPT"
-                        body = (
-                            f"🎙️ *Voice Note Transcribed:*\n"
-                            f"_{transcript}_\n\n"
-                            f"━━━━━━━━━━━━━━━━━━━━━\n"
-                            f"*Is this task description correct?*"
-                        )
+
+                        # Check if original transcript and English translation are distinct
+                        if orig_text and eng_text and orig_text.strip() != eng_text.strip():
+                            body = (
+                                f"🎙️ *Voice Note Transcribed:*\n"
+                                f"_{orig_text}_\n\n"
+                                f"🔤 *English Translation:*\n"
+                                f"_{eng_text}_\n\n"
+                                f"━━━━━━━━━━━━━━━━━━━━━\n"
+                                f"*Is this task description correct?*"
+                            )
+                        else:
+                            body = (
+                                f"🎙️ *Voice Note Transcribed:*\n"
+                                f"_{eng_text or orig_text}_\n\n"
+                                f"━━━━━━━━━━━━━━━━━━━━━\n"
+                                f"*Is this task description correct?*"
+                            )
+
                         buttons = [
                             {"id": "CW_CONFIRM_VOICE", "title": "✅ Confirm & Quote"},
                             {"id": "CW_RETRY_VOICE", "title": "🔄 Record Again"}
