@@ -92,6 +92,11 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                                 return None
                             return body
 
+                        has_regional = bool(re.search(r'[\u0C00-\u0C7F\u0900-\u097F]', orig_text))
+                        if has_regional and (not eng_text or eng_text.strip() == orig_text.strip()):
+                            from utils.ai_service import clean_and_translate_transcript
+                            eng_text = clean_and_translate_transcript(orig_text)
+
                         # Save English translation as pending task text for pricing & helper dispatch
                         session["pending_task_text"] = eng_text or orig_text
                         session["custom_work_step"] = "CONFIRM_AUDIO_TRANSCRIPT"
