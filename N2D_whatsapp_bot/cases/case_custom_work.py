@@ -465,6 +465,7 @@ def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optiona
         goods_policy = (
             "🛒 *Item Purchase & Goods Payment Policy:*\n"
             "• *Who pays for petrol/items?* The assigned Helper advances cash at the store/pump on your behalf.\n"
+            "• *Quantity & Specifications:* Helper will confirm exact quantity (e.g. 1L / ₹100 petrol or specific brand) via WhatsApp/Call before paying at the store.\n"
             "• *Upon Delivery:* You reimburse Helper for: *Actual Store Receipt Amount + Quoted Service Fee (₹" + str(service_fee) + ")*.\n"
             "• *Payment Options:* Cash to Helper (COD) or Instant UPI on delivery."
         )
