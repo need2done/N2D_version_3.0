@@ -208,6 +208,8 @@ def classify_custom_work_intent_gemini(raw_text: str) -> Dict[str, Any]:
         "- has_shopping: boolean\n"
         "- item_lines_count: integer\n"
         "- extra_stops: integer\n"
+        "- is_quantity_missing: boolean (set to true if request involves buying petrol, fuel, groceries, medicines, or items BUT fails to state quantity like 1L, 2L, 5kg, 1kg, 100rs worth)\n"
+        "- missing_detail_prompt: string (suggested short question to ask customer for missing quantity/specs)\n"
         "- safety_flag: MUST be 'SAFE' for all standard errands, fuel/petrol delivery for stranded vehicles, charger, keys, documents, groceries, household items, medicines. ONLY set 'BLOCKED_RESTRICTED' if request explicitly involves illegal drugs, alcohol/liquor, cash transfers/gambling, weapons/explosives, or adult services.\n\n"
         "Return ONLY raw JSON, no markdown codeblocks."
     )

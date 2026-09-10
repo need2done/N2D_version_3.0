@@ -164,6 +164,27 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                     return None
                 return body
 
+        # Step 3.5: Collect Quantity / Specs Clarification
+        if step == "WAITING_QUANTITY_DETAILS":
+            if text_clean in ["CW_QTY_DEFAULT_PETROL", "CW_QTY_1L", "DEFAULT 1 LITRE"]:
+                qty_str = "1 Litre Emergency Petrol"
+            elif text_clean == "CW_QTY_TYPE":
+                if user:
+                    send_message(user, "✍️ Please type the exact quantity / details below (e.g. *1 Litre petrol* or *5kg Rice, 1L Oil*):")
+                    return None
+            elif len(text_clean) >= 2 and text_clean.upper() not in ["CW_CANCEL_TASK"]:
+                qty_str = text_clean
+            else:
+                return "Please specify the item quantity (e.g. 1 Litre petrol or 5kg Rice)."
+
+            session["quantity_clarified"] = True
+            current_task = session.get("pending_task_text") or session.get("task_description") or "Custom Errand Task"
+            updated_task = f"{current_task} (Quantity/Specs: {qty_str})"
+            session["pending_task_text"] = updated_task
+            session["task_description"] = updated_task
+
+            return prompt_for_locations_or_quote(session, updated_task, user)
+
         # Step 4: Collect Pickup Location
         if step == "WAITING_PICKUP_LOCATION":
             if text_clean == "CW_SEND_LOC_GUIDE":
@@ -342,6 +363,40 @@ def prompt_for_locations_or_quote(session: Dict[str, Any], task_text: str, user:
     session["drop_name_label"] = d_name
 
     requires_two_locs = task_type in ["retrieve", "direct_pickup", "multi_stop"] or (not has_shopping and p_name not in ["Pickup Point", "Nearest Store"])
+
+    # 0. Check if Quantity/Details are missing for petrol, groceries, or items
+    if ai_intent.get("is_quantity_missing") and not session.get("quantity_clarified"):
+        session["custom_work_step"] = "WAITING_QUANTITY_DETAILS"
+        is_petrol = any(w in task_text.lower() for w in ['petrol', 'fuel', 'bike'])
+        if is_petrol:
+            body = (
+                f"⛽ *Item Quantity & Specifications Needed*\n"
+                f"━━━━━━━━━━━━━━━━━━━━━\n"
+                f"📝 *Task:* {task_text[:100]}\n\n"
+                f"Please specify how much petrol you need:\n"
+                f"• E.g. *1 Litre (~₹105)*, *₹100 worth*, or *2 Litres*.\n\n"
+                f"_(Default for stranded bikes is 1 Litre)_"
+            )
+            buttons = [
+                {"id": "CW_QTY_1L", "title": "⛽ Default 1 Litre"},
+                {"id": "CW_QTY_TYPE", "title": "✍️ Type Quantity"}
+            ]
+        else:
+            body = (
+                f"🛒 *Item Quantities & Details Needed*\n"
+                f"━━━━━━━━━━━━━━━━━━━━━\n"
+                f"📝 *Task:* {task_text[:100]}\n\n"
+                f"Please specify exact items and quantities:\n"
+                f"• E.g. *5kg Sona Masoori Rice, 1L Sunflower Oil, 1kg Sugar*"
+            )
+            buttons = [
+                {"id": "CW_QTY_TYPE", "title": "✍️ Type Item List"}
+            ]
+
+        if user:
+            send_reply_buttons(to=user, body=body, buttons=buttons)
+            return None
+        return body
 
     # 1. Ask for Pickup Location if missing
     if requires_two_locs and not session.get("pickup_location"):
