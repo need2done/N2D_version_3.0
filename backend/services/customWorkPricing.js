@@ -1,36 +1,44 @@
 /**
  * Need2Done Custom Work Pricing Engine
- * Bhongir Telangana Pilot Rate Card (v1.0)
+ * Bhongir Telangana Pilot Rate Card (v2.0 - Smooth Tiered Slabs)
  */
 
-const CONFIG = {
-    SERVICE_BASE: 49,
-    PER_KM_BIKE: 8,
-    PER_KM_BIKE_HELPER: 5,
+const fs = require('fs');
+const path = require('path');
+
+const CONFIG_PATH = path.join(__dirname, '../config/rate_card.json');
+
+let CONFIG = {
+    SLAB_0_2KM: 59,
+    SLAB_0_2KM_HELPER: 40,
+    SLAB_2_3_5KM: 79,
+    SLAB_2_3_5KM_HELPER: 55,
+    SLAB_3_5_5KM: 99,
+    SLAB_3_5_5KM_HELPER: 68,
+    PER_KM_ABOVE_5KM: 8,
+    PER_KM_ABOVE_5KM_HELPER: 5,
+    
     EXTRA_STOP: 20,
     EXTRA_STOP_HELPER: 12,
     ACCESS_COORDINATION: 20,
     ACCESS_COORDINATION_HELPER: 10,
     SHOPPING_EFFORT: 45,
     SHOPPING_EFFORT_HELPER: 15,
-    SHOPPING_11_20_LINES: 25,
-    SHOPPING_11_20_LINES_HELPER: 10,
     EXTRA_TIME_BLOCK: 30, // per 15 mins block
     EXTRA_TIME_BLOCK_HELPER: 20, // per 15 mins block to helper
     
-    // Cargo Vehicle Rates
-    CARGO_AUTO_BASE: 120,
+    // Specialized Category Overrides
+    QUEUE_PAPERWORK_MIN: 99,
+    QUEUE_PAPERWORK_HELPER_MIN: 65,
+    MULTI_STOP_MIN: 119,
+    MULTI_STOP_HELPER_MIN: 75,
     CARGO_AUTO_MIN: 199,
-    CARGO_AUTO_PER_KM: 14,
-    CARGO_AUTO_HELPER_BASE: 90,
     CARGO_AUTO_HELPER_MIN: 140,
+    CARGO_AUTO_PER_KM: 14,
     CARGO_AUTO_HELPER_PER_KM: 10,
-
-    MINI_TRUCK_BASE: 250,
     MINI_TRUCK_MIN: 399,
-    MINI_TRUCK_PER_KM: 18,
-    MINI_TRUCK_HELPER_BASE: 190,
     MINI_TRUCK_HELPER_MIN: 280,
+    MINI_TRUCK_PER_KM: 18,
     MINI_TRUCK_HELPER_PER_KM: 13,
 
     // Safety Exclusions
@@ -41,12 +49,67 @@ const CONFIG = {
     ]
 };
 
+// Try loading saved config from JSON
+try {
+    if (fs.existsSync(CONFIG_PATH)) {
+        const saved = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+        CONFIG = { ...CONFIG, ...saved };
+        console.log('[RATE_CARD] Dynamic rate card config loaded from disk.');
+    }
+} catch (e) {
+    console.error('[RATE_CARD] Could not load rate_card.json:', e.message);
+}
+
+function saveRateCardConfig(newUpdates) {
+    try {
+        const configDir = path.join(__dirname, '../config');
+        if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
+        CONFIG = { ...CONFIG, ...newUpdates };
+        fs.writeFileSync(CONFIG_PATH, JSON.stringify(CONFIG, null, 2), 'utf8');
+        console.log('[RATE_CARD] Dynamic rate card config saved to disk.');
+        return true;
+    } catch (e) {
+        console.error('[RATE_CARD_SAVE_ERROR]', e.message);
+        return false;
+    }
+}
+
 /**
- * Calculates pricing and helper earnings for Custom Work tasks.
- * 
- * @param {Object} params Task specification parameters
- * @returns {Object} Calculated customer fare, helper payout, breakdown, and safety status
+ * Calculates smooth tiered fare based on distance slab.
  */
+function getSmoothTieredFare(dist) {
+    if (dist <= 2.0) {
+        return {
+            fare: CONFIG.SLAB_0_2KM,
+            helper: CONFIG.SLAB_0_2KM_HELPER,
+            label: `Hyperlocal Micro Errand (0-2 km: ₹${CONFIG.SLAB_0_2KM})`
+        };
+    } else if (dist <= 3.5) {
+        return {
+            fare: CONFIG.SLAB_2_3_5KM,
+            helper: CONFIG.SLAB_2_3_5KM_HELPER,
+            label: `Bhongir Local Town Errand (2.1-3.5 km: ₹${CONFIG.SLAB_2_3_5KM})`
+        };
+    } else if (dist <= 5.0) {
+        return {
+            fare: CONFIG.SLAB_3_5_5KM,
+            helper: CONFIG.SLAB_3_5_5KM_HELPER,
+            label: `Extended Town Errand (3.6-5.0 km: ₹${CONFIG.SLAB_3_5_5KM})`
+        };
+    } else {
+        const base5k = CONFIG.SLAB_3_5_5KM;
+        const helper5k = CONFIG.SLAB_3_5_5KM_HELPER;
+        const extraKm = dist - 5.0;
+        const extraFee = Math.round(extraKm * CONFIG.PER_KM_ABOVE_5KM);
+        const extraHelperFee = Math.round(extraKm * CONFIG.PER_KM_ABOVE_5KM_HELPER);
+        return {
+            fare: base5k + extraFee,
+            helper: helper5k + extraHelperFee,
+            label: `Extended Base (5km: ₹${base5k}) + Extra Distance (${extraKm.toFixed(1)} km @ ₹${CONFIG.PER_KM_ABOVE_5KM}/km)`
+        };
+    }
+}
+
 function calculateCustomWorkPrice(params) {
     const {
         taskType = 'direct_pickup',
@@ -55,14 +118,13 @@ function calculateCustomWorkPrice(params) {
         hasAccessCoordination = false,
         itemLines = 0,
         extraStores = 0,
-        extraTimeBlocks = 0, // approved 15m blocks
-        activeWorkMins = 0, // for general/unique errand
+        extraTimeBlocks = 0,
+        activeWorkMins = 0,
         goodsInvoiceAmount = 0,
         tipAmount = 0,
         description = ''
     } = params;
 
-    // 1. Safety Check
     const descLower = (description || '').toLowerCase();
     const isExcluded = CONFIG.RESTRICTED_KEYWORDS.some(keyword => descLower.includes(keyword));
     if (isExcluded) {
@@ -73,167 +135,66 @@ function calculateCustomWorkPrice(params) {
         };
     }
 
-    let customerFare = 0;
-    let helperPayout = 0;
-    let minFare = 99;
-    let minPayout = 65;
-    let breakdown = [];
-
     const dist = Math.max(0, parseFloat(distanceKm) || 0);
     const stops = Math.max(0, parseInt(extraStops) || 0);
     const timeBlocks = Math.max(0, parseInt(extraTimeBlocks) || 0);
-    const lines = Math.max(0, parseInt(itemLines) || 0);
-    const stores = Math.max(0, parseInt(extraStores) || 0);
     const tip = Math.max(0, parseFloat(tipAmount) || 0);
     const goods = Math.max(0, parseFloat(goodsInvoiceAmount) || 0);
 
+    let customerFare = 0;
+    let helperPayout = 0;
+    let breakdown = [];
+
+    const tiered = getSmoothTieredFare(dist);
+
     switch (taskType) {
-        case 'micro_errand':
-            minFare = 69;
-            minPayout = 45;
-            customerFare = Math.max(minFare, CONFIG.SERVICE_BASE + (dist * CONFIG.PER_KM_BIKE));
-            helperPayout = Math.max(minPayout, 35 + (dist * CONFIG.PER_KM_BIKE_HELPER));
-            breakdown.push({ label: 'Service Base', amount: CONFIG.SERVICE_BASE });
-            breakdown.push({ label: `Route Distance (${dist} km)`, amount: dist * CONFIG.PER_KM_BIKE });
-            break;
-
-        case 'direct_pickup':
-            minFare = (dist > 0 && dist <= 3.0) ? 79 : 99;
-            minPayout = (dist > 0 && dist <= 3.0) ? 55 : 65;
-            const baseDirect = Math.max(minFare, CONFIG.SERVICE_BASE + (dist * CONFIG.PER_KM_BIKE));
-            customerFare = baseDirect + (timeBlocks * CONFIG.EXTRA_TIME_BLOCK);
-            helperPayout = Math.max(minPayout, 45 + (dist * CONFIG.PER_KM_BIKE_HELPER)) + (timeBlocks * CONFIG.EXTRA_TIME_BLOCK_HELPER);
-            breakdown.push({ label: 'Base Fare', amount: baseDirect });
-            if (timeBlocks > 0) breakdown.push({ label: `Extra Time (${timeBlocks} x 15m)`, amount: timeBlocks * CONFIG.EXTRA_TIME_BLOCK });
-            break;
-
-        case 'retrieve':
-            minFare = (dist > 0 && dist <= 3.0) ? 79 : 119;
-            minPayout = (dist > 0 && dist <= 3.0) ? 55 : 75;
-            const accessFee = CONFIG.ACCESS_COORDINATION;
-            const baseRetrieve = Math.max(minFare, CONFIG.SERVICE_BASE + accessFee + (dist * CONFIG.PER_KM_BIKE));
-            customerFare = baseRetrieve + (timeBlocks * CONFIG.EXTRA_TIME_BLOCK);
-            helperPayout = Math.max(minPayout, 45 + CONFIG.ACCESS_COORDINATION_HELPER + (dist * CONFIG.PER_KM_BIKE_HELPER)) + (timeBlocks * CONFIG.EXTRA_TIME_BLOCK_HELPER);
-            breakdown.push({ label: 'Base Fare', amount: baseRetrieve });
-            if (timeBlocks > 0) breakdown.push({ label: `Extra Time (${timeBlocks} x 15m)`, amount: timeBlocks * CONFIG.EXTRA_TIME_BLOCK });
-            break;
-
-        case 'prepaid_pickup':
-            minFare = (dist > 0 && dist <= 3.0) ? 79 : 99;
-            minPayout = (dist > 0 && dist <= 3.0) ? 55 : 65;
-            const basePrepaid = Math.max(minFare, CONFIG.SERVICE_BASE + (dist * CONFIG.PER_KM_BIKE));
-            customerFare = basePrepaid + (timeBlocks * CONFIG.EXTRA_TIME_BLOCK);
-            helperPayout = Math.max(minPayout, 45 + (dist * CONFIG.PER_KM_BIKE_HELPER)) + (timeBlocks * CONFIG.EXTRA_TIME_BLOCK_HELPER);
-            breakdown.push({ label: 'Base Fare', amount: basePrepaid });
-            if (timeBlocks > 0) breakdown.push({ label: `Store Wait (${timeBlocks} x 15m)`, amount: timeBlocks * CONFIG.EXTRA_TIME_BLOCK });
-            break;
-
-        case 'buy_and_bring':
-            const isLocalBuy = (dist > 0 && dist <= 3.0);
-            minFare = isLocalBuy ? 79 : 119;
-            minPayout = isLocalBuy ? 55 : 80;
-            let shopFee = CONFIG.SHOPPING_EFFORT;
-            let shopHelper = CONFIG.SHOPPING_EFFORT_HELPER;
-
-            if (lines > 10) {
-                shopFee += CONFIG.SHOPPING_11_20_LINES;
-                shopHelper += CONFIG.SHOPPING_11_20_LINES_HELPER;
-            }
-
-            const extraStoreFee = stores * CONFIG.EXTRA_STOP;
-            const extraStoreHelper = stores * CONFIG.EXTRA_STOP_HELPER;
-
-            const calcBuy = CONFIG.SERVICE_BASE + shopFee + extraStoreFee + (dist * CONFIG.PER_KM_BIKE);
-            const baseBuy = isLocalBuy ? Math.min(calcBuy, 79) : Math.max(minFare, calcBuy);
-            customerFare = baseBuy + (timeBlocks * CONFIG.EXTRA_TIME_BLOCK);
-            helperPayout = Math.max(minPayout, 45 + shopHelper + extraStoreHelper + (dist * CONFIG.PER_KM_BIKE_HELPER)) + (timeBlocks * CONFIG.EXTRA_TIME_BLOCK_HELPER);
-            
-            breakdown.push({ label: 'Base Shopping Errand Fee', amount: Math.min(baseBuy, minFare) });
-            if (stores > 0) breakdown.push({ label: `Additional Stores (${stores} extra @ ₹20)`, amount: extraStoreFee });
-            if (dist > 3.0) breakdown.push({ label: `Route Distance (${dist} km @ ₹8/km)`, amount: dist * CONFIG.PER_KM_BIKE });
-            if (timeBlocks > 0) breakdown.push({ label: `Extra Shopping Time (${timeBlocks} x 15m)`, amount: timeBlocks * CONFIG.EXTRA_TIME_BLOCK });
-            break;
-
         case 'queue_paperwork':
-            minFare = 99;
-            minPayout = 65;
-            const baseQueue = Math.max(minFare, CONFIG.SERVICE_BASE + (dist * CONFIG.PER_KM_BIKE));
-            customerFare = baseQueue + (timeBlocks * CONFIG.EXTRA_TIME_BLOCK);
-            helperPayout = Math.max(minPayout, 45 + (dist * CONFIG.PER_KM_BIKE_HELPER)) + (timeBlocks * CONFIG.EXTRA_TIME_BLOCK_HELPER);
-            breakdown.push({ label: 'Base Fare', amount: baseQueue });
-            if (timeBlocks > 0) breakdown.push({ label: `Queue Time (${timeBlocks} x 15m)`, amount: timeBlocks * CONFIG.EXTRA_TIME_BLOCK });
+            customerFare = Math.max(CONFIG.QUEUE_PAPERWORK_MIN, tiered.fare) + (timeBlocks * CONFIG.EXTRA_TIME_BLOCK);
+            helperPayout = Math.max(CONFIG.QUEUE_PAPERWORK_HELPER_MIN, tiered.helper) + (timeBlocks * CONFIG.EXTRA_TIME_BLOCK_HELPER);
+            breakdown.push({ label: 'Queue & Paperwork Base', amount: CONFIG.QUEUE_PAPERWORK_MIN });
+            if (timeBlocks > 0) breakdown.push({ label: `Queue Wait (${timeBlocks} x 15m)`, amount: timeBlocks * CONFIG.EXTRA_TIME_BLOCK });
             break;
 
         case 'multi_stop':
-            minFare = 119;
-            minPayout = 75;
-            const stopFeeTotal = stops * CONFIG.EXTRA_STOP;
-            const stopHelperTotal = stops * CONFIG.EXTRA_STOP_HELPER;
-            const accessAddon = hasAccessCoordination ? CONFIG.ACCESS_COORDINATION : 0;
-            const accessHelperAddon = hasAccessCoordination ? CONFIG.ACCESS_COORDINATION_HELPER : 0;
-            const shoppingAddon = (params.hasShopping || lines > 0) ? CONFIG.SHOPPING_EFFORT : 0;
-            const shoppingHelperAddon = (params.hasShopping || lines > 0) ? CONFIG.SHOPPING_EFFORT_HELPER : 0;
-
-            const baseMulti = Math.max(minFare, CONFIG.SERVICE_BASE + stopFeeTotal + accessAddon + shoppingAddon + (dist * CONFIG.PER_KM_BIKE));
-            customerFare = baseMulti + (timeBlocks * CONFIG.EXTRA_TIME_BLOCK);
-            helperPayout = Math.max(minPayout, 45 + stopHelperTotal + accessHelperAddon + shoppingHelperAddon + (dist * CONFIG.PER_KM_BIKE_HELPER)) + (timeBlocks * CONFIG.EXTRA_TIME_BLOCK_HELPER);
-            
-            breakdown.push({ label: 'Base Multi-Stop Service Fee', amount: CONFIG.SERVICE_BASE });
-            if (stops > 0) breakdown.push({ label: `Additional Stop Fee (${stops} extra @ ₹20)`, amount: stopFeeTotal });
-            if (shoppingAddon > 0) breakdown.push({ label: 'Shopping & Purchasing Effort', amount: shoppingAddon });
-            if (accessAddon > 0) breakdown.push({ label: 'Access & Coordination Fee', amount: accessAddon });
-            if (dist > 0) breakdown.push({ label: `Route Distance (${dist} km @ ₹8/km)`, amount: dist * CONFIG.PER_KM_BIKE });
+            const stopFee = stops * CONFIG.EXTRA_STOP;
+            const stopHelperFee = stops * CONFIG.EXTRA_STOP_HELPER;
+            customerFare = Math.max(CONFIG.MULTI_STOP_MIN, tiered.fare + stopFee) + (timeBlocks * CONFIG.EXTRA_TIME_BLOCK);
+            helperPayout = Math.max(CONFIG.MULTI_STOP_HELPER_MIN, tiered.helper + stopHelperFee) + (timeBlocks * CONFIG.EXTRA_TIME_BLOCK_HELPER);
+            breakdown.push({ label: tiered.label, amount: tiered.fare });
+            if (stops > 0) breakdown.push({ label: `Additional Stops (${stops} @ ₹${CONFIG.EXTRA_STOP})`, amount: stopFee });
             if (timeBlocks > 0) breakdown.push({ label: `Extra Time (${timeBlocks} x 15m)`, amount: timeBlocks * CONFIG.EXTRA_TIME_BLOCK });
             break;
 
         case 'heavy_cargo_auto':
-            minFare = CONFIG.CARGO_AUTO_MIN;
-            minPayout = CONFIG.CARGO_AUTO_HELPER_MIN;
-            customerFare = Math.max(minFare, CONFIG.CARGO_AUTO_BASE + (dist * CONFIG.CARGO_AUTO_PER_KM)) + (timeBlocks * 60);
-            helperPayout = Math.max(minPayout, CONFIG.CARGO_AUTO_HELPER_BASE + (dist * CONFIG.CARGO_AUTO_HELPER_PER_KM)) + (timeBlocks * 40);
-            breakdown.push({ label: 'Cargo Auto Base', amount: CONFIG.CARGO_AUTO_BASE });
-            breakdown.push({ label: `Distance (${dist} km)`, amount: dist * CONFIG.CARGO_AUTO_PER_KM });
+            customerFare = Math.max(CONFIG.CARGO_AUTO_MIN, 120 + (dist * CONFIG.CARGO_AUTO_PER_KM)) + (timeBlocks * 60);
+            helperPayout = Math.max(CONFIG.CARGO_AUTO_HELPER_MIN, 90 + (dist * CONFIG.CARGO_AUTO_HELPER_PER_KM)) + (timeBlocks * 40);
+            breakdown.push({ label: 'Cargo Auto Base', amount: CONFIG.CARGO_AUTO_MIN });
+            if (dist > 3.0) breakdown.push({ label: `Distance (${dist.toFixed(1)} km)`, amount: Math.round(dist * CONFIG.CARGO_AUTO_PER_KM) });
             break;
 
         case 'heavy_mini_truck':
-            minFare = CONFIG.MINI_TRUCK_MIN;
-            minPayout = CONFIG.MINI_TRUCK_HELPER_MIN;
-            customerFare = Math.max(minFare, CONFIG.MINI_TRUCK_BASE + (dist * CONFIG.MINI_TRUCK_PER_KM)) + (timeBlocks * 60);
-            helperPayout = Math.max(minPayout, CONFIG.MINI_TRUCK_HELPER_BASE + (dist * CONFIG.MINI_TRUCK_HELPER_PER_KM)) + (timeBlocks * 40);
-            breakdown.push({ label: 'Mini Truck Base', amount: CONFIG.MINI_TRUCK_BASE });
-            breakdown.push({ label: `Distance (${dist} km)`, amount: dist * CONFIG.MINI_TRUCK_PER_KM });
+            customerFare = Math.max(CONFIG.MINI_TRUCK_MIN, 250 + (dist * CONFIG.MINI_TRUCK_PER_KM)) + (timeBlocks * 60);
+            helperPayout = Math.max(CONFIG.MINI_TRUCK_HELPER_MIN, 190 + (dist * CONFIG.MINI_TRUCK_HELPER_PER_KM)) + (timeBlocks * 40);
+            breakdown.push({ label: 'Mini Truck Base', amount: CONFIG.MINI_TRUCK_MIN });
+            if (dist > 3.0) breakdown.push({ label: `Distance (${dist.toFixed(1)} km)`, amount: Math.round(dist * CONFIG.MINI_TRUCK_PER_KM) });
             break;
 
+        case 'buy_and_bring':
+        case 'direct_pickup':
+        case 'retrieve':
+        case 'prepaid_pickup':
         case 'unique_custom_task':
         case 'general_errand':
         default:
-            const isLocalHyperlocal = (dist > 0 && dist <= 3.0);
-            minFare = isLocalHyperlocal ? 79 : 129;
-            minPayout = isLocalHyperlocal ? 55 : 85;
-            const includedKm = 3.0;
-            const extraKm = Math.max(0, dist - includedKm);
-            const extraKmFee = extraKm * CONFIG.PER_KM_BIKE;
-            const extraKmHelper = extraKm * CONFIG.PER_KM_BIKE_HELPER;
-
-            const workMins = Math.max(0, parseInt(activeWorkMins) || 0);
-            const extraMins = Math.max(0, workMins - 15);
-            const extraWorkBlocks = Math.ceil(extraMins / 15);
-            const extraWorkFee = extraWorkBlocks * CONFIG.EXTRA_TIME_BLOCK;
-            const extraWorkHelper = extraWorkBlocks * CONFIG.EXTRA_TIME_BLOCK_HELPER;
-
-            const baseFareAmount = isLocalHyperlocal ? 79 : 129;
-            customerFare = Math.max(minFare, baseFareAmount + extraKmFee) + extraWorkFee;
-            helperPayout = Math.max(minPayout, (isLocalHyperlocal ? 55 : 85) + extraKmHelper) + extraWorkHelper;
-
-            breakdown.push({ label: `Local Bhongir Errand Base (incl. 3km & 15m work)`, amount: baseFareAmount });
-            if (extraKm > 0) breakdown.push({ label: `Additional Distance (${extraKm.toFixed(1)} km)`, amount: extraKmFee });
-            if (extraWorkBlocks > 0) breakdown.push({ label: `Additional Work Time (${extraWorkBlocks} x 15m)`, amount: extraWorkFee });
+            customerFare = tiered.fare + (timeBlocks * CONFIG.EXTRA_TIME_BLOCK);
+            helperPayout = tiered.helper + (timeBlocks * CONFIG.EXTRA_TIME_BLOCK_HELPER);
+            breakdown.push({ label: tiered.label, amount: tiered.fare });
+            if (timeBlocks > 0) breakdown.push({ label: `Extra Time (${timeBlocks} x 15m)`, amount: timeBlocks * CONFIG.EXTRA_TIME_BLOCK });
             break;
     }
 
-    // Apply Minimum Fares
-    const finalCustomerServiceFee = Math.max(minFare, Math.round(customerFare));
-    const finalHelperEarnings = Math.max(minPayout, Math.round(helperPayout)) + tip;
+    const finalCustomerServiceFee = Math.round(customerFare);
+    const finalHelperEarnings = Math.round(helperPayout) + tip;
     const totalCustomerPayment = finalCustomerServiceFee + goods;
     const platformContribution = finalCustomerServiceFee - (finalHelperEarnings - tip);
 
@@ -255,5 +216,6 @@ function calculateCustomWorkPrice(params) {
 
 module.exports = {
     calculateCustomWorkPrice,
+    saveRateCardConfig,
     CONFIG
 };

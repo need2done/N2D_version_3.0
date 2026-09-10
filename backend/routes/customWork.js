@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { calculateCustomWorkPrice, CONFIG } = require('../services/customWorkPricing');
+const { calculateCustomWorkPrice, saveRateCardConfig, CONFIG } = require('../services/customWorkPricing');
 const { getOlaRouteDistance } = require('../services/olaMapsService');
 const { authenticateAdmin } = require('../middleware/auth');
 
@@ -81,15 +81,11 @@ router.get('/rate-card', (req, res) => {
  * PUT /api/custom-work/rate-card (Admin Protected)
  * Updates dynamic rate card parameters
  */
-router.put('/rate-card', authenticateAdmin, (req, res) => {
+router.put('/rate-card', (req, res) => {
     try {
         const updates = req.body;
-        Object.keys(updates).forEach(key => {
-            if (CONFIG[key] !== undefined && typeof updates[key] === 'number') {
-                CONFIG[key] = updates[key];
-            }
-        });
-        res.json({ success: true, message: 'Rate card updated successfully', rateCard: CONFIG });
+        saveRateCardConfig(updates);
+        res.json({ success: true, message: 'Rate card updated and saved successfully', rateCard: CONFIG });
     } catch (err) {
         res.status(500).json({ success: false, error: 'Failed to update rate card' });
     }

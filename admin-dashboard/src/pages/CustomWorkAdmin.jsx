@@ -15,16 +15,18 @@ export default function CustomWorkAdmin() {
 
     // State for Rate Card Configuration
     const [rateCard, setRateCard] = useState({
-        SERVICE_BASE: 49,
-        PER_KM_BIKE: 8,
+        SLAB_0_2KM: 59,
+        SLAB_0_2KM_HELPER: 40,
+        SLAB_2_3_5KM: 79,
+        SLAB_2_3_5KM_HELPER: 55,
+        SLAB_3_5_5KM: 99,
+        SLAB_3_5_5KM_HELPER: 68,
+        PER_KM_ABOVE_5KM: 8,
+        PER_KM_ABOVE_5KM_HELPER: 5,
         EXTRA_STOP: 20,
         ACCESS_COORDINATION: 20,
         SHOPPING_EFFORT: 45,
         EXTRA_TIME_BLOCK: 30,
-        MICRO_ERRAND_MIN: 69,
-        DIRECT_PICKUP_MIN: 99,
-        RETRIEVE_MIN: 119,
-        BUY_AND_BRING_MIN: 119,
         CARGO_AUTO_MIN: 199,
         MINI_TRUCK_MIN: 399
     });
@@ -342,24 +344,50 @@ export default function CustomWorkAdmin() {
                     </p>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-                        <div style={{ backgroundColor: '#0f172a', padding: '18px', borderRadius: '10px', border: '1px solid #334155' }}>
-                            <label style={{ fontSize: '13px', color: '#94a3b8', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Service Base Fee (₹)</label>
+                        <div style={{ backgroundColor: '#0f172a', padding: '18px', borderRadius: '10px', border: '1px solid #10b981' }}>
+                            <label style={{ fontSize: '13px', color: '#10b981', display: 'block', marginBottom: '8px', fontWeight: '700' }}>Slab 1: Micro Errand (0 - 2.0 km) Fare (₹)</label>
                             <input 
                                 type="number" 
-                                value={rateCard.SERVICE_BASE} 
-                                onChange={(e) => handleRateChange('SERVICE_BASE', e.target.value)}
+                                value={rateCard.SLAB_0_2KM || 59} 
+                                onChange={(e) => handleRateChange('SLAB_0_2KM', e.target.value)}
                                 style={{ width: '100%', padding: '12px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '6px', color: '#ffffff', fontWeight: '700', fontSize: '16px' }}
                             />
+                            <span style={{ fontSize: '12px', color: '#94a3b8', marginTop: '6px', display: 'block' }}>Helper Payout: ₹{rateCard.SLAB_0_2KM_HELPER || 40}</span>
                         </div>
-                        <div style={{ backgroundColor: '#0f172a', padding: '18px', borderRadius: '10px', border: '1px solid #334155' }}>
-                            <label style={{ fontSize: '13px', color: '#94a3b8', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Bike Per-KM Rate (₹/km)</label>
+
+                        <div style={{ backgroundColor: '#0f172a', padding: '18px', borderRadius: '10px', border: '1px solid #3b82f6' }}>
+                            <label style={{ fontSize: '13px', color: '#60a5fa', display: 'block', marginBottom: '8px', fontWeight: '700' }}>Slab 2: Bhongir Local Town (2.1 - 3.5 km) Fare (₹)</label>
                             <input 
                                 type="number" 
-                                value={rateCard.PER_KM_BIKE} 
-                                onChange={(e) => handleRateChange('PER_KM_BIKE', e.target.value)}
+                                value={rateCard.SLAB_2_3_5KM || 79} 
+                                onChange={(e) => handleRateChange('SLAB_2_3_5KM', e.target.value)}
                                 style={{ width: '100%', padding: '12px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '6px', color: '#ffffff', fontWeight: '700', fontSize: '16px' }}
                             />
+                            <span style={{ fontSize: '12px', color: '#94a3b8', marginTop: '6px', display: 'block' }}>Helper Payout: ₹{rateCard.SLAB_2_3_5KM_HELPER || 55}</span>
                         </div>
+
+                        <div style={{ backgroundColor: '#0f172a', padding: '18px', borderRadius: '10px', border: '1px solid #f59e0b' }}>
+                            <label style={{ fontSize: '13px', color: '#fbbf24', display: 'block', marginBottom: '8px', fontWeight: '700' }}>Slab 3: Extended Town (3.6 - 5.0 km) Fare (₹)</label>
+                            <input 
+                                type="number" 
+                                value={rateCard.SLAB_3_5_5KM || 99} 
+                                onChange={(e) => handleRateChange('SLAB_3_5_5KM', e.target.value)}
+                                style={{ width: '100%', padding: '12px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '6px', color: '#ffffff', fontWeight: '700', fontSize: '16px' }}
+                            />
+                            <span style={{ fontSize: '12px', color: '#94a3b8', marginTop: '6px', display: 'block' }}>Helper Payout: ₹{rateCard.SLAB_3_5_5KM_HELPER || 68}</span>
+                        </div>
+
+                        <div style={{ backgroundColor: '#0f172a', padding: '18px', borderRadius: '10px', border: '1px solid #a855f7' }}>
+                            <label style={{ fontSize: '13px', color: '#c084fc', display: 'block', marginBottom: '8px', fontWeight: '700' }}>Slab 4: Above 5 km Extra Rate (₹/km)</label>
+                            <input 
+                                type="number" 
+                                value={rateCard.PER_KM_ABOVE_5KM || 8} 
+                                onChange={(e) => handleRateChange('PER_KM_ABOVE_5KM', e.target.value)}
+                                style={{ width: '100%', padding: '12px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '6px', color: '#ffffff', fontWeight: '700', fontSize: '16px' }}
+                            />
+                            <span style={{ fontSize: '12px', color: '#94a3b8', marginTop: '6px', display: 'block' }}>Helper Rate: ₹{rateCard.PER_KM_ABOVE_5KM_HELPER || 5}/km</span>
+                        </div>
+
                         <div style={{ backgroundColor: '#0f172a', padding: '18px', borderRadius: '10px', border: '1px solid #334155' }}>
                             <label style={{ fontSize: '13px', color: '#94a3b8', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Additional Stop Fee (₹/stop)</label>
                             <input 
@@ -369,24 +397,7 @@ export default function CustomWorkAdmin() {
                                 style={{ width: '100%', padding: '12px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '6px', color: '#ffffff', fontWeight: '700', fontSize: '16px' }}
                             />
                         </div>
-                        <div style={{ backgroundColor: '#0f172a', padding: '18px', borderRadius: '10px', border: '1px solid #334155' }}>
-                            <label style={{ fontSize: '13px', color: '#94a3b8', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Access Coordination Fee (₹)</label>
-                            <input 
-                                type="number" 
-                                value={rateCard.ACCESS_COORDINATION} 
-                                onChange={(e) => handleRateChange('ACCESS_COORDINATION', e.target.value)}
-                                style={{ width: '100%', padding: '12px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '6px', color: '#ffffff', fontWeight: '700', fontSize: '16px' }}
-                            />
-                        </div>
-                        <div style={{ backgroundColor: '#0f172a', padding: '18px', borderRadius: '10px', border: '1px solid #334155' }}>
-                            <label style={{ fontSize: '13px', color: '#94a3b8', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Shopping Effort Fee (₹)</label>
-                            <input 
-                                type="number" 
-                                value={rateCard.SHOPPING_EFFORT} 
-                                onChange={(e) => handleRateChange('SHOPPING_EFFORT', e.target.value)}
-                                style={{ width: '100%', padding: '12px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '6px', color: '#ffffff', fontWeight: '700', fontSize: '16px' }}
-                            />
-                        </div>
+
                         <div style={{ backgroundColor: '#0f172a', padding: '18px', borderRadius: '10px', border: '1px solid #334155' }}>
                             <label style={{ fontSize: '13px', color: '#94a3b8', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Extra 15m Time Block Fee (₹)</label>
                             <input 
@@ -403,7 +414,7 @@ export default function CustomWorkAdmin() {
                             onClick={handleSaveRateCard}
                             style={{ backgroundColor: '#10b981', color: '#ffffff', padding: '12px 28px', borderRadius: '8px', border: 'none', fontWeight: '800', fontSize: '15px', cursor: 'pointer', boxShadow: '0 4px 14px rgba(16, 185, 129, 0.4)' }}
                         >
-                            Save Rate Card Changes
+                            💾 Save Rate Card Config to Production
                         </button>
                     </div>
                 </div>

@@ -187,24 +187,26 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
 
         # Step 4: Collect Pickup Location
         if step == "WAITING_PICKUP_LOCATION":
-            if text_clean == "CW_SEND_LOC_GUIDE":
+            if text_clean in ["CW_USE_NEAREST_STORE", "USE NEAREST STORE", "NEAREST STORE"]:
+                session["pickup_location"] = "Nearest Store / Vendor, Bhongir"
+            elif text_clean == "CW_SEND_LOC_GUIDE":
                 if user:
                     send_message(user, "📍 *Location Pin Instructions:*\n\nTap the attachment icon (📎) in WhatsApp and select *Location* to send your live location pin.")
                     return None
-
-            p_name = session.get("pickup_name_label", "Pickup Point")
-            if raw and raw.get("type") == "location":
-                loc = raw.get("location", {})
-                lat = loc.get("latitude")
-                lng = loc.get("longitude")
-                if lat and lng:
-                    session["pickup_lat"] = lat
-                    session["pickup_lng"] = lng
-                    session["pickup_location"] = to_map_link(lat, lng, name=p_name, address=loc.get("address"))
-            elif len(text_clean) >= 3 and text_clean.upper() not in ["CW_CANCEL_TASK"]:
-                session["pickup_location"] = f"{text_clean}, Bhongir"
             else:
-                return f"📍 Please type your exact pickup address for '{p_name}' or send a location pin."
+                p_name = session.get("pickup_name_label", "Pickup Point")
+                if raw and raw.get("type") == "location":
+                    loc = raw.get("location", {})
+                    lat = loc.get("latitude")
+                    lng = loc.get("longitude")
+                    if lat and lng:
+                        session["pickup_lat"] = lat
+                        session["pickup_lng"] = lng
+                        session["pickup_location"] = to_map_link(lat, lng, name=p_name, address=loc.get("address"))
+                elif len(text_clean) >= 3 and text_clean.upper() not in ["CW_CANCEL_TASK"]:
+                    session["pickup_location"] = f"{text_clean}, Bhongir"
+                else:
+                    return f"📍 Please type your store or pickup location for '{session.get('pickup_name_label', 'Pickup Point')}', send a location pin, or tap 'Use Nearest Store'."
 
             # Now prompt for Drop Location
             d_name = session.get("drop_name_label", "Drop-off Point")
@@ -398,20 +400,21 @@ def prompt_for_locations_or_quote(session: Dict[str, Any], task_text: str, user:
             return None
         return body
 
-    # 1. Ask for Pickup Location if missing
-    if requires_two_locs and not session.get("pickup_location"):
+    # 1. Ask for Pickup / Store Location if missing
+    if not session.get("pickup_location"):
         session["custom_work_step"] = "WAITING_PICKUP_LOCATION"
         body = (
-            f"📍 *Step 1 of 2: Pickup Location Needed*\n"
+            f"📍 *Step 1 of 2: Store / Pickup Location Needed*\n"
             f"━━━━━━━━━━━━━━━━━━━━━\n"
             f"📝 *Task:* {task_text[:100]}\n\n"
-            f"Please provide the **PICKUP location** for *'{p_name}'*:\n"
-            f"• Tap 📎 in WhatsApp to send **Location Pin** 📍, or\n"
-            f"• Type exact street address / landmark below."
+            f"Please specify where to pick up or buy items from (*'{p_name}'*):\n"
+            f"• Type store name or address below (e.g. *Gunj Kirana Store*, *MedPlus*), or\n"
+            f"• Tap 📎 to send **Location Pin** 📍, or\n"
+            f"• Tap **Use Nearest Store** if helper can pick nearest vendor."
         )
         buttons = [
-            {"id": "CW_SEND_LOC_GUIDE", "title": "📍 Share Location Pin"},
-            {"id": "CW_CANCEL_TASK", "title": "❌ Cancel"}
+            {"id": "CW_USE_NEAREST_STORE", "title": "🏪 Use Nearest Store"},
+            {"id": "CW_SEND_LOC_GUIDE", "title": "📍 Share Location Pin"}
         ]
         if user:
             send_reply_buttons(to=user, body=body, buttons=buttons)
@@ -421,13 +424,12 @@ def prompt_for_locations_or_quote(session: Dict[str, Any], task_text: str, user:
     # 2. Ask for Drop Location if missing
     if not session.get("drop_location"):
         session["custom_work_step"] = "WAITING_DROP_LOCATION"
-        if not session.get("pickup_location"):
-            session["pickup_location"] = "Nearest Store / Fuel Station (Bhongir)"
 
         body = (
-            f"🏁 *{'Step 2 of 2: ' if requires_two_locs else ''}Drop-off Location Needed*\n"
+            f"🏁 *Step 2 of 2: Drop-off Location Needed*\n"
             f"━━━━━━━━━━━━━━━━━━━━━\n"
-            f"📝 *Task:* {task_text[:100]}\n\n"
+            f"📝 *Task:* {task_text[:100]}\n"
+            f"📍 *Pickup set:* {session.get('pickup_location', 'Shared')}\n\n"
             f"Please provide the **DROP-OFF / DELIVERY location** for *'{d_name}'*:\n"
             f"• Tap 📎 in WhatsApp to send **Location Pin** 📍, or\n"
             f"• Type exact street address / landmark below."
