@@ -98,8 +98,8 @@ function calculateCustomWorkPrice(params) {
             break;
 
         case 'direct_pickup':
-            minFare = 99;
-            minPayout = 65;
+            minFare = (dist > 0 && dist <= 3.0) ? 79 : 99;
+            minPayout = (dist > 0 && dist <= 3.0) ? 55 : 65;
             const baseDirect = Math.max(minFare, CONFIG.SERVICE_BASE + (dist * CONFIG.PER_KM_BIKE));
             customerFare = baseDirect + (timeBlocks * CONFIG.EXTRA_TIME_BLOCK);
             helperPayout = Math.max(minPayout, 45 + (dist * CONFIG.PER_KM_BIKE_HELPER)) + (timeBlocks * CONFIG.EXTRA_TIME_BLOCK_HELPER);
@@ -108,8 +108,8 @@ function calculateCustomWorkPrice(params) {
             break;
 
         case 'retrieve':
-            minFare = 119;
-            minPayout = 75;
+            minFare = (dist > 0 && dist <= 3.0) ? 79 : 119;
+            minPayout = (dist > 0 && dist <= 3.0) ? 55 : 75;
             const accessFee = CONFIG.ACCESS_COORDINATION;
             const baseRetrieve = Math.max(minFare, CONFIG.SERVICE_BASE + accessFee + (dist * CONFIG.PER_KM_BIKE));
             customerFare = baseRetrieve + (timeBlocks * CONFIG.EXTRA_TIME_BLOCK);
@@ -119,8 +119,8 @@ function calculateCustomWorkPrice(params) {
             break;
 
         case 'prepaid_pickup':
-            minFare = 99;
-            minPayout = 65;
+            minFare = (dist > 0 && dist <= 3.0) ? 79 : 99;
+            minPayout = (dist > 0 && dist <= 3.0) ? 55 : 65;
             const basePrepaid = Math.max(minFare, CONFIG.SERVICE_BASE + (dist * CONFIG.PER_KM_BIKE));
             customerFare = basePrepaid + (timeBlocks * CONFIG.EXTRA_TIME_BLOCK);
             helperPayout = Math.max(minPayout, 45 + (dist * CONFIG.PER_KM_BIKE_HELPER)) + (timeBlocks * CONFIG.EXTRA_TIME_BLOCK_HELPER);
@@ -129,8 +129,9 @@ function calculateCustomWorkPrice(params) {
             break;
 
         case 'buy_and_bring':
-            minFare = 119;
-            minPayout = 80;
+            const isLocalBuy = (dist > 0 && dist <= 3.0);
+            minFare = isLocalBuy ? 79 : 119;
+            minPayout = isLocalBuy ? 55 : 80;
             let shopFee = CONFIG.SHOPPING_EFFORT;
             let shopHelper = CONFIG.SHOPPING_EFFORT_HELPER;
 
@@ -142,14 +143,14 @@ function calculateCustomWorkPrice(params) {
             const extraStoreFee = stores * CONFIG.EXTRA_STOP;
             const extraStoreHelper = stores * CONFIG.EXTRA_STOP_HELPER;
 
-            const baseBuy = Math.max(minFare, CONFIG.SERVICE_BASE + shopFee + extraStoreFee + (dist * CONFIG.PER_KM_BIKE));
+            const calcBuy = CONFIG.SERVICE_BASE + shopFee + extraStoreFee + (dist * CONFIG.PER_KM_BIKE);
+            const baseBuy = isLocalBuy ? Math.min(calcBuy, 79) : Math.max(minFare, calcBuy);
             customerFare = baseBuy + (timeBlocks * CONFIG.EXTRA_TIME_BLOCK);
             helperPayout = Math.max(minPayout, 45 + shopHelper + extraStoreHelper + (dist * CONFIG.PER_KM_BIKE_HELPER)) + (timeBlocks * CONFIG.EXTRA_TIME_BLOCK_HELPER);
             
-            breakdown.push({ label: 'Base Shopping Errand Fee', amount: CONFIG.SERVICE_BASE });
-            breakdown.push({ label: 'Shopping & Purchasing Effort', amount: shopFee });
+            breakdown.push({ label: 'Base Shopping Errand Fee', amount: Math.min(baseBuy, minFare) });
             if (stores > 0) breakdown.push({ label: `Additional Stores (${stores} extra @ ₹20)`, amount: extraStoreFee });
-            if (dist > 0) breakdown.push({ label: `Route Distance (${dist} km @ ₹8/km)`, amount: dist * CONFIG.PER_KM_BIKE });
+            if (dist > 3.0) breakdown.push({ label: `Route Distance (${dist} km @ ₹8/km)`, amount: dist * CONFIG.PER_KM_BIKE });
             if (timeBlocks > 0) breakdown.push({ label: `Extra Shopping Time (${timeBlocks} x 15m)`, amount: timeBlocks * CONFIG.EXTRA_TIME_BLOCK });
             break;
 
@@ -206,8 +207,9 @@ function calculateCustomWorkPrice(params) {
         case 'unique_custom_task':
         case 'general_errand':
         default:
-            minFare = 129;
-            minPayout = 85;
+            const isLocalHyperlocal = (dist > 0 && dist <= 3.0);
+            minFare = isLocalHyperlocal ? 79 : 129;
+            minPayout = isLocalHyperlocal ? 55 : 85;
             const includedKm = 3.0;
             const extraKm = Math.max(0, dist - includedKm);
             const extraKmFee = extraKm * CONFIG.PER_KM_BIKE;
@@ -219,10 +221,11 @@ function calculateCustomWorkPrice(params) {
             const extraWorkFee = extraWorkBlocks * CONFIG.EXTRA_TIME_BLOCK;
             const extraWorkHelper = extraWorkBlocks * CONFIG.EXTRA_TIME_BLOCK_HELPER;
 
-            customerFare = Math.max(minFare, 129 + extraKmFee) + extraWorkFee;
-            helperPayout = Math.max(minPayout, 85 + extraKmHelper) + extraWorkHelper;
+            const baseFareAmount = isLocalHyperlocal ? 79 : 129;
+            customerFare = Math.max(minFare, baseFareAmount + extraKmFee) + extraWorkFee;
+            helperPayout = Math.max(minPayout, (isLocalHyperlocal ? 55 : 85) + extraKmHelper) + extraWorkHelper;
 
-            breakdown.push({ label: 'General Errand Base (incl. 3km & 15m work)', amount: 129 });
+            breakdown.push({ label: `Local Bhongir Errand Base (incl. 3km & 15m work)`, amount: baseFareAmount });
             if (extraKm > 0) breakdown.push({ label: `Additional Distance (${extraKm.toFixed(1)} km)`, amount: extraKmFee });
             if (extraWorkBlocks > 0) breakdown.push({ label: `Additional Work Time (${extraWorkBlocks} x 15m)`, amount: extraWorkFee });
             break;
