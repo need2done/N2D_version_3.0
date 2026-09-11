@@ -208,6 +208,12 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                 else:
                     return f"📍 Please type your store or pickup location for '{session.get('pickup_name_label', 'Pickup Point')}', send a location pin, or tap 'Use Nearest Store'."
 
+            # If single-location task (on-site repair/breakdown/labor), bypass Drop Location!
+            if session.get("is_single_location"):
+                session["drop_location"] = "On-Site Work Location (No Drop Required)"
+                task_text = session.get("pending_task_text") or session.get("task_description") or "Custom Errand Task"
+                return _generate_price_quote(session, task_text, user)
+
             # Now prompt for Drop Location
             d_name = session.get("drop_name_label", "Drop-off Point")
             session["custom_work_step"] = "WAITING_DROP_LOCATION"
@@ -227,6 +233,31 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                 send_reply_buttons(to=user, body=body, buttons=buttons)
                 return None
             return body
+
+        # Step 4.5: Collect On-Site Work Location for Breakdown / Service
+        if step == "WAITING_WORK_LOCATION":
+            if text_clean == "CW_SEND_LOC_GUIDE":
+                if user:
+                    send_message(user, "📍 *Location Pin Instructions:*\n\nTap the attachment icon (📎) in WhatsApp and select *Location* to send your live location pin.")
+                    return None
+
+            if raw and raw.get("type") == "location":
+                loc = raw.get("location", {})
+                lat = loc.get("latitude")
+                lng = loc.get("longitude")
+                if lat and lng:
+                    session["pickup_lat"] = lat
+                    session["pickup_lng"] = lng
+                    session["pickup_location"] = to_map_link(lat, lng, name="Work Location", address=loc.get("address"))
+            elif len(text_clean) >= 3 and text_clean.upper() not in ["CW_CANCEL_TASK"]:
+                session["pickup_location"] = f"{text_clean}, Bhongir"
+            else:
+                return "📍 Please share your breakdown/work location pin or type landmark address below."
+
+            # Automatically set Drop location as On-Site and generate Quote!
+            session["drop_location"] = "On-Site Work Location (No Drop Required)"
+            task_text = session.get("pending_task_text") or session.get("task_description") or "Custom Errand Task"
+            return _generate_price_quote(session, task_text, user)
 
         # Step 5: Collect Drop Location
         if step == "WAITING_DROP_LOCATION":
@@ -364,7 +395,12 @@ def prompt_for_locations_or_quote(session: Dict[str, Any], task_text: str, user:
     session["pickup_name_label"] = p_name
     session["drop_name_label"] = d_name
 
-    requires_two_locs = task_type in ["retrieve", "direct_pickup", "multi_stop"] or (not has_shopping and p_name not in ["Pickup Point", "Nearest Store"])
+    is_single_loc = (
+        ai_intent.get("is_single_location_task") or
+        task_type in ["queue_paperwork"] or
+        any(w in task_text.lower() for w in ['repair', 'mechanic', 'puncture', 'tyre', 'not starting', 'plumber', 'electrician', 'stranded', 'flat', 'breakdown', 'starting'])
+    )
+    session["is_single_location"] = is_single_loc
 
     # 0. Check if Quantity/Details are missing for petrol, groceries, or items
     if ai_intent.get("is_quantity_missing") and not session.get("quantity_clarified"):
@@ -400,7 +436,31 @@ def prompt_for_locations_or_quote(session: Dict[str, Any], task_text: str, user:
             return None
         return body
 
-    # 1. Ask for Pickup / Store Location if missing
+    # 1A. Single-Location On-Site Service / Breakdown Flow (Bypasses Drop Location!)
+    if is_single_loc:
+        if not session.get("pickup_location"):
+            session["custom_work_step"] = "WAITING_WORK_LOCATION"
+            body = (
+                f"📍 *Work Site / Breakdown Location Needed*\n"
+                f"━━━━━━━━━━━━━━━━━━━━━\n"
+                f"📝 *Task:* {task_text[:100]}\n\n"
+                f"Please share your **exact location pin 📍** or landmark address where the helper/mechanic should arrive to assist you:\n"
+                f"• Tap 📎 in WhatsApp to send **Location Pin** 📍, or\n"
+                f"• Type exact street address / landmark below."
+            )
+            buttons = [
+                {"id": "CW_SEND_LOC_GUIDE", "title": "📍 Share Location Pin"},
+                {"id": "CW_CANCEL_TASK", "title": "❌ Cancel"}
+            ]
+            if user:
+                send_reply_buttons(to=user, body=body, buttons=buttons)
+                return None
+            return body
+
+        session["drop_location"] = "On-Site Work Location (No Drop Required)"
+        return _generate_price_quote(session, task_text, user)
+
+    # 1B. Two-Location Errand Flow: Ask for Pickup / Store Location if missing
     if not session.get("pickup_location"):
         session["custom_work_step"] = "WAITING_PICKUP_LOCATION"
         body = (
@@ -518,7 +578,16 @@ def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optiona
 
     breakdown_text = "\n".join(breakdown_lines)
 
-    if has_shopping or any(w in task_text.lower() for w in ['petrol', 'fuel', 'buy', 'bring', 'grocery', 'medicine', 'store']):
+    if session.get("is_single_location"):
+        loc_block = f"📍 *Work Site Location:* {pickup_loc}\n"
+        goods_policy = (
+            "🛠️ *On-Site Service & Breakdown Policy:*\n"
+            "• *On-Site Arrival:* The assigned helper/mechanic will arrive directly at your specified breakdown/work location.\n"
+            "• *Upon Completion:* You pay the Helper: *Quoted Service Fee (₹" + str(service_fee) + ")* + any actual parts/materials cost (if advanced by helper).\n"
+            "• *Payment Options:* Cash to Helper (COD) or Instant UPI."
+        )
+    elif has_shopping or any(w in task_text.lower() for w in ['petrol', 'fuel', 'buy', 'bring', 'grocery', 'medicine', 'store']):
+        loc_block = f"📍 *Pickup:* {pickup_loc}\n🏁 *Drop:* {drop_loc}\n"
         goods_policy = (
             "🛒 *Item Purchase & Goods Payment Policy:*\n"
             "• *Who pays for petrol/items?* The assigned Helper advances cash at the store/pump on your behalf.\n"
@@ -527,6 +596,7 @@ def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optiona
             "• *Payment Options:* Cash to Helper (COD) or Instant UPI on delivery."
         )
     else:
+        loc_block = f"📍 *Pickup:* {pickup_loc}\n🏁 *Drop:* {drop_loc}\n"
         goods_policy = (
             "📦 *Pickup & Delivery Policy:*\n"
             "• Helper will collect item at Pickup location and deliver directly to Drop location.\n"
@@ -539,9 +609,8 @@ def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optiona
         f"━━━━━━━━━━━━━━━━━━━━━\n"
         f"📝 *Task:* {task_text[:120]}\n"
         f"🏷️ *Category:* {cat_title}\n\n"
-        f"📍 *Pickup:* {pickup_loc}\n"
-        f"🏁 *Drop:* {drop_loc}\n"
-        f"🛣️ *Est. Route Distance:* {est_dist} km (via Ola Maps road route)\n"
+        f"{loc_block}"
+        f"🛣️ *Est. Service Distance:* {est_dist} km (via Ola Maps road route)\n"
         f"⏱️ *Included Handling:* Up to 15 mins\n\n"
         f"📊 *Itemized Fee Breakdown:*\n"
         f"{breakdown_text}\n"

@@ -210,6 +210,7 @@ def classify_custom_work_intent_gemini(raw_text: str) -> Dict[str, Any]:
         "- extra_stops: integer\n"
         "- is_quantity_missing: boolean (set to true if request involves buying petrol, fuel, groceries, medicines, or items BUT fails to state quantity like 1L, 2L, 5kg, 1kg, 100rs worth)\n"
         "- missing_detail_prompt: string (suggested short question to ask customer for missing quantity/specs)\n"
+        "- is_single_location_task: boolean (set to true ONLY IF request is an on-site service like mechanic/bike repair, vehicle breakdown/not starting, on-site labor/assistance, queue standing at 1 spot, plumber/electrician, or fuel delivery for stranded vehicle where work happens AT customer's location with NO separate drop-off destination)\n"
         "- safety_flag: MUST be 'SAFE' for all standard errands, fuel/petrol delivery for stranded vehicles, charger, keys, documents, groceries, household items, medicines. ONLY set 'BLOCKED_RESTRICTED' if request explicitly involves illegal drugs, alcohol/liquor, cash transfers/gambling, weapons/explosives, or adult services.\n\n"
         "Return ONLY raw JSON, no markdown codeblocks."
     )
@@ -242,7 +243,11 @@ def classify_custom_work_intent_gemini(raw_text: str) -> Dict[str, Any]:
                         if not any(b in lower_req for b in blocked_keywords):
                             parsed['safety_flag'] = 'SAFE'
 
-                        print(f"[GEMINI_FLASH_NLP] Successfully classified intent via {model}: {parsed.get('task_type')}, safety: {parsed.get('safety_flag')}")
+                        # Heuristic check for single location on-site service
+                        if any(k in lower_req for k in ['repair', 'mechanic', 'puncture', 'flat', 'tyre', 'not starting', 'plumber', 'electrician', 'breakdown', 'stranded', 'starting']):
+                            parsed['is_single_location_task'] = True
+
+                        print(f"[GEMINI_FLASH_NLP] Successfully classified intent via {model}: {parsed.get('task_type')}, single_loc: {parsed.get('is_single_location_task')}, safety: {parsed.get('safety_flag')}")
                         return parsed
 
             except Exception as e:
@@ -251,6 +256,8 @@ def classify_custom_work_intent_gemini(raw_text: str) -> Dict[str, Any]:
 
     # Heuristic Fallback Classifier
     lower = raw_text.lower()
+    if any(k in lower for k in ['repair', 'mechanic', 'puncture', 'flat', 'tyre', 'not starting', 'plumber', 'electrician', 'breakdown', 'stranded', 'starting', 'queue', 'wait']):
+        default_payload['is_single_location_task'] = True
     if any(k in lower for k in ['buy', 'grocery', 'vegetable', 'shop', 'store bill', 'kirana']):
         default_payload['task_type'] = 'buy_and_bring'
         default_payload['has_shopping'] = True
@@ -259,5 +266,6 @@ def classify_custom_work_intent_gemini(raw_text: str) -> Dict[str, Any]:
         default_payload['has_access_coordination'] = True
     elif any(k in lower for k in ['queue', 'wait', 'paperwork', 'form', 'token']):
         default_payload['task_type'] = 'queue_paperwork'
+        default_payload['is_single_location_task'] = True
 
     return default_payload
