@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { 
     Briefcase, Settings, AlertTriangle, Shield, CheckCircle2, XCircle, 
-    DollarSign, Clock, MapPin, Search, Filter, RefreshCw, Layers, Plus, Trash2, ArrowRight, Eye, X, Check, Edit3, User, Phone, ShoppingCart, Truck
+    DollarSign, Clock, MapPin, Search, Filter, RefreshCw, Layers, Plus, Trash2, ArrowRight, Eye, X, Check, Edit3, User, Phone, ShoppingCart, Truck, ChevronDown, ChevronUp, Zap, HelpCircle, Layers3, Navigation
 } from 'lucide-react';
 import '../index.css';
 import { API_URL as API_BASE } from '../config';
 
-
 export default function CustomWorkAdmin() {
-    const [activeTab, setActiveTab] = useState('orders'); // 'orders', 'rates', 'cards', 'safety', 'disputes'
+    const [activeTab, setActiveTab] = useState('categories'); // 'categories', 'orders', 'rates', 'safety', 'disputes'
     const [isLoading, setIsLoading] = useState(false);
     const [statusMsg, setStatusMsg] = useState({ type: '', text: '' });
     const [selectedOrder, setSelectedOrder] = useState(null); // For Inspect Drawer
+    const [searchTerm, setSearchTerm] = useState('');
+    const [categoryFilter, setCategoryFilter] = useState('all'); // 'all', 'single', 'two'
+    const [expandedFlows, setExpandedFlows] = useState({ buy_and_bring: true, unique_custom_task: true });
+    const [newCategoryKeywords, setNewCategoryKeywords] = useState({});
 
     // State for Rate Card Configuration
     const [rateCard, setRateCard] = useState({
@@ -31,18 +34,168 @@ export default function CustomWorkAdmin() {
         MINI_TRUCK_MIN: 399
     });
 
-    // State for Task Cards Toggle
-    const [taskCards, setTaskCards] = useState([
-        { id: 'micro_errand', name: 'Micro-Errand (<2 km)', enabled: true, minFare: 69, desc: 'Local short pickup & drop' },
-        { id: 'direct_pickup', name: 'Direct Pickup & Drop', enabled: true, minFare: 99, desc: 'Charger, keys, documents' },
-        { id: 'retrieve', name: 'Retrieve Item from Home/Office', enabled: true, minFare: 119, desc: 'Forgotten item collection with OTP' },
-        { id: 'prepaid_pickup', name: 'Prepaid Store Pickup', enabled: true, minFare: 99, desc: 'Pre-packed medicine, clothes' },
-        { id: 'buy_and_bring', name: 'Buy & Bring (Shopping)', enabled: true, minFare: 119, desc: 'Groceries, vegetables, daily needs' },
-        { id: 'queue_paperwork', name: 'Queue & Paperwork Errand', enabled: true, minFare: 99, desc: 'Queue standing & form submission' },
-        { id: 'multi_stop', name: 'Multi-Stop Errand', enabled: true, minFare: 119, desc: '3+ locations (Home -> Store -> Office)' },
-        { id: 'heavy_cargo_auto', name: 'Heavy Cargo Auto', enabled: true, minFare: 199, desc: 'Auto load up to 200 kg' },
-        { id: 'heavy_mini_truck', name: 'Heavy Mini Truck', enabled: false, minFare: 399, desc: 'Mini truck load up to 750 kg' },
-        { id: 'general_errand', name: 'General / Unique Errand', enabled: true, minFare: 129, desc: 'Custom unscoped requests' }
+    // State for 8 Category AI & Flow Explorer
+    const [categoryDetails, setCategoryDetails] = useState([
+        {
+            id: 'buy_and_bring',
+            code: 'buy_and_bring',
+            name: 'Shopping & Emergency Fuel (Buy & Bring)',
+            flowType: 'Two-Location Transfer Flow (Store -> Home)',
+            isSingleLoc: false,
+            qtyCheck: true,
+            qtyNote: 'Prompts for fuel volume (1L, 2L) or grocery item list',
+            fares: '₹59 (0-2km) | ₹79 (2-3.5km) | ₹99 (3.5-5km)',
+            desc: 'Helper advances cash at store/pump for groceries, fuel, medicines or provisions.',
+            keywords: ['buy', 'grocery', 'groceries', 'vegetable', 'fruits', 'shop', 'store bill', 'kirana', 'pharmacy', 'supermarket', 'sweets', 'dairy', 'petrol', 'fuel', 'milk', 'bread', 'stationery'],
+            enabled: true,
+            steps: [
+                '1. Customer sends request (e.g. "I need petrol 2 litres" or "25kg rice bag")',
+                '2. AI detects buy_and_bring intent & triggers quantity check if missing',
+                '3. Bot asks for Store / Pickup location (provides [🏪 Use Nearest Store] button)',
+                '4. Bot asks for Drop-off location & computes tiered distance fare + estimated item cost',
+                '5. Helper receives order with store list, advances cash, and delivers'
+            ]
+        },
+        {
+            id: 'direct_pickup',
+            code: 'direct_pickup',
+            name: 'Direct Pick & Drop Courier',
+            flowType: 'Two-Location Transfer Flow (Pickup -> Drop)',
+            isSingleLoc: false,
+            qtyCheck: false,
+            qtyNote: 'Pre-packed items (no quantity check needed)',
+            fares: '₹59 (0-2km) | ₹79 (2-3.5km) | ₹99 (3.5-5km)',
+            desc: 'Direct point A to point B item delivery for charger, keys, tiffin, documents.',
+            keywords: ['pick up', 'pickup', 'collect and drop', 'deliver to', 'laptop charger', 'charger', 'tiffin box', 'lunch box', 'spectacles', 'documents', 'rc document', 'parcel', 'laundry clothes'],
+            enabled: true,
+            steps: [
+                '1. Customer requests parcel transport (e.g. "pick up charger from home and drop at office")',
+                '2. AI detects direct_pickup & skips item quantity prompts',
+                '3. Bot prompts for Pickup Address & contact details',
+                '4. Bot prompts for Drop Address & calculates exact distance fare',
+                '5. Rider picks up sealed parcel and delivers directly'
+            ]
+        },
+        {
+            id: 'retrieve',
+            code: 'retrieve',
+            name: 'Item Retrieval & Coordination',
+            flowType: 'Two-Location Transfer Flow (Retrieve -> Customer)',
+            isSingleLoc: false,
+            qtyCheck: false,
+            qtyNote: 'Coordinated item collection with contact person',
+            fares: '₹59 (0-2km) | ₹79 (2-3.5km) | ₹99 (3.5-5km)',
+            desc: 'Retrieving forgotten keys, helmet, wallet or ID card from friend/office/canteen.',
+            keywords: ['retrieve', 'bring from home', 'collect key', 'forgot', 'forgotten', 'left at', 'brother', 'friend', 'family', 'canteen', 'function hall', 'security guard', 'locker', 'wallet'],
+            enabled: true,
+            steps: [
+                '1. Customer requests forgotten item (e.g. "I left my keys at my friend house")',
+                '2. AI detects retrieve intent & asks for contact person details if missing',
+                '3. Bot collects Retrieval location & contact phone number',
+                '4. Bot collects Customer current drop location',
+                '5. Rider calls contact person on arrival, retrieves item, and brings to customer'
+            ]
+        },
+        {
+            id: 'prepaid_pickup',
+            code: 'prepaid_pickup',
+            name: 'Prepaid Store Collection',
+            flowType: 'Two-Location Transfer Flow (Store -> Customer)',
+            isSingleLoc: false,
+            qtyCheck: false,
+            qtyNote: 'Pre-ordered counter pickup (already paid online/advance)',
+            fares: '₹59 (0-2km) | ₹79 (2-3.5km) | ₹99 (3.5-5km)',
+            desc: 'Collecting prepaid bakery cakes, dry cleaned suits, photo prints, booked shoes.',
+            keywords: ['prepaid', 'pre-ordered', 'already paid', 'paid online', 'bakery cake', 'dry cleaned suit', 'photo studio', 'bata shoes', 'lenskart glasses', 'boutique dress', 'florist bouquet'],
+            enabled: true,
+            steps: [
+                '1. Customer mentions pre-ordered item (e.g. "collect cake from bakery paid online")',
+                '2. AI detects prepaid_pickup & prompts for order token/invoice #',
+                '3. Bot asks for Bakery/Store location & pickup reference name',
+                '4. Bot asks for Delivery address',
+                '5. Helper quotes order code at counter, picks up package, delivers'
+            ]
+        },
+        {
+            id: 'queue_paperwork',
+            code: 'queue_paperwork',
+            name: 'Queueing & Official Paperwork',
+            flowType: 'Single Work Site Flow (1-Loc) - BYPASSES DROP LOCATION',
+            isSingleLoc: true,
+            qtyCheck: false,
+            qtyNote: 'On-site queueing at office/bank counter',
+            fares: '₹99 base + ₹30 per 15m extra wait block',
+            desc: 'Standing in line at MeeSeva, bank passbook update, electricity bill counter, token wait.',
+            keywords: ['queue', 'wait in line', 'paperwork', 'form', 'token', 'meeseva', 'tahsildar', 'rto office', 'bank passbook', 'sbi queue', 'electricity office', 'sub-registrar', 'post office'],
+            enabled: true,
+            steps: [
+                '1. Customer requests queue assist (e.g. "stand in line at MeeSeva counter")',
+                '2. AI detects queue_paperwork & sets is_single_location = true',
+                '3. Bot asks ONLY for 📍 Work Site / Office Location (Drop location prompt is bypassed!)',
+                '4. System quotes base fee (₹99) + transparent ₹30/15m extra wait policy',
+                '5. Helper reaches site, gets token, stays in queue until customer arrives'
+            ]
+        },
+        {
+            id: 'multi_stop',
+            code: 'multi_stop',
+            name: 'Multi-Stop Errand Run',
+            flowType: 'Multi-Stop Flow (Stop 1 -> Stop 2 -> Drop)',
+            isSingleLoc: false,
+            qtyCheck: true,
+            qtyNote: 'Checks multi-store item lists',
+            fares: '₹119 base (incl. 2 stops) + ₹20 / extra stop',
+            desc: 'Visiting 2 or 3 places in a single run (e.g. Kirana store -> Pharmacy -> Home).',
+            keywords: ['multi stop', 'multi-stop', '2 stores', '3 stops', 'kirana and medplus', 'courier and fruit mandi', 'sbi bank and sweets', 'multiple places'],
+            enabled: true,
+            steps: [
+                '1. Customer specifies multi-destination task (e.g. "buy groceries from market then medicine from MedPlus")',
+                '2. AI detects multi_stop intent & prompts for list of stops',
+                '3. Bot collects Stop 1 & Stop 2 location pins',
+                '4. Bot collects Final Drop location & applies multi-stop surcharge (+₹20/extra stop)',
+                '5. Helper completes sequentially in one single trip'
+            ]
+        },
+        {
+            id: 'heavy_cargo_auto',
+            code: 'heavy_cargo_auto',
+            name: 'Cargo Transport & Moving (Auto / Truck)',
+            flowType: 'Two-Location Transfer Flow (Loading -> Unloading)',
+            isSingleLoc: false,
+            qtyCheck: false,
+            qtyNote: 'Bulk transport vehicle loading',
+            fares: 'Cargo Auto: ₹199 min | Mini Truck: ₹399 min',
+            desc: 'Transporting heavy rice bags, cement, washing machine, refrigerator, furniture, generator.',
+            keywords: ['cargo auto', 'mini truck', 'shift house', 'cement bags', 'steel rods', 'washing machine', 'refrigerator', 'cooler', 'bed mattress', 'tiles', 'generator'],
+            enabled: true,
+            steps: [
+                '1. Customer requests heavy item moving (e.g. "shift fridge and washing machine")',
+                '2. AI detects heavy_cargo_auto & selects 3-wheeler auto / 4-wheeler mini truck',
+                '3. Bot collects Loading Point & Unloading Point',
+                '4. Bot calculates cargo transport pricing (₹199 / ₹399 min base)',
+                '5. Commercial vehicle dispatched with helper for loading support'
+            ]
+        },
+        {
+            id: 'unique_custom_task',
+            code: 'unique_custom_task',
+            name: 'On-Site Repair, Breakdown & Custom Errand',
+            flowType: 'Single Work Site Flow (1-Loc) - BYPASSES DROP LOCATION',
+            isSingleLoc: true,
+            qtyCheck: true,
+            qtyNote: 'Checks petrol litres if emergency fuel request',
+            fares: '₹59 (0-2km) | ₹79 (2-3.5km) | ₹99 (3.5-5km)',
+            desc: 'On-site mechanic breakdown assistance, flat tyre, plumber, electrician, locksmith, pet feeding.',
+            keywords: ['mechanic', 'not starting', 'starting', 'puncture', 'flat tyre', 'tyre', 'breakdown', 'stranded', 'bike repair', 'car battery', 'jumpstart', 'plumber', 'electrician', 'locksmith', 'broken key', 'water pipe leak', 'feed pet dog'],
+            enabled: true,
+            steps: [
+                '1. Customer requests emergency/repair help (e.g. "my bike not starting im at bhongir highway")',
+                '2. AI detects unique_custom_task & sets is_single_location = true',
+                '3. Bot asks ONLY for 📍 Work Site / Stranded Location (Drop location prompt is bypassed!)',
+                '4. System displays 🛠️ On-Site Service & Breakdown Policy with distance fare',
+                '5. On-site mechanic/service helper dispatched immediately to location'
+            ]
+        }
     ]);
 
     // State for Restricted Safety Keywords
@@ -94,21 +247,21 @@ export default function CustomWorkAdmin() {
         },
         {
             id: 'N2DCW_8090',
-            taskType: 'Unique Custom Task',
+            taskType: 'Unique Custom Task (Mechanic)',
             customerName: 'Vikram Reddy',
             phone: '+91 99887 76655',
-            pickup: 'SBI Bank Branch',
-            drop: 'Collectorate Office',
-            quotedFare: 175,
-            finalFare: 175,
+            pickup: 'Highway Petrol Bunk, Bhongir (Work Site)',
+            drop: 'N/A (Single Location Task)',
+            quotedFare: 79,
+            finalFare: 79,
             budgetCap: 500,
             goodsInvoice: 0,
-            helperName: 'Unassigned',
-            helperPhone: 'N/A',
-            status: 'ADMIN_REVIEW',
+            helperName: 'Mahesh Mechanic',
+            helperPhone: '+91 94411 22334',
+            status: 'ON_ROUTE',
             time: '2 mins ago',
-            flaggedReason: 'Ambiguous request description requiring admin scope verification',
-            itemsList: ['Unverified Bank Token Request']
+            flaggedReason: null,
+            itemsList: ['Bike Puncture & Battery Jumpstart']
         }
     ]);
 
@@ -162,8 +315,33 @@ export default function CustomWorkAdmin() {
         setRateCard(prev => ({ ...prev, [field]: parseFloat(val) || 0 }));
     };
 
-    const handleCardToggle = (id) => {
-        setTaskCards(prev => prev.map(c => c.id === id ? { ...c, enabled: !c.enabled } : c));
+    const handleCategoryToggle = (id) => {
+        setCategoryDetails(prev => prev.map(c => c.id === id ? { ...c, enabled: !c.enabled } : c));
+    };
+
+    const toggleFlowAccordion = (id) => {
+        setExpandedFlows(prev => ({ ...prev, [id]: !prev[id] }));
+    };
+
+    const handleAddKeywordToCategory = (catId) => {
+        const kw = (newCategoryKeywords[catId] || '').trim().toLowerCase();
+        if (!kw) return;
+        setCategoryDetails(prev => prev.map(c => {
+            if (c.id === catId && !c.keywords.includes(kw)) {
+                return { ...c, keywords: [...c.keywords, kw] };
+            }
+            return c;
+        }));
+        setNewCategoryKeywords(prev => ({ ...prev, [catId]: '' }));
+    };
+
+    const handleRemoveKeywordFromCategory = (catId, kwToRemove) => {
+        setCategoryDetails(prev => prev.map(c => {
+            if (c.id === catId) {
+                return { ...c, keywords: c.keywords.filter(k => k !== kwToRemove) };
+            }
+            return c;
+        }));
     };
 
     const addKeyword = () => {
@@ -179,23 +357,35 @@ export default function CustomWorkAdmin() {
         setKeywords(prev => prev.filter(k => k !== kw));
     };
 
+    // Filter categories based on search & filter pills
+    const filteredCategories = categoryDetails.filter(cat => {
+        const matchesSearch = cat.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                              cat.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                              cat.keywords.some(k => k.toLowerCase().includes(searchTerm.toLowerCase()));
+        if (!matchesSearch) return false;
+
+        if (categoryFilter === 'single') return cat.isSingleLoc;
+        if (categoryFilter === 'two') return !cat.isSingleLoc;
+        return true;
+    });
+
     return (
         <div style={{ padding: '24px', backgroundColor: '#0f172a', minHeight: '100vh', color: '#f8fafc', fontFamily: 'Inter, sans-serif' }}>
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
                 <div>
                     <h1 style={{ fontSize: '26px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '12px', color: '#ffffff', margin: 0 }}>
-                        <Briefcase style={{ color: '#f59e0b' }} size={30} /> Custom Work Operations Panel
+                        <Briefcase style={{ color: '#f59e0b' }} size={30} /> Custom Work Operations & 8 Category AI Manager
                     </h1>
                     <p style={{ color: '#94a3b8', fontSize: '14px', marginTop: '6px' }}>
-                        Bhongir Telangana Pilot Rate Cards, Task Cards, Live Orders & Safety Controls
+                        Bhongir Telangana Operating Center — Manage Category Flows, Keywords, Dynamic Pricing & Safety
                     </p>
                 </div>
                 <button 
                     onClick={fetchRateCard}
                     style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', borderRadius: '8px', backgroundColor: '#3b82f6', color: '#ffffff', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '14px', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }}
                 >
-                    <RefreshCw size={16} className={isLoading ? 'spin' : ''} /> Refresh Data
+                    <RefreshCw size={16} className={isLoading ? 'spin' : ''} /> Refresh Engine Data
                 </button>
             </div>
 
@@ -221,11 +411,11 @@ export default function CustomWorkAdmin() {
             {/* Navigation Tabs */}
             <div style={{ display: 'flex', gap: '10px', borderBottom: '1px solid #334155', paddingBottom: '14px', marginBottom: '24px', flexWrap: 'wrap' }}>
                 {[
-                    { id: 'orders', label: 'Live Orders Monitor', icon: Layers },
-                    { id: 'rates', label: 'Rate Card Configurator', icon: Settings },
-                    { id: 'cards', label: 'Task Cards Toggle', icon: Briefcase },
-                    { id: 'safety', label: 'Safety & Restricted Shield', icon: Shield },
-                    { id: 'disputes', label: 'Disputes & Overtime Audit', icon: AlertTriangle }
+                    { id: 'categories', label: '📂 8 Category AI & Flow Explorer', icon: Layers3 },
+                    { id: 'orders', label: '📊 Live Orders Monitor', icon: Layers },
+                    { id: 'rates', label: '💰 Rate Card Configurator', icon: Settings },
+                    { id: 'safety', label: '🛡️ Safety & Restricted Shield', icon: Shield },
+                    { id: 'disputes', label: '⚖️ Disputes & Overtime Audit', icon: AlertTriangle }
                 ].map(tab => {
                     const Icon = tab.icon;
                     const isActive = activeTab === tab.id;
@@ -256,7 +446,244 @@ export default function CustomWorkAdmin() {
                 })}
             </div>
 
-            {/* TAB 1: LIVE ORDERS MONITOR */}
+            {/* TAB 1: 8 CATEGORY AI & FLOW EXPLORER */}
+            {activeTab === 'categories' && (
+                <div>
+                    {/* Header Summary Cards */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+                        <div style={{ backgroundColor: '#1e293b', padding: '18px', borderRadius: '12px', borderLeft: '4px solid #f59e0b', borderTop: '1px solid #334155', borderRight: '1px solid #334155', borderBottom: '1px solid #334155' }}>
+                            <p style={{ color: '#94a3b8', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase' }}>Total Category Codes</p>
+                            <h3 style={{ fontSize: '26px', fontWeight: '800', marginTop: '4px', color: '#ffffff' }}>8 Active Categories</h3>
+                        </div>
+                        <div style={{ backgroundColor: '#1e293b', padding: '18px', borderRadius: '12px', borderLeft: '4px solid #3b82f6', borderTop: '1px solid #334155', borderRight: '1px solid #334155', borderBottom: '1px solid #334155' }}>
+                            <p style={{ color: '#94a3b8', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase' }}>Single Location (1-Loc Work Site)</p>
+                            <h3 style={{ fontSize: '26px', fontWeight: '800', marginTop: '4px', color: '#60a5fa' }}>2 Categories</h3>
+                            <span style={{ fontSize: '11px', color: '#94a3b8' }}>Mechanic/Repair & Queueing (Bypasses Drop)</span>
+                        </div>
+                        <div style={{ backgroundColor: '#1e293b', padding: '18px', borderRadius: '12px', borderLeft: '4px solid #10b981', borderTop: '1px solid #334155', borderRight: '1px solid #334155', borderBottom: '1px solid #334155' }}>
+                            <p style={{ color: '#94a3b8', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase' }}>Transfer Flow (2-Loc Pickup/Drop)</p>
+                            <h3 style={{ fontSize: '26px', fontWeight: '800', marginTop: '4px', color: '#10b981' }}>6 Categories</h3>
+                            <span style={{ fontSize: '11px', color: '#94a3b8' }}>Shopping, Pick & Drop, Retrieval, Moving</span>
+                        </div>
+                        <div style={{ backgroundColor: '#1e293b', padding: '18px', borderRadius: '12px', borderLeft: '4px solid #a855f7', borderTop: '1px solid #334155', borderRight: '1px solid #334155', borderBottom: '1px solid #334155' }}>
+                            <p style={{ color: '#94a3b8', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase' }}>AI Trigger Mappings</p>
+                            <h3 style={{ fontSize: '26px', fontWeight: '800', marginTop: '4px', color: '#c084fc' }}>110+ Mapped Keywords</h3>
+                        </div>
+                    </div>
+
+                    {/* Search & Filter Toolbar */}
+                    <div style={{ backgroundColor: '#1e293b', padding: '16px 20px', borderRadius: '12px', marginBottom: '24px', border: '1px solid #334155', display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div style={{ position: 'relative', flex: 1, minWidth: '260px' }}>
+                            <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                            <input 
+                                type="text"
+                                placeholder="Search by category name, code (e.g. buy_and_bring), or keyword (e.g. petrol, mechanic)..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                style={{ width: '100%', padding: '10px 12px 10px 38px', backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '8px', color: '#ffffff', fontSize: '14px' }}
+                            />
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                                onClick={() => setCategoryFilter('all')}
+                                style={{ padding: '8px 14px', borderRadius: '6px', border: 'none', fontWeight: '700', fontSize: '13px', cursor: 'pointer', backgroundColor: categoryFilter === 'all' ? '#f59e0b' : '#0f172a', color: categoryFilter === 'all' ? '#0f172a' : '#cbd5e1' }}
+                            >
+                                All 8 Categories
+                            </button>
+                            <button
+                                onClick={() => setCategoryFilter('single')}
+                                style={{ padding: '8px 14px', borderRadius: '6px', border: 'none', fontWeight: '700', fontSize: '13px', cursor: 'pointer', backgroundColor: categoryFilter === 'single' ? '#3b82f6' : '#0f172a', color: categoryFilter === 'single' ? '#ffffff' : '#cbd5e1' }}
+                            >
+                                📍 1-Location Work Site
+                            </button>
+                            <button
+                                onClick={() => setCategoryFilter('two')}
+                                style={{ padding: '8px 14px', borderRadius: '6px', border: 'none', fontWeight: '700', fontSize: '13px', cursor: 'pointer', backgroundColor: categoryFilter === 'two' ? '#10b981' : '#0f172a', color: categoryFilter === 'two' ? '#ffffff' : '#cbd5e1' }}
+                            >
+                                🚚 2-Location Transfer
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* 8 Category Cards List */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
+                        {filteredCategories.map((cat, idx) => (
+                            <div 
+                                key={cat.id} 
+                                style={{ 
+                                    backgroundColor: '#1e293b', 
+                                    borderRadius: '12px', 
+                                    padding: '24px', 
+                                    border: cat.isSingleLoc ? '1px solid #3b82f6' : '1px solid #334155',
+                                    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)'
+                                }}
+                            >
+                                {/* Card Header */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', borderBottom: '1px solid #334155', paddingBottom: '16px', marginBottom: '16px' }}>
+                                    <div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                                            <span style={{ backgroundColor: '#0f172a', color: '#f59e0b', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: '800', fontFamily: 'monospace', border: '1px solid #f59e0b' }}>
+                                                Category #{idx + 1}: {cat.code}
+                                            </span>
+                                            <h3 style={{ fontSize: '20px', fontWeight: '800', color: '#ffffff', margin: 0 }}>{cat.name}</h3>
+                                        </div>
+                                        <p style={{ color: '#94a3b8', fontSize: '14px', marginTop: '6px', margin: '6px 0 0 0' }}>{cat.desc}</p>
+                                    </div>
+
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <button 
+                                            onClick={() => handleCategoryToggle(cat.id)}
+                                            style={{
+                                                padding: '8px 16px',
+                                                borderRadius: '8px',
+                                                border: 'none',
+                                                fontWeight: '800',
+                                                fontSize: '12px',
+                                                cursor: 'pointer',
+                                                backgroundColor: cat.enabled ? '#10b981' : '#475569',
+                                                color: '#ffffff'
+                                            }}
+                                        >
+                                            {cat.enabled ? '● ACTIVE IN BOT' : '○ DISABLED'}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Flow Type Banner */}
+                                <div style={{ 
+                                    padding: '12px 16px', 
+                                    borderRadius: '8px', 
+                                    marginBottom: '18px', 
+                                    backgroundColor: cat.isSingleLoc ? 'rgba(59, 130, 246, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                                    border: `1px solid ${cat.isSingleLoc ? '#3b82f6' : '#10b981'}`,
+                                    display: 'flex',
+                                    justify: 'space-between',
+                                    alignItems: 'center',
+                                    flexWrap: 'wrap',
+                                    gap: '10px'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        {cat.isSingleLoc ? (
+                                            <Zap style={{ color: '#60a5fa' }} size={20} />
+                                        ) : (
+                                            <Navigation style={{ color: '#34d399' }} size={20} />
+                                        )}
+                                        <div>
+                                            <strong style={{ color: cat.isSingleLoc ? '#60a5fa' : '#34d399', fontSize: '14px' }}>
+                                                {cat.flowType}
+                                            </strong>
+                                            <p style={{ color: '#cbd5e1', fontSize: '12px', margin: '2px 0 0 0' }}>
+                                                {cat.isSingleLoc 
+                                                    ? '⚡ Stranded / On-Site Repair Mode: Bot prompts ONLY for Work Site location. Bypasses drop location prompt completely!'
+                                                    : '🚚 2-Point Delivery Mode: Bot asks where to pick up / buy items first (with convenient store options), then asks for customer drop location.'
+                                                }
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button 
+                                        onClick={() => toggleFlowAccordion(cat.id)}
+                                        style={{ backgroundColor: '#0f172a', border: '1px solid #475569', color: '#ffffff', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                    >
+                                        {expandedFlows[cat.id] ? <ChevronUp size={14} /> : <ChevronDown size={14} />} 
+                                        {expandedFlows[cat.id] ? 'Hide Bot Steps' : 'View Bot Steps'}
+                                    </button>
+                                </div>
+
+                                {/* Expandable Step-by-step Flowchart */}
+                                {expandedFlows[cat.id] && (
+                                    <div style={{ backgroundColor: '#0f172a', padding: '16px', borderRadius: '8px', marginBottom: '18px', border: '1px solid #334155' }}>
+                                        <h4 style={{ fontSize: '13px', fontWeight: '800', color: '#f59e0b', textTransform: 'uppercase', marginBottom: '10px' }}>
+                                            🤖 WhatsApp Bot Execution Steps for {cat.code}
+                                        </h4>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                            {cat.steps.map((step, sIdx) => (
+                                                <div key={sIdx} style={{ fontSize: '13px', color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <span style={{ color: '#10b981', fontWeight: '700' }}>✓</span>
+                                                    {step}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Specs Grid: Quantity Intake & Base Pricing */}
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px', marginBottom: '18px' }}>
+                                    <div style={{ backgroundColor: '#0f172a', padding: '14px', borderRadius: '8px', border: '1px solid #334155' }}>
+                                        <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase', display: 'block' }}>Quantity & Intake Rule</span>
+                                        <strong style={{ fontSize: '14px', color: cat.qtyCheck ? '#f59e0b' : '#38bdf8', marginTop: '4px', display: 'block' }}>
+                                            {cat.qtyCheck ? '📦 Quantity Intake Check Required' : '⚡ Direct Intake (No Qty Check)'}
+                                        </strong>
+                                        <p style={{ fontSize: '12px', color: '#94a3b8', margin: '4px 0 0 0' }}>{cat.qtyNote}</p>
+                                    </div>
+
+                                    <div style={{ backgroundColor: '#0f172a', padding: '14px', borderRadius: '8px', border: '1px solid #334155' }}>
+                                        <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase', display: 'block' }}>Base Pricing & Distance Slabs</span>
+                                        <strong style={{ fontSize: '14px', color: '#10b981', marginTop: '4px', display: 'block' }}>{cat.fares}</strong>
+                                        <p style={{ fontSize: '12px', color: '#94a3b8', margin: '4px 0 0 0' }}>Calculated via Smooth Tiered Engine in backend</p>
+                                    </div>
+                                </div>
+
+                                {/* AI Intent Search Keywords Section */}
+                                <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                        <span style={{ fontSize: '12px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                            🎯 Mapped Intent Search Keywords ({cat.keywords.length})
+                                        </span>
+                                    </div>
+
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' }}>
+                                        {cat.keywords.map(kw => (
+                                            <span 
+                                                key={kw} 
+                                                style={{ 
+                                                    backgroundColor: '#0f172a', 
+                                                    border: '1px solid #475569', 
+                                                    color: '#e2e8f0', 
+                                                    padding: '5px 12px', 
+                                                    borderRadius: '16px', 
+                                                    fontSize: '12px', 
+                                                    fontWeight: '600',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px'
+                                                }}
+                                            >
+                                                {kw}
+                                                <X 
+                                                    size={12} 
+                                                    style={{ cursor: 'pointer', color: '#ef4444' }} 
+                                                    onClick={() => handleRemoveKeywordFromCategory(cat.id, kw)} 
+                                                />
+                                            </span>
+                                        ))}
+                                    </div>
+
+                                    {/* Add Keyword Input for this category */}
+                                    <div style={{ display: 'flex', gap: '10px', maxWidth: '420px' }}>
+                                        <input 
+                                            type="text" 
+                                            placeholder={`Add new keyword for ${cat.code}...`}
+                                            value={newCategoryKeywords[cat.id] || ''}
+                                            onChange={(e) => setNewCategoryKeywords(prev => ({ ...prev, [cat.id]: e.target.value }))}
+                                            onKeyDown={(e) => { if (e.key === 'Enter') handleAddKeywordToCategory(cat.id); }}
+                                            style={{ flex: 1, padding: '8px 12px', backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '6px', color: '#ffffff', fontSize: '13px' }}
+                                        />
+                                        <button 
+                                            onClick={() => handleAddKeywordToCategory(cat.id)}
+                                            style={{ padding: '8px 14px', backgroundColor: '#3b82f6', color: '#ffffff', border: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '12px', cursor: 'pointer' }}
+                                        >
+                                            + Add Keyword
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* TAB 2: LIVE ORDERS MONITOR */}
             {activeTab === 'orders' && (
                 <div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '24px' }}>
@@ -266,7 +693,7 @@ export default function CustomWorkAdmin() {
                         </div>
                         <div style={{ backgroundColor: '#1e293b', padding: '20px', borderRadius: '12px', borderLeft: '4px solid #10b981', borderTop: '1px solid #334155', borderRight: '1px solid #334155', borderBottom: '1px solid #334155' }}>
                             <p style={{ color: '#94a3b8', fontSize: '13px', fontWeight: '600', textTransform: 'uppercase' }}>Avg Quoted Service Fee</p>
-                            <h3 style={{ fontSize: '28px', fontWeight: '800', marginTop: '6px', color: '#10b981' }}>₹128</h3>
+                            <h3 style={{ fontSize: '28px', fontWeight: '800', marginTop: '6px', color: '#10b981' }}>₹99</h3>
                         </div>
                         <div style={{ backgroundColor: '#1e293b', padding: '20px', borderRadius: '12px', borderLeft: '4px solid #f59e0b', borderTop: '1px solid #334155', borderRight: '1px solid #334155', borderBottom: '1px solid #334155' }}>
                             <p style={{ color: '#94a3b8', fontSize: '13px', fontWeight: '600', textTransform: 'uppercase' }}>Overtime / Delay Blocks</p>
@@ -335,7 +762,7 @@ export default function CustomWorkAdmin() {
                 </div>
             )}
 
-            {/* TAB 2: RATE CARD CONFIGURATOR */}
+            {/* TAB 3: RATE CARD CONFIGURATOR */}
             {activeTab === 'rates' && (
                 <div style={{ backgroundColor: '#1e293b', borderRadius: '12px', padding: '24px', border: '1px solid #334155' }}>
                     <h3 style={{ fontSize: '20px', fontWeight: '800', marginBottom: '8px', color: '#ffffff' }}>Bhongir Pilot Dynamic Rate Cards</h3>
@@ -420,43 +847,6 @@ export default function CustomWorkAdmin() {
                 </div>
             )}
 
-            {/* TAB 3: TASK CARDS TOGGLE */}
-            {activeTab === 'cards' && (
-                <div style={{ backgroundColor: '#1e293b', borderRadius: '12px', padding: '24px', border: '1px solid #334155' }}>
-                    <h3 style={{ fontSize: '20px', fontWeight: '800', marginBottom: '8px', color: '#ffffff' }}>Active Task Cards Management</h3>
-                    <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '24px' }}>
-                        Enable or disable specific task cards for the Bhongir operating zone.
-                    </p>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
-                        {taskCards.map(card => (
-                            <div key={card.id} style={{ backgroundColor: '#0f172a', padding: '18px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: card.enabled ? '1px solid #10b981' : '1px solid #334155' }}>
-                                <div>
-                                    <h4 style={{ fontSize: '16px', fontWeight: '700', color: '#ffffff', margin: 0 }}>{card.name}</h4>
-                                    <p style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>{card.desc}</p>
-                                    <p style={{ fontSize: '13px', color: '#f59e0b', fontWeight: '700', marginTop: '4px' }}>Min Customer Fare: ₹{card.minFare}</p>
-                                </div>
-                                <button 
-                                    onClick={() => handleCardToggle(card.id)}
-                                    style={{
-                                        padding: '10px 18px',
-                                        borderRadius: '8px',
-                                        border: 'none',
-                                        fontWeight: '800',
-                                        fontSize: '12px',
-                                        cursor: 'pointer',
-                                        backgroundColor: card.enabled ? '#10b981' : '#334155',
-                                        color: '#ffffff'
-                                    }}
-                                >
-                                    {card.enabled ? 'ACTIVE' : 'DISABLED'}
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
             {/* TAB 4: SAFETY SHIELD */}
             {activeTab === 'safety' && (
                 <div style={{ backgroundColor: '#1e293b', borderRadius: '12px', padding: '24px', border: '1px solid #334155' }}>
@@ -488,6 +878,29 @@ export default function CustomWorkAdmin() {
                                 <Trash2 size={14} style={{ cursor: 'pointer' }} onClick={() => removeKeyword(kw)} />
                             </span>
                         ))}
+                    </div>
+                </div>
+            )}
+
+            {/* TAB 5: DISPUTES & OVERTIME AUDIT */}
+            {activeTab === 'disputes' && (
+                <div style={{ backgroundColor: '#1e293b', borderRadius: '12px', padding: '24px', border: '1px solid #334155' }}>
+                    <h3 style={{ fontSize: '20px', fontWeight: '800', marginBottom: '8px', color: '#ffffff' }}>Disputes & Overtime Audit Log</h3>
+                    <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '20px' }}>
+                        Audit trail for customer price adjustments, additional wait time blocks (+₹30/15m), and shopping advance receipts.
+                    </p>
+
+                    <div style={{ backgroundColor: '#0f172a', padding: '18px', borderRadius: '8px', border: '1px solid #334155' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #334155', paddingBottom: '12px', marginBottom: '12px' }}>
+                            <div>
+                                <strong style={{ color: '#f59e0b', fontSize: '15px' }}>Order #N2DCW_8092 — Kamesh Sharma</strong>
+                                <p style={{ fontSize: '12px', color: '#94a3b8', margin: '2px 0 0 0' }}>Task: Buy & Bring (Groceries + Fuel)</p>
+                            </div>
+                            <span style={{ backgroundColor: '#065f46', color: '#6ee7b7', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: '700' }}>APPROVED</span>
+                        </div>
+                        <p style={{ fontSize: '13px', color: '#cbd5e1', margin: 0 }}>
+                            Customer approved 1 extra 15m delay block (+₹30) due to billing counter queue at supermarket. Helper receipt uploaded and verified.
+                        </p>
                     </div>
                 </div>
             )}
