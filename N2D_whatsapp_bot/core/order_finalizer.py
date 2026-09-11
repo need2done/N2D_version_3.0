@@ -85,9 +85,14 @@ def finalize_order(session: dict) -> str | None:
         # -------------------------------
         # SESSION DATA
         # -------------------------------
-        user_phone = session.get("user_id")
+        user_phone = session.get("user_id") or session.get("phone") or session.get("user")
+        if not user_phone:
+            logger.error("ERROR: INVALID SESSION - MISSING USER PHONE / USER_ID")
+            return None
+        session["user_id"] = str(user_phone)
+
         name = session.get("name", "Unknown")
-        service_id = session.get("service")
+        service_id = session.get("service", 3)
         data = session.get("data", {}) or {}
         
         # Sync pickup locations into data payload so it is written to the orders table payload JSON

@@ -62,13 +62,26 @@ def safe_dispatch_order(order_id: str, phone: str):
 # ==========================================
 # MAIN SYNC FUNCTION
 # ==========================================
+def safe_log(*args):
+    try:
+        print(*args)
+    except Exception:
+        try:
+            msg = " ".join(str(a) for a in args).encode('ascii', 'replace').decode('ascii')
+            print(msg)
+        except Exception:
+            pass
+
+# ==========================================
+# MAIN SYNC FUNCTION
+# ==========================================
 def sync_new_order(order_data: dict):
 
     db = None
     cursor = None
 
     try:
-        print("📡 Syncing order:", order_data)
+        safe_log("[SYNC] Syncing order:", order_data)
 
         db = get_db()
         cursor = db.cursor(dictionary=True, buffered=True)
@@ -84,20 +97,20 @@ def sync_new_order(order_data: dict):
         helper_charge = order_data.get("helper_charge", 0)
 
         # ==========================================
-        # 🚨 ORDER ID FIX
+        # ORDER ID FIX
         # ==========================================
         incoming_order_id = order_data.get("order_id")
 
         if not incoming_order_id or str(incoming_order_id).isdigit():
             order_id = generate_order_id()
-            print("⚠️ Converted to GGO order_id:", order_id)
+            safe_log("[SYNC] Converted to GGO order_id:", order_id)
         else:
             order_id = str(incoming_order_id)
 
         message_id = order_data.get("message_id")
 
         # ==========================================
-        # 🚨 DUPLICATE CHECK
+        # DUPLICATE CHECK
         # ==========================================
         cursor.execute("""
             SELECT id FROM orders 
@@ -107,13 +120,12 @@ def sync_new_order(order_data: dict):
         existing_order = cursor.fetchone()
 
         if existing_order:
-            print("⚠️ Order already exists, skipping insert but updating fees & continuing dispatch:", order_id)
+            safe_log("[SYNC] Order already exists, updating fees & continuing dispatch:", order_id)
             cursor.execute(
                 "UPDATE orders SET platform_fee = %s, helper_charge = %s WHERE order_id = %s",
                 (platform_fee, helper_charge, order_id)
             )
             db.commit()
-            # We don't return False because we want the safe_dispatch to happen
         else:
             # ==========================================
             # CUSTOMER CHECK
@@ -174,23 +186,23 @@ def sync_new_order(order_data: dict):
             ))
 
             db.commit()
-            print("✅ Admin dashboard sync SUCCESS:", order_id)
+            safe_log("[SYNC] Admin dashboard sync SUCCESS:", order_id)
 
         # ==========================================
-        # 🚀 NEW: CONTROLLED DISPATCH
+        # CONTROLLED DISPATCH
         # ==========================================
         helper_phone = order_data.get("helper_phone")
 
         if helper_phone:
             safe_dispatch_order(order_id, helper_phone)
         else:
-            print("ℹ️ No helper_phone provided → dispatch skipped")
+            safe_log("[SYNC] No helper_phone provided -> dispatch skipped")
 
         return True
 
 
     except Exception as e:
-        print("❌ Admin dashboard sync FAILED:", str(e))
+        safe_log("[SYNC] Admin dashboard sync FAILED:", str(e))
         import traceback
         traceback.print_exc()
         return False

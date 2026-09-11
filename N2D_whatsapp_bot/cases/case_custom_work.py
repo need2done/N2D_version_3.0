@@ -313,6 +313,8 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                 dist = session.get("calculated_distance", 2.5)
 
                 session["service"] = 3
+                if user:
+                    session["user_id"] = str(user)
                 if "data" not in session or not isinstance(session["data"], dict):
                     session["data"] = {}
                 session["data"]["items"] = [task_text]
@@ -327,12 +329,16 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                     order_id = finalize_order(session)
                 except Exception as finalize_err:
                     print(f"[CUSTOM_WORK] Error finalizing order: {finalize_err}")
-                    import random
-                    order_id = f"N2DCW_{random.randint(1000, 9999)}"
+                    traceback.print_exc()
+                    order_id = None
 
                 if not order_id:
-                    import random
-                    order_id = f"N2DCW_{random.randint(1000, 9999)}"
+                    print(f"[CUSTOM_WORK] Order finalization failed for session user {user}")
+                    body = "❌ *Order placement failed.* Please try confirming again or type *HI* to restart."
+                    if user:
+                        send_message(user, body)
+                        return None
+                    return body
 
                 session["custom_work_step"] = "DONE"
                 session["stage"] = "COMPLETED"
