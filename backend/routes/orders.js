@@ -152,9 +152,11 @@ router.get('/', async (req, res) => {
 // ==========================================
 router.get('/:id', async (req, res) => {
     try {
-        const orderIdParam = req.params.id;
+        const orderIdParam = String(req.params.id || '').trim();
         const cleanParam = orderIdParam.replace(/^#/, '');
         const strippedParam = cleanParam.replace(/[^a-zA-Z0-9]/g, '');
+        const isNumeric = /^\d+$/.test(cleanParam);
+
         let query = `
             SELECT o.*, c.phone as customer_phone, c.name as customer_db_name,
                    h.name as helper_name, h.phone as helper_phone, h.vehicle_type as helper_vehicle,
@@ -170,10 +172,14 @@ router.get('/:id', async (req, res) => {
             LEFT JOIN vendors v ON o.vendor_id = v.id
             LEFT JOIN order_tasks ot ON o.id = ot.order_id
             LEFT JOIN order_rides orid ON o.id = orid.order_id
-            WHERE o.id = ? OR o.order_id = ? OR REPLACE(o.order_id, '-', '') = ?
+            WHERE ${isNumeric ? 'o.id = ? OR' : ''} o.order_id = ? OR REPLACE(o.order_id, '-', '') = ? OR REPLACE(o.order_id, '_', '') = ?
         `;
 
-        const [rows] = await db.query(query, [orderIdParam, cleanParam, strippedParam]);
+        const queryParams = isNumeric 
+            ? [parseInt(cleanParam, 10), orderIdParam, cleanParam, strippedParam]
+            : [orderIdParam, cleanParam, strippedParam];
+
+        const [rows] = await db.query(query, queryParams);
         if (rows.length === 0) return res.status(404).json({ success: false, error: 'Order not found' });
 
         const order = rows[0];

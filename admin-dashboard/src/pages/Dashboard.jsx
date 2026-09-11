@@ -50,7 +50,9 @@ export default function Dashboard() {
   const openOrderDetails = async (orderIdOrDbId) => {
     setLoadingDetail(true);
     try {
-      const res = await fetch(`${API_URL}/orders/${orderIdOrDbId}`);
+      const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+      const authHeader = token ? { 'Authorization': `Bearer ${token}` } : {};
+      const res = await fetch(`${API_URL}/orders/${orderIdOrDbId}`, { headers: authHeader });
       const data = await res.json();
       if (data.success) {
         setSelectedOrderDetail(data.order);
