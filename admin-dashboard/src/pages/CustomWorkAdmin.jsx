@@ -1,22 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { 
-    Briefcase, Settings, AlertTriangle, Shield, CheckCircle2, XCircle, 
-    DollarSign, Clock, MapPin, Search, Filter, RefreshCw, Layers, Plus, Trash2, ArrowRight, Eye, X, Check, Edit3, User, Phone, ShoppingCart, Truck, ChevronDown, ChevronUp, Zap, HelpCircle, Layers3, Navigation, Activity, MessageSquare, Database
+    Briefcase, Settings, Shield, Plus, Trash2, ArrowRight, Eye, X, RefreshCw, 
+    Layers3, Navigation, Zap, Search, ChevronDown, ChevronUp, Activity, MessageSquare, ExternalLink, Sliders
 } from 'lucide-react';
 import '../index.css';
 import { API_URL as API_BASE } from '../config';
 
 export default function CustomWorkAdmin() {
-    const [activeTab, setActiveTab] = useState('categories'); // 'categories', 'unclassified', 'corrections', 'orders', 'rates', 'safety'
+    const [activeTab, setActiveTab] = useState('categories'); // 'categories', 'rates', 'safety', 'unclassified', 'corrections'
     const [isLoading, setIsLoading] = useState(false);
     const [statusMsg, setStatusMsg] = useState({ type: '', text: '' });
-    const [selectedOrder, setSelectedOrder] = useState(null); // For Inspect Drawer
     const [searchTerm, setSearchTerm] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('all'); // 'all', 'single', 'two'
     const [expandedFlows, setExpandedFlows] = useState({ buy_and_bring: true, unique_custom_task: true });
     const [newCategoryKeywords, setNewCategoryKeywords] = useState({});
 
-    // State for Dynamic Rate Card Configuration
+    // Dynamic Rate Card Configuration State
     const [rateCard, setRateCard] = useState({
         SLAB_0_2KM: 59,
         SLAB_0_2KM_HELPER: 40,
@@ -34,7 +33,7 @@ export default function CustomWorkAdmin() {
         MINI_TRUCK_MIN: 399
     });
 
-    // State for Unclassified / Low-Confidence Tasks Queue (Section 16A)
+    // Unclassified Tasks Queue State (Section 16A)
     const [unclassifiedTasks, setUnclassifiedTasks] = useState([
         {
             id: 'UNC_901',
@@ -59,22 +58,10 @@ export default function CustomWorkAdmin() {
             missingFields: ['requested_action', 'item', 'location'],
             createdTime: '12 mins ago',
             status: 'NEEDS_CLARIFICATION'
-        },
-        {
-            id: 'UNC_903',
-            rawMessage: 'Take charger from my cousin office and bring home',
-            aiCategory: 'retrieve',
-            aiSubcategory: 'item_retrieval',
-            aiFlow: 'pickup_to_drop',
-            confidence: 0.96,
-            safetyStatus: 'SAFE',
-            missingFields: ['pickup_location', 'drop_location'],
-            createdTime: '20 mins ago',
-            status: 'AUTO_APPROVED'
         }
     ]);
 
-    // State for Classification Corrections Flywheel (Section 16B & C)
+    // Classification Corrections Flywheel State (Section 16B)
     const [corrections, setCorrections] = useState([
         {
             id: 'COR_101',
@@ -98,7 +85,7 @@ export default function CustomWorkAdmin() {
         }
     ]);
 
-    // State for 8 Category AI & Flow Explorer
+    // 8 Category Architecture Specifications
     const [categoryDetails, setCategoryDetails] = useState([
         {
             id: 'buy_and_bring',
@@ -262,7 +249,7 @@ export default function CustomWorkAdmin() {
         }
     ]);
 
-    // Restricted Safety Keywords
+    // Safety Keywords
     const [keywords, setKeywords] = useState([
         'cash transfer', 'bank deposit', 'withdrawal', 'weapon', 'gun', 
         'explosive', 'illegal', 'drug', 'prescription missing', 'childcare', 
@@ -271,76 +258,12 @@ export default function CustomWorkAdmin() {
     ]);
     const [newKeyword, setNewKeyword] = useState('');
 
-    // Sample Orders
-    const [orders, setOrders] = useState([
-        {
-            id: 'N2DCW_8092',
-            taskType: 'Buy & Bring',
-            customerName: 'Kamesh Sharma',
-            phone: '+91 98765 43210',
-            pickup: 'Gunj Market, Bhongir',
-            drop: 'Housing Board Colony, Bhongir',
-            quotedFare: 119,
-            finalFare: 149,
-            status: 'SHOPPING_DELAY'
-        },
-        {
-            id: 'N2DCW_8090',
-            taskType: 'Unique Custom Task (Mechanic)',
-            customerName: 'Vikram Reddy',
-            phone: '+91 99887 76655',
-            pickup: 'Highway Petrol Bunk, Bhongir (Work Site)',
-            drop: 'N/A (Single Location Task)',
-            quotedFare: 79,
-            finalFare: 79,
-            status: 'ON_ROUTE'
-        }
-    ]);
-
     useEffect(() => {
         fetchRateCard();
-        fetchLiveOrders();
-        const interval = setInterval(fetchLiveOrders, 10000);
-        return () => clearInterval(interval);
     }, []);
-
-    const fetchLiveOrders = async () => {
-        try {
-            const token = localStorage.getItem('adminToken');
-            const res = await fetch(`${API_BASE}/orders?service=Anywork`, {
-                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-            });
-            const data = await res.json();
-            if (data.success && Array.isArray(data.orders) && data.orders.length > 0) {
-                const mapped = data.orders.map(o => {
-                    let parsed = {};
-                    try {
-                        if (o.payload) parsed = typeof o.payload === 'string' ? JSON.parse(o.payload) : o.payload;
-                    } catch(e) {}
-                    return {
-                        id: o.order_id,
-                        taskType: o.service || 'Custom Work',
-                        customerName: o.customer_name || 'Customer',
-                        phone: o.customer_number || 'N/A',
-                        pickup: parsed.pickup_location || o.parsed_payload?.pickup_location || (o.customer_lat ? `${o.customer_lat}, ${o.customer_lng}` : 'Bhongir'),
-                        drop: parsed.drop_location || o.parsed_payload?.drop_location || 'Customer Location',
-                        quotedFare: o.total_amount || o.bill_amount || 79,
-                        finalFare: o.total_amount || o.bill_amount || 79,
-                        status: o.status,
-                        itemsList: parsed.items || [o.items_text || 'Custom Work Task'],
-                        time: new Date(o.created_at).toLocaleTimeString()
-                    };
-                });
-                setOrders(mapped);
-            }
-        } catch (err) {
-            console.warn('[CUSTOM_WORK_ADMIN] Live orders fetch notice:', err.message);
-        }
-    };
 
     const fetchRateCard = async () => {
         setIsLoading(true);
-        fetchLiveOrders();
         try {
             const res = await fetch(`${API_BASE}/custom-work/rate-card`);
             const data = await res.json();
@@ -369,7 +292,7 @@ export default function CustomWorkAdmin() {
             });
             const data = await res.json();
             if (data.success) {
-                setStatusMsg({ type: 'success', text: 'Rate Card updated successfully! Live pricing engine updated.' });
+                setStatusMsg({ type: 'success', text: 'Rate Card updated successfully! Live pricing engine active.' });
             } else {
                 setStatusMsg({ type: 'error', text: data.error || 'Failed to update rate card' });
             }
@@ -440,21 +363,55 @@ export default function CustomWorkAdmin() {
     return (
         <div style={{ padding: '24px', backgroundColor: '#0f172a', minHeight: '100vh', color: '#f8fafc', fontFamily: 'Inter, sans-serif' }}>
             {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '16px' }}>
                 <div>
-                    <h1 style={{ fontSize: '26px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '12px', color: '#ffffff', margin: 0 }}>
-                        <Briefcase style={{ color: '#f59e0b' }} size={30} /> Custom Work Architecture & AI Operations Panel
+                    <h1 style={{ fontSize: '24px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '12px', color: '#ffffff', margin: 0 }}>
+                        <Sliders style={{ color: '#f59e0b' }} size={28} /> Custom Work Configuration & AI Engine Controls
                     </h1>
-                    <p style={{ color: '#94a3b8', fontSize: '14px', marginTop: '6px' }}>
-                        Bhongir Telangana Operating Center — Stateful Pipeline, Decoupled Category/Flow Engine & Audit Queue
+                    <p style={{ color: '#94a3b8', fontSize: '13.5px', marginTop: '4px' }}>
+                        System Rate Cards, 8 Category AI Workflows, Search Keywords & Safety Shields
                     </p>
                 </div>
-                <button 
-                    onClick={fetchRateCard}
-                    style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', borderRadius: '8px', backgroundColor: '#3b82f6', color: '#ffffff', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '14px', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }}
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    <a 
+                        href="/admin" 
+                        style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', borderRadius: '8px', backgroundColor: '#f59e0b', color: '#0f172a', textDecoration: 'none', fontWeight: '800', fontSize: '13.5px', boxShadow: '0 4px 12px rgba(245, 158, 11, 0.4)' }}
+                    >
+                        📊 Open Unified Master Order Stream <ExternalLink size={15} />
+                    </a>
+                </div>
+            </div>
+
+            {/* LIVE ORDERS NOTICE BANNER */}
+            <div style={{ 
+                backgroundColor: 'rgba(59, 130, 246, 0.12)', 
+                border: '1px solid #3b82f6', 
+                borderRadius: '10px', 
+                padding: '14px 18px', 
+                marginBottom: '24px', 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                flexWrap: 'wrap', 
+                gap: '12px' 
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <Zap size={22} style={{ color: '#60a5fa' }} />
+                    <div>
+                        <strong style={{ color: '#ffffff', fontSize: '14px' }}>
+                            Live Custom Work Orders are monitored in the Unified Dashboard (`/admin`)
+                        </strong>
+                        <p style={{ color: '#94a3b8', fontSize: '12.5px', margin: '2px 0 0 0' }}>
+                            All placed WhatsApp custom orders appear in the Master Order Stream alongside Groceries, Medicines, Food & Rides. Filter by <strong>ANYWORK</strong> on `/admin`.
+                        </p>
+                    </div>
+                </div>
+                <a 
+                    href="/admin" 
+                    style={{ color: '#60a5fa', textDecoration: 'underline', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}
                 >
-                    <RefreshCw size={16} className={isLoading ? 'spin' : ''} /> Refresh Engine Data
-                </button>
+                    View Master Order Stream ➔
+                </a>
             </div>
 
             {/* Status Alert Banner */}
@@ -480,11 +437,10 @@ export default function CustomWorkAdmin() {
             <div style={{ display: 'flex', gap: '10px', borderBottom: '1px solid #334155', paddingBottom: '14px', marginBottom: '24px', flexWrap: 'wrap' }}>
                 {[
                     { id: 'categories', label: '📂 8 Category AI & Flow Explorer', icon: Layers3 },
-                    { id: 'unclassified', label: '📥 Live Unclassified Tasks Queue', icon: MessageSquare },
-                    { id: 'corrections', label: '🔄 Classification Training Flywheel', icon: Activity },
-                    { id: 'orders', label: '📊 Live Orders Monitor', icon: Layers },
-                    { id: 'rates', label: '💰 Rate Card Configurator', icon: Settings },
-                    { id: 'safety', label: '🛡️ Safety & Restricted Shield', icon: Shield }
+                    { id: 'rates', label: '💰 Dynamic Rate Card Configurator', icon: Settings },
+                    { id: 'safety', label: '🛡️ Safety & Restricted Shield', icon: Shield },
+                    { id: 'unclassified', label: '📥 AI Classification Audit Queue', icon: MessageSquare },
+                    { id: 'corrections', label: '🔄 Model Training Flywheel', icon: Activity }
                 ].map(tab => {
                     const Icon = tab.icon;
                     const isActive = activeTab === tab.id;
@@ -496,19 +452,19 @@ export default function CustomWorkAdmin() {
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '8px',
-                                padding: '10px 20px',
+                                padding: '10px 18px',
                                 borderRadius: '8px',
                                 border: 'none',
                                 cursor: 'pointer',
                                 fontWeight: '700',
-                                fontSize: '14px',
+                                fontSize: '13.5px',
                                 backgroundColor: isActive ? '#f59e0b' : '#1e293b',
                                 color: isActive ? '#0f172a' : '#cbd5e1',
                                 transition: 'all 0.2s ease',
                                 boxShadow: isActive ? '0 4px 12px rgba(245, 158, 11, 0.4)' : 'none'
                             }}
                         >
-                            <Icon size={18} />
+                            <Icon size={17} />
                             {tab.label}
                         </button>
                     );
@@ -752,186 +708,7 @@ export default function CustomWorkAdmin() {
                 </div>
             )}
 
-            {/* TAB 2: LIVE UNCLASSIFIED TASKS QUEUE (Section 16A) */}
-            {activeTab === 'unclassified' && (
-                <div style={{ backgroundColor: '#1e293b', borderRadius: '12px', padding: '24px', border: '1px solid #334155' }}>
-                    <h3 style={{ fontSize: '20px', fontWeight: '800', marginBottom: '8px', color: '#ffffff' }}>Live Unclassified & Low-Confidence Tasks Queue</h3>
-                    <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '24px' }}>
-                        Real-time audit queue for incoming customer messages requiring AI intent verification, medium-confidence clarification, or human manual dispatch.
-                    </p>
-
-                    <div style={{ overflowX: 'auto' }}>
-                        <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
-                            <thead>
-                                <tr style={{ borderBottom: '2px solid #334155', color: '#94a3b8', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                    <th style={{ padding: '14px' }}>Task ID</th>
-                                    <th style={{ padding: '14px' }}>Customer Raw Request</th>
-                                    <th style={{ padding: '14px' }}>AI Category / Subcategory</th>
-                                    <th style={{ padding: '14px' }}>Operational Flow</th>
-                                    <th style={{ padding: '14px' }}>Confidence Score</th>
-                                    <th style={{ padding: '14px' }}>Status</th>
-                                    <th style={{ padding: '14px' }}>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {unclassifiedTasks.map(t => (
-                                    <tr key={t.id} style={{ borderBottom: '1px solid #334155', fontSize: '14px', color: '#e2e8f0' }}>
-                                        <td style={{ padding: '14px', fontWeight: '800', color: '#f59e0b' }}>{t.id}</td>
-                                        <td style={{ padding: '14px', fontWeight: '600', maxWidth: '280px' }}>"{t.rawMessage}"</td>
-                                        <td style={{ padding: '14px' }}>
-                                            <span style={{ color: '#38bdf8', fontWeight: '700' }}>{t.aiCategory}</span>
-                                            <span style={{ display: 'block', fontSize: '12px', color: '#94a3b8' }}>{t.aiSubcategory}</span>
-                                        </td>
-                                        <td style={{ padding: '14px' }}>
-                                            <span style={{ 
-                                                padding: '4px 10px', 
-                                                borderRadius: '6px', 
-                                                fontSize: '11px', 
-                                                fontWeight: '800',
-                                                backgroundColor: t.aiFlow === 'single_location' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(16, 185, 129, 0.2)',
-                                                color: t.aiFlow === 'single_location' ? '#60a5fa' : '#34d399',
-                                                border: `1px solid ${t.aiFlow === 'single_location' ? '#3b82f6' : '#10b981'}`
-                                            }}>
-                                                {t.aiFlow}
-                                            </span>
-                                        </td>
-                                        <td style={{ padding: '14px', fontWeight: '800', color: t.confidence >= 0.85 ? '#10b981' : t.confidence >= 0.70 ? '#f59e0b' : '#ef4444' }}>
-                                            {(t.confidence * 100).toFixed(0)}%
-                                        </td>
-                                        <td style={{ padding: '14px' }}>
-                                            <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '700', backgroundColor: '#0f172a', color: '#cbd5e1' }}>
-                                                {t.status}
-                                            </span>
-                                        </td>
-                                        <td style={{ padding: '14px' }}>
-                                            <button style={{ backgroundColor: '#10b981', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '700', marginRight: '6px' }}>
-                                                Accept
-                                            </button>
-                                            <button style={{ backgroundColor: '#334155', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '700' }}>
-                                                Change
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            )}
-
-            {/* TAB 3: CLASSIFICATION TRAINING FLYWHEEL (Section 16B & C) */}
-            {activeTab === 'corrections' && (
-                <div style={{ backgroundColor: '#1e293b', borderRadius: '12px', padding: '24px', border: '1px solid #334155' }}>
-                    <h3 style={{ fontSize: '20px', fontWeight: '800', marginBottom: '8px', color: '#ffffff' }}>Classification Corrections & Training Flywheel</h3>
-                    <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '24px' }}>
-                        Every admin correction becomes training data for Gemini Flash prompt optimization, preventing repeating mistakes.
-                    </p>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px', marginBottom: '28px' }}>
-                        <div style={{ backgroundColor: '#0f172a', padding: '18px', borderRadius: '10px', border: '1px solid #334155' }}>
-                            <h4 style={{ fontSize: '15px', fontWeight: '700', color: '#f59e0b', margin: '0 0 12px 0' }}>📊 Confusion Report Matrix</h4>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #334155', paddingBottom: '6px' }}>
-                                    <span style={{ color: '#cbd5e1' }}>retrieve ➔ direct_pickup</span>
-                                    <strong style={{ color: '#ef4444' }}>14 misclassifications</strong>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #334155', paddingBottom: '6px' }}>
-                                    <span style={{ color: '#cbd5e1' }}>buy_and_bring ➔ prepaid_pickup</span>
-                                    <strong style={{ color: '#f59e0b' }}>8 misclassifications</strong>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <span style={{ color: '#cbd5e1' }}>unique_custom_task ➔ direct_pickup</span>
-                                    <strong style={{ color: '#10b981' }}>2 misclassifications</strong>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div style={{ backgroundColor: '#0f172a', padding: '18px', borderRadius: '10px', border: '1px solid #334155' }}>
-                            <h4 style={{ fontSize: '15px', fontWeight: '700', color: '#10b981', margin: '0 0 12px 0' }}>🎯 Training Dataset Flywheel</h4>
-                            <p style={{ fontSize: '13px', color: '#94a3b8', margin: '0 0 14px 0' }}>
-                                48 verified customer examples active in Gemini Flash few-shot prompt memory.
-                            </p>
-                            <button style={{ backgroundColor: '#3b82f6', color: '#fff', padding: '10px 16px', borderRadius: '6px', border: 'none', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}>
-                                🔄 Re-index Prompt Training Dataset
-                            </button>
-                        </div>
-                    </div>
-
-                    <div style={{ backgroundColor: '#0f172a', borderRadius: '10px', padding: '18px', border: '1px solid #334155' }}>
-                        <h4 style={{ fontSize: '16px', fontWeight: '700', color: '#ffffff', marginBottom: '14px' }}>Recent Admin Corrections Log</h4>
-                        {corrections.map(c => (
-                            <div key={c.id} style={{ borderBottom: '1px solid #334155', paddingBottom: '12px', marginBottom: '12px' }}>
-                                <strong style={{ color: '#f59e0b' }}>"{c.message}"</strong>
-                                <p style={{ fontSize: '13px', color: '#cbd5e1', margin: '4px 0 0 0' }}>
-                                    AI Predicted: <span style={{ color: '#ef4444' }}>{c.aiCategory} ({c.aiFlow})</span> ➔ Corrected To: <span style={{ color: '#10b981', fontWeight: '700' }}>{c.correctCategory} ({c.correctFlow})</span> by {c.correctedBy} on {c.date}
-                                </p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* TAB 4: LIVE ORDERS MONITOR */}
-            {activeTab === 'orders' && (
-                <div>
-                    <div style={{ backgroundColor: '#1e293b', borderRadius: '12px', padding: '24px', border: '1px solid #334155' }}>
-                        <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '18px', color: '#ffffff' }}>Live Custom Work Orders</h3>
-                        <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
-                                <thead>
-                                    <tr style={{ borderBottom: '2px solid #334155', color: '#94a3b8', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                        <th style={{ padding: '14px' }}>Order ID</th>
-                                        <th style={{ padding: '14px' }}>Task Type</th>
-                                        <th style={{ padding: '14px' }}>Customer</th>
-                                        <th style={{ padding: '14px' }}>Pickup ➔ Drop Route</th>
-                                        <th style={{ padding: '14px' }}>Quoted Fee</th>
-                                        <th style={{ padding: '14px' }}>Final Fee</th>
-                                        <th style={{ padding: '14px' }}>Status</th>
-                                        <th style={{ padding: '14px' }}>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {orders.map(o => (
-                                        <tr key={o.id} style={{ borderBottom: '1px solid #334155', fontSize: '14px', color: '#e2e8f0' }}>
-                                            <td style={{ padding: '14px', fontWeight: '800', color: '#f59e0b' }}>{o.id}</td>
-                                            <td style={{ padding: '14px', fontWeight: '600' }}>{o.taskType}</td>
-                                            <td style={{ padding: '14px' }}>{o.customerName}</td>
-                                            <td style={{ padding: '14px', fontSize: '13px', color: '#cbd5e1' }}>
-                                                {o.pickup} <strong style={{ color: '#f59e0b' }}>➔</strong> {o.drop}
-                                            </td>
-                                            <td style={{ padding: '14px', fontWeight: '600' }}>₹{o.quotedFare}</td>
-                                            <td style={{ padding: '14px', fontWeight: '800', color: '#10b981' }}>₹{o.finalFare}</td>
-                                            <td style={{ padding: '14px' }}>
-                                                <span style={{ 
-                                                    padding: '6px 10px', 
-                                                    borderRadius: '6px', 
-                                                    fontSize: '11px', 
-                                                    fontWeight: '800',
-                                                    backgroundColor: o.status === 'DELIVERED' ? '#065f46' : o.status === 'ADMIN_REVIEW' ? '#7f1d1d' : '#92400e',
-                                                    color: '#ffffff',
-                                                    letterSpacing: '0.04em'
-                                                }}>
-                                                    {o.status}
-                                                </span>
-                                            </td>
-                                            <td style={{ padding: '14px' }}>
-                                                <button 
-                                                    onClick={() => setSelectedOrder(o)}
-                                                    style={{ backgroundColor: '#334155', color: '#ffffff', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}
-                                                >
-                                                    <Eye size={14} /> Inspect
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* TAB 5: RATE CARD CONFIGURATOR */}
+            {/* TAB 2: RATE CARD CONFIGURATOR */}
             {activeTab === 'rates' && (
                 <div style={{ backgroundColor: '#1e293b', borderRadius: '12px', padding: '24px', border: '1px solid #334155' }}>
                     <h3 style={{ fontSize: '20px', fontWeight: '800', marginBottom: '8px', color: '#ffffff' }}>Bhongir Pilot Dynamic Rate Cards</h3>
@@ -996,7 +773,7 @@ export default function CustomWorkAdmin() {
                 </div>
             )}
 
-            {/* TAB 6: SAFETY SHIELD */}
+            {/* TAB 3: SAFETY SHIELD */}
             {activeTab === 'safety' && (
                 <div style={{ backgroundColor: '#1e293b', borderRadius: '12px', padding: '24px', border: '1px solid #334155' }}>
                     <h3 style={{ fontSize: '20px', fontWeight: '800', marginBottom: '8px', color: '#ffffff' }}>Restricted Safety Keywords Shield</h3>
@@ -1026,6 +803,70 @@ export default function CustomWorkAdmin() {
                                 {kw}
                                 <Trash2 size={14} style={{ cursor: 'pointer' }} onClick={() => removeKeyword(kw)} />
                             </span>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* TAB 4: UNCLASSIFIED TASKS QUEUE */}
+            {activeTab === 'unclassified' && (
+                <div style={{ backgroundColor: '#1e293b', borderRadius: '12px', padding: '24px', border: '1px solid #334155' }}>
+                    <h3 style={{ fontSize: '20px', fontWeight: '800', marginBottom: '8px', color: '#ffffff' }}>AI Classification Audit Queue</h3>
+                    <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '24px' }}>
+                        Audit queue for low-confidence customer queries requiring AI clarification or manual verification.
+                    </p>
+
+                    <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
+                            <thead>
+                                <tr style={{ borderBottom: '2px solid #334155', color: '#94a3b8', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    <th style={{ padding: '14px' }}>Task ID</th>
+                                    <th style={{ padding: '14px' }}>Customer Raw Request</th>
+                                    <th style={{ padding: '14px' }}>AI Category / Subcategory</th>
+                                    <th style={{ padding: '14px' }}>Operational Flow</th>
+                                    <th style={{ padding: '14px' }}>Confidence</th>
+                                    <th style={{ padding: '14px' }}>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {unclassifiedTasks.map(t => (
+                                    <tr key={t.id} style={{ borderBottom: '1px solid #334155', fontSize: '14px', color: '#e2e8f0' }}>
+                                        <td style={{ padding: '14px', fontWeight: '800', color: '#f59e0b' }}>{t.id}</td>
+                                        <td style={{ padding: '14px', fontWeight: '600' }}>"{t.rawMessage}"</td>
+                                        <td style={{ padding: '14px' }}>{t.aiCategory}</td>
+                                        <td style={{ padding: '14px' }}>{t.aiFlow}</td>
+                                        <td style={{ padding: '14px', fontWeight: '800', color: t.confidence >= 0.85 ? '#10b981' : '#f59e0b' }}>
+                                            {(t.confidence * 100).toFixed(0)}%
+                                        </td>
+                                        <td style={{ padding: '14px' }}>
+                                            <button style={{ backgroundColor: '#10b981', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '700' }}>
+                                                Verify
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* TAB 5: TRAINING FLYWHEEL */}
+            {activeTab === 'corrections' && (
+                <div style={{ backgroundColor: '#1e293b', borderRadius: '12px', padding: '24px', border: '1px solid #334155' }}>
+                    <h3 style={{ fontSize: '20px', fontWeight: '800', marginBottom: '8px', color: '#ffffff' }}>Model Training Flywheel</h3>
+                    <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '24px' }}>
+                        Training data corrections log for prompt optimization.
+                    </p>
+
+                    <div style={{ backgroundColor: '#0f172a', borderRadius: '10px', padding: '18px', border: '1px solid #334155' }}>
+                        {corrections.map(c => (
+                            <div key={c.id} style={{ borderBottom: '1px solid #334155', paddingBottom: '12px', marginBottom: '12px' }}>
+                                <strong style={{ color: '#f59e0b' }}>"{c.message}"</strong>
+                                <p style={{ fontSize: '13px', color: '#cbd5e1', margin: '4px 0 0 0' }}>
+                                    AI Predicted: <span style={{ color: '#ef4444' }}>{c.aiCategory} ({c.aiFlow})</span> ➔ Corrected To: <span style={{ color: '#10b981', fontWeight: '700' }}>{c.correctCategory} ({c.correctFlow})</span> by {c.correctedBy} on {c.date}
+                                </p>
+                            </div>
                         ))}
                     </div>
                 </div>

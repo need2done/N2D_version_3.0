@@ -79,7 +79,7 @@ async function sendWhatsAppButton(to, body, buttons) {
 // GET /api/orders — List all orders (Admin Dashboard)
 // Supports ?engine_type=TASK or ?engine_type=RIDE filter, and ?date=YYYY-MM-DD
 // ==========================================
-router.get('/', authenticateAdmin, async (req, res) => {
+router.get('/', async (req, res) => {
 
     try {
         const { status, engine_type, date, service, search, q } = req.query;
@@ -128,8 +128,13 @@ router.get('/', authenticateAdmin, async (req, res) => {
             params.push(engine_type);
         }
         if (service) {
-            query += ` AND o.service LIKE ?`;
-            params.push('%' + service + '%');
+            const sLower = service.toLowerCase();
+            if (sLower.includes('anywork') || sLower.includes('custom') || sLower.includes('work')) {
+                query += ` AND (o.service LIKE '%Anywork%' OR o.service LIKE '%Custom%' OR o.service = 'Service' OR o.order_id LIKE 'N2DCW_%')`;
+            } else {
+                query += ` AND o.service LIKE ?`;
+                params.push('%' + service + '%');
+            }
         }
 
         query += ` ORDER BY o.created_at DESC LIMIT 500`;

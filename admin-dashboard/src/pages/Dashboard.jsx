@@ -89,20 +89,25 @@ export default function Dashboard() {
         orderUrl += `date=${dateFilter}&`;
       }
       
-      const orderRes = await fetch(orderUrl);
+      const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+      const authHeader = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+      const orderRes = await fetch(orderUrl, { headers: authHeader });
       const orderData = await orderRes.json();
       
-      const helperRes = await fetch(`${API_URL}/helpers`);
+      const helperRes = await fetch(`${API_URL}/helpers`, { headers: authHeader });
       const helperData = await helperRes.json();
       
-      const trackingRes = await fetch(`${API_URL}/tracking/active`);
+      const trackingRes = await fetch(`${API_URL}/tracking/active`, { headers: authHeader });
       const trackingData = await trackingRes.json();
 
-      const vendorRes = await fetch(`${API_URL}/vendors`);
+      const vendorRes = await fetch(`${API_URL}/vendors`, { headers: authHeader });
       const vendorData = await vendorRes.json();
       if (vendorData.success) setVendors(vendorData.vendors);
 
-      if (orderData.success) setOrders(orderData.orders);
+      if (orderData.success && Array.isArray(orderData.orders)) {
+        setOrders(orderData.orders);
+      }
       
       setStats({
         onlineHelpers: helperData.success ? helperData.helpers.filter(h => h.status === 'ONLINE').length : 0,
