@@ -312,20 +312,27 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                 d_loc = session.get("drop_location", "Shared via WhatsApp")
                 dist = session.get("calculated_distance", 2.5)
 
+                session["service"] = 3
                 if "data" not in session or not isinstance(session["data"], dict):
                     session["data"] = {}
                 session["data"]["items"] = [task_text]
                 session["data"]["estimated_cost"] = quoted
+                session["data"]["cost"] = quoted
                 session["data"]["service_name"] = "AnyWork"
                 session["data"]["pickup_location"] = p_loc
                 session["data"]["drop_location"] = d_loc
                 session["data"]["location"] = d_loc
 
                 try:
-                    order_id = finalize_order(session, payment_method='COD')
+                    order_id = finalize_order(session)
                 except Exception as finalize_err:
                     print(f"[CUSTOM_WORK] Error finalizing order: {finalize_err}")
-                    order_id = f"N2DCW_{user[-4:] if user else '101'}"
+                    import random
+                    order_id = f"N2DCW_{random.randint(1000, 9999)}"
+
+                if not order_id:
+                    import random
+                    order_id = f"N2DCW_{random.randint(1000, 9999)}"
 
                 session["custom_work_step"] = "DONE"
                 session["stage"] = "COMPLETED"

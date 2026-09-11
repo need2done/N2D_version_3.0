@@ -299,10 +299,48 @@ export default function CustomWorkAdmin() {
 
     useEffect(() => {
         fetchRateCard();
+        fetchLiveOrders();
+        const interval = setInterval(fetchLiveOrders, 10000);
+        return () => clearInterval(interval);
     }, []);
+
+    const fetchLiveOrders = async () => {
+        try {
+            const token = localStorage.getItem('adminToken');
+            const res = await fetch(`${API_BASE}/orders?service=Anywork`, {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
+            const data = await res.json();
+            if (data.success && Array.isArray(data.orders) && data.orders.length > 0) {
+                const mapped = data.orders.map(o => {
+                    let parsed = {};
+                    try {
+                        if (o.payload) parsed = typeof o.payload === 'string' ? JSON.parse(o.payload) : o.payload;
+                    } catch(e) {}
+                    return {
+                        id: o.order_id,
+                        taskType: o.service || 'Custom Work',
+                        customerName: o.customer_name || 'Customer',
+                        phone: o.customer_number || 'N/A',
+                        pickup: parsed.pickup_location || o.parsed_payload?.pickup_location || (o.customer_lat ? `${o.customer_lat}, ${o.customer_lng}` : 'Bhongir'),
+                        drop: parsed.drop_location || o.parsed_payload?.drop_location || 'Customer Location',
+                        quotedFare: o.total_amount || o.bill_amount || 79,
+                        finalFare: o.total_amount || o.bill_amount || 79,
+                        status: o.status,
+                        itemsList: parsed.items || [o.items_text || 'Custom Work Task'],
+                        time: new Date(o.created_at).toLocaleTimeString()
+                    };
+                });
+                setOrders(mapped);
+            }
+        } catch (err) {
+            console.warn('[CUSTOM_WORK_ADMIN] Live orders fetch notice:', err.message);
+        }
+    };
 
     const fetchRateCard = async () => {
         setIsLoading(true);
+        fetchLiveOrders();
         try {
             const res = await fetch(`${API_BASE}/custom-work/rate-card`);
             const data = await res.json();
