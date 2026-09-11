@@ -159,7 +159,7 @@ router.get('/:id', async (req, res) => {
 
         let query = `
             SELECT o.*, c.phone as customer_phone, c.name as customer_db_name,
-                   h.name as helper_name, h.phone as helper_phone, h.vehicle_type as helper_vehicle,
+                   h.name as helper_name, h.phone as helper_phone,
                    v.name as vendor_name, v.phone as vendor_phone,
                    ot.items_text, ot.address_text,
                    (SELECT GROUP_CONCAT(media_id) FROM order_images WHERE order_id = o.id AND image_type = 'ITEM') as item_media_ids,
