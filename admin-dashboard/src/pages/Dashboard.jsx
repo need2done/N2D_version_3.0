@@ -663,7 +663,37 @@ export default function Dashboard() {
                         )}
                       </div>
                     ) : (
-                      <span style={{ whiteSpace: 'pre-wrap' }}>{order.items_text || 'No items listed'}</span>
+                      <div>
+                        <span style={{ whiteSpace: 'pre-wrap' }}>
+                          {(() => {
+                            let pData = order.parsed_payload;
+                            if (!pData && order.payload) {
+                              try { pData = typeof order.payload === 'string' ? JSON.parse(order.payload) : order.payload; } catch(e){}
+                            }
+                            pData = pData || {};
+                            const itemsFromPayload = Array.isArray(pData.items) ? pData.items.join('\n') : pData.items;
+                            return order.items_text || itemsFromPayload || pData.task_description || 'No items listed';
+                          })()}
+                        </span>
+                        {(() => {
+                          let pData = order.parsed_payload;
+                          if (!pData && order.payload) {
+                            try { pData = typeof order.payload === 'string' ? JSON.parse(order.payload) : order.payload; } catch(e){}
+                          }
+                          pData = pData || {};
+                          const pLoc = pData.pickup_location || pData.work_location || pData.location;
+                          const dLoc = pData.drop_location;
+                          if (pLoc || dLoc) {
+                            return (
+                              <div style={{ marginTop: '4px', fontSize: '0.75rem', color: '#94a3b8' }}>
+                                {pLoc && <div style={{ color: '#38bdf8' }}>📍 <strong>Pickup:</strong> {pLoc}</div>}
+                                {dLoc && <div style={{ color: '#34d399' }}>🏁 <strong>Drop:</strong> {dLoc}</div>}
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
                     )}
                   </div>
                   {order.item_media_ids && (
@@ -691,7 +721,16 @@ export default function Dashboard() {
                   )}
                 </td>
                 <td>
-                  <strong>₹{order.total_amount || order.bill_amount || '0'}</strong>
+                  <strong>₹{(() => {
+                    if (order.total_amount && parseFloat(order.total_amount) > 0) return order.total_amount;
+                    if (order.bill_amount && parseFloat(order.bill_amount) > 0) return order.bill_amount;
+                    let pData = order.parsed_payload;
+                    if (!pData && order.payload) {
+                      try { pData = typeof order.payload === 'string' ? JSON.parse(order.payload) : order.payload; } catch(e){}
+                    }
+                    pData = pData || {};
+                    return pData.cost || pData.estimated_cost || pData.quoted_fee || 0;
+                  })()}</strong>
                   {order.bill_media_id && (
                     <div style={{ marginTop: '0.25rem' }}>
                       <a href={`${API_URL.replace(/\/api$/, '')}/api/media/${order.bill_media_id}`} target="_blank" rel="noreferrer">
@@ -909,7 +948,24 @@ export default function Dashboard() {
                           )}
                         </>
                       ) : (
-                        <div>📍 <strong>Address / Location:</strong> {selectedOrderDetail.address_text || 'Shared via WhatsApp GPS'}</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          {(() => {
+                            let pData = selectedOrderDetail.parsed_payload;
+                            if (!pData && selectedOrderDetail.payload) {
+                              try { pData = typeof selectedOrderDetail.payload === 'string' ? JSON.parse(selectedOrderDetail.payload) : selectedOrderDetail.payload; } catch(e){}
+                            }
+                            pData = pData || {};
+                            const pLoc = pData.pickup_location || pData.work_location || pData.location;
+                            const dLoc = pData.drop_location;
+                            return (
+                              <>
+                                {pLoc && <div>📍 <strong>Pickup / Work Site:</strong> {pLoc}</div>}
+                                {dLoc && <div>🏁 <strong>Drop-off Point:</strong> {dLoc}</div>}
+                                {!pLoc && !dLoc && <div>📍 <strong>Address / Location:</strong> {selectedOrderDetail.address_text || 'Shared via WhatsApp GPS'}</div>}
+                              </>
+                            );
+                          })()}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -922,7 +978,15 @@ export default function Dashboard() {
                     📦 Items & Task Description
                   </h4>
                   <div style={{ fontSize: '14px', background: '#1e293b', padding: '12px', borderRadius: '8px', border: '1px solid #334155', whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>
-                    {selectedOrderDetail.items_text || 'No items description provided.'}
+                    {(() => {
+                      let pData = selectedOrderDetail.parsed_payload;
+                      if (!pData && selectedOrderDetail.payload) {
+                        try { pData = typeof selectedOrderDetail.payload === 'string' ? JSON.parse(selectedOrderDetail.payload) : selectedOrderDetail.payload; } catch(e){}
+                      }
+                      pData = pData || {};
+                      const itemsFromPayload = Array.isArray(pData.items) ? pData.items.join('\n') : pData.items;
+                      return selectedOrderDetail.items_text || itemsFromPayload || pData.task_description || 'No items description provided.';
+                    })()}
                   </div>
 
                   {/* Media Gallery */}
@@ -966,7 +1030,17 @@ export default function Dashboard() {
                       💳 Financial Breakdown
                     </h4>
                     <div style={{ fontSize: '14px', lineHeight: '1.6' }}>
-                      <div>💰 <strong>Total Amount:</strong> <span style={{ fontSize: '18px', fontWeight: '800', color: '#34d399' }}>₹{selectedOrderDetail.total_amount || selectedOrderDetail.bill_amount || 0}</span></div>
+                      {(() => {
+                        let pData = selectedOrderDetail.parsed_payload;
+                        if (!pData && selectedOrderDetail.payload) {
+                          try { pData = typeof selectedOrderDetail.payload === 'string' ? JSON.parse(selectedOrderDetail.payload) : selectedOrderDetail.payload; } catch(e){}
+                        }
+                        pData = pData || {};
+                        const val = selectedOrderDetail.total_amount || selectedOrderDetail.bill_amount || pData.cost || pData.estimated_cost || pData.quoted_fee || 0;
+                        return (
+                          <div>💰 <strong>Quoted / Total Fee:</strong> <span style={{ fontSize: '18px', fontWeight: '800', color: '#34d399' }}>₹{val}</span></div>
+                        );
+                      })()}
                       <div>💳 <strong>Payment Status:</strong> {selectedOrderDetail.status === 'COMPLETED' || selectedOrderDetail.status === 'PAID' ? 'PAID ✅' : 'PENDING ⏳'}</div>
                     </div>
                   </div>
