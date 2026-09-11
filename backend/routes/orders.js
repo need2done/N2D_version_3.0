@@ -201,7 +201,6 @@ router.get('/:id', async (req, res) => {
 
         res.json({ success: true, order });
     } catch (err) {
-        try { require('fs').appendFileSync('/tmp/order_debug.log', `[${new Date().toISOString()}] ${err.stack}\n`); } catch(e) {}
         console.error('Error fetching order details:', err);
         res.status(500).json({ success: false, error: 'DB error' });
     }
