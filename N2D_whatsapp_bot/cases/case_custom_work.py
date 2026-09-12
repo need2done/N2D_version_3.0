@@ -779,7 +779,8 @@ def prompt_for_locations_or_quote(session: Dict[str, Any], task_text: str, user:
 
 def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optional[str] = None) -> Optional[str]:
     """
-    Calculates server-side quote via Express REST Backend & distance engine.
+    Calculates server-side quote via category-based rate engine & distance calculation.
+    Enforces upfront base fee payment and store bill rules (Online UPI for > ₹200 vs COD for <= ₹200).
     """
     session["task_description"] = task_text
     session["custom_work_step"] = "CONFIRM_QUOTE"
@@ -800,7 +801,31 @@ def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optiona
     if p_lat and p_lng and d_lat and d_lng:
         est_dist = round(get_road_distance(p_lat, p_lng, d_lat, d_lng), 1)
 
-    service_fee = 119
+    # Dynamic Category Base Fee Tiering Engine
+    is_micro_errand = (
+        task_type == "buy_and_bring" and 
+        (len(task_text) < 45 or any(q in task_text.lower() for q in ['1l', '1 bottle', 'handwash', 'packet', 'single', 'small', 'oil', 'milk', 'bread', 'curd']))
+    )
+
+    if is_micro_errand:
+        service_fee = 39
+    elif task_type == "buy_and_bring":
+        service_fee = 79
+    elif task_type == "prepaid_pickup":
+        service_fee = 49
+    elif task_type in ["retrieve", "direct_pickup"]:
+        service_fee = 59
+    elif task_type == "queue_paperwork":
+        service_fee = 89
+    elif task_type == "multi_stop":
+        service_fee = 119
+    elif task_type == "heavy_cargo_auto":
+        service_fee = 149
+    elif task_type == "unique_custom_task":
+        service_fee = 99
+    else:
+        service_fee = 79
+
     breakdown_list = []
 
     try:
@@ -822,7 +847,9 @@ def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optiona
             data = res.json()
             if data.get("success"):
                 summary = data.get("summary", {})
-                service_fee = summary.get("serviceFee", 119)
+                server_fee = summary.get("serviceFee")
+                if server_fee and server_fee > 0:
+                    service_fee = server_fee
                 est_dist = data.get('calculatedDistanceKm', est_dist)
                 breakdown_list = data.get("breakdown", [])
     except Exception as e:
@@ -832,66 +859,50 @@ def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optiona
     session["calculated_distance"] = est_dist
 
     # Itemized Breakdown
-    breakdown_lines = []
-    if breakdown_list:
-        for item in breakdown_list:
-            lbl = item.get("label", "")
-            amt = item.get("amount", 0)
-            breakdown_lines.append(f"• {lbl}: ₹{int(amt)}")
-    else:
-        extra_dist_km = max(0.0, round(est_dist - 3.0, 1))
-        dist_charge = int(extra_dist_km * 8)
-        base_fee = service_fee - dist_charge
-        breakdown_lines = [
-            f"• Base Fare (incl. 3km & 15m handling): ₹{base_fee}",
-            f"• Route Distance Charge ({extra_dist_km} km extra @ ₹8/km): ₹{dist_charge}"
-        ]
+    extra_dist_km = max(0.0, round(est_dist - 3.0, 1))
+    dist_charge = int(extra_dist_km * 8)
+    base_fare = service_fee - dist_charge
+    if base_fare < 25: base_fare = service_fee
+
+    breakdown_lines = [
+        f"• Base Service Fee ({task_type.replace('_',' ').title()} incl. handling): ₹{base_fare}",
+    ]
+    if dist_charge > 0:
+        breakdown_lines.append(f"• Route Distance Charge ({extra_dist_km} km extra @ ₹8/km): ₹{dist_charge}")
 
     breakdown_text = "\n".join(breakdown_lines)
 
     if session.get("is_single_location"):
         loc_block = f"📍 *Work Site Location:* {pickup_loc}\n"
-        goods_policy = (
-            "🛠️ *On-Site Service & Breakdown Policy / విధానము:*\n"
-            "• *On-Site Arrival:* Assigned helper/mechanic will arrive directly at your specified location.\n"
-            "• *Upon Completion:* Pay Helper: *Quoted Service Fee (₹" + str(service_fee) + ")* + actual parts cost (if advanced by helper).\n"
-            "• *Payment Options:* Cash to Helper (COD) or Instant UPI."
-        )
-    elif has_shopping or any(w in task_text.lower() for w in ['petrol', 'fuel', 'buy', 'bring', 'grocery', 'medicine', 'store']):
-        loc_block = f"📍 *Pickup:* {pickup_loc}\n🏁 *Drop:* {drop_loc}\n"
-        goods_policy = (
-            "🛒 *Item Purchase & Goods Payment Policy / సరుకుల విధానము:*\n"
-            "• *Item Purchase:* Helper advances cash at store/pump on your behalf.\n"
-            "• *Upon Delivery:* Reimburse Helper for: *Actual Store Receipt Amount + Quoted Service Fee (₹" + str(service_fee) + ")*.\n"
-            "• *Payment Options:* Cash to Helper (COD) or Instant UPI."
-        )
     else:
         loc_block = f"📍 *Pickup:* {pickup_loc}\n🏁 *Drop:* {drop_loc}\n"
-        goods_policy = (
-            "📦 *Pickup & Delivery Policy / డెలివరీ విధానము:*\n"
-            "• Helper will collect item at Pickup location and deliver directly to Drop location.\n"
-            "• *Upon Delivery:* Pay Helper: *Quoted Service Fee (₹" + str(service_fee) + ")* via Cash or UPI."
-        )
+
+    payment_policy = (
+        "💳 *Base Fee & Store Items Payment Policy / చెల్లింపు నిబంధనలు:*\n"
+        f"1️⃣ *Upfront Base Fee:* Confirm & Pay ₹{service_fee} base service fee upfront to place order and dispatch helper.\n"
+        "2️⃣ *Store Receipt Items Policy (Shopping):*\n"
+        "   • *Bill > ₹200:* Online UPI payment link sent when helper uploads store bill.\n"
+        "   • *Bill <= ₹200:* Cash on Delivery (COD) or Online UPI accepted at doorstep."
+    )
 
     cat_title = task_type.replace('_', ' ').title()
     body = (
-        f"🧾 *Need2Done Custom Work Quote / ధర వివరాలు*\n"
+        f"🧾 *Need2Done Custom Work Quote / వివరాలు*\n"
         f"━━━━━━━━━━━━━━━━━━━━━\n"
         f"📝 *Task:* {task_text[:120]}\n"
         f"🏷️ *Category:* {cat_title}\n\n"
         f"{loc_block}"
-        f"🛣️ *Est. Service Distance:* {est_dist} km (via Ola Maps road route)\n"
-        f"⏱️ *Included Handling:* Up to 15 mins\n\n"
-        f"📊 *Itemized Fee Breakdown / వివరాలు:*\n"
+        f"🛣️ *Est. Service Distance:* {est_dist} km (via Ola Maps road route)\n\n"
+        f"📊 *Fee Breakdown / వసూలు వివరాలు:*\n"
         f"{breakdown_text}\n"
         f"━━━━━━━━━━━━━━━━━━━━━\n"
-        f"💵 *Quoted Service Fee:* *₹{service_fee}*\n"
-        f"_(No percentage markups on merchant goods / సరుకులపై అదనపు ఛార్జీలు ఉండవు)_\n\n"
-        f"{goods_policy}"
+        f"💵 *Quoted Base Service Fee:* *₹{service_fee}*\n"
+        f"_(No percentage markups on merchant goods / సరుకులపై హెచ్చు ఛార్జీలు ఉండవు)_\n\n"
+        f"{payment_policy}"
     )
 
     buttons = [
-        {"id": "CW_ACCEPT_QUOTE", "title": "✅ Confirm & Dispatch"},
+        {"id": "CW_ACCEPT_QUOTE", "title": "✅ Pay Base Fee & Place Order"},
         {"id": "CW_EDIT_LOCATIONS", "title": "📍 Edit Locations"},
         {"id": "CW_CANCEL_TASK", "title": "❌ Cancel"}
     ]

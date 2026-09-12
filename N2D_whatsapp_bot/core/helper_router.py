@@ -1054,41 +1054,105 @@ Share this with helper."""
                 )
                 return
 
+            # =================================================
+            # ARRIVED AT STORE (Custom Work Shopping / Buy & Bring)
+            # =================================================
+            if btn_id.startswith("ARRIVED_STORE|"):
+                order_db_id = int(btn_id.split("|")[1])
+                order = get_order_by_db_id(order_db_id)
+                if not order:
+                    send_message(phone, "❌ Order not found.")
+                    return
+
+                from db.mysql_conn import get_db
+                db = get_db()
+                cur = db.cursor()
+                cur.execute("UPDATE orders SET status='ARRIVED_AT_STORE', updated_at=NOW() WHERE id=%s", (order_db_id,))
+                db.commit()
+                cur.close()
+                db.close()
+
+                log_event(order_db_id, "ARRIVED_AT_STORE", "Helper arrived at store", "HELPER")
+
+                # Notify Customer
+                send_message(
+                    order["customer_number"],
+                    f"📍 *Your Helper has arrived at the store!*\n\n"
+                    f"👤 Helper {helper['name']} is purchasing your requested items..."
+                )
+
+                # Prompt Helper to upload Bill Photo
+                send_message(
+                    phone,
+                    "📍 *Marked as ARRIVED AT STORE.*\n\n"
+                    "🧾 Please purchase items and upload **STORE RECEIPT BILL PHOTO**, then reply with the exact bill amount (numbers only)."
+                )
+                return
+
             # ------------------------------------------------
-            # BILL CONFIRMATION
+            # BILL CONFIRMATION (High Amount > ₹200 vs Small Amount <= ₹200)
             # ------------------------------------------------
             if btn_id.startswith("CONFIRM_BILL|"):
                 amount = float(btn_id.split("|")[1])
                 active = get_active_order_for_helper(helper_id)
-                if not active or active["status"] != "BILL_IMAGE_UPLOADED":
-                    send_message(phone, "❌ Invalid order state.")
+                if not active or active["status"] not in ("BILL_IMAGE_UPLOADED", "ARRIVED_AT_STORE", "HELPER_ACCEPTED"):
+                    send_message(phone, "❌ Invalid order state for bill upload.")
                     return
 
                 save_bill_amount(active["order_id"], amount)
-                log_event(active["id"], "BILL_AMOUNT_SUBMITTED", f"Bill amount: {amount}", "HELPER")
+                log_event(active["id"], "BILL_AMOUNT_SUBMITTED", f"Bill amount: ₹{amount}", "HELPER")
 
-                # 🔥 AUTOMATION: Auto-Approve Bill
-                if auto_approve_bill(active["order_id"]):
-                    log_event(active["id"], "BILL_AUTO_APPROVED", "System auto-approved bill", "SYSTEM")
-                    
-                    # Notify Customer
+                if amount > 200:
+                    # HIGH AMOUNT BILL (> ₹200): Mandatory Online UPI Payment request sent to customer
+                    from db.mysql_conn import get_db
+                    db = get_db()
+                    cur = db.cursor()
+                    cur.execute("UPDATE orders SET status='BILL_PENDING_ONLINE_PAYMENT', updated_at=NOW() WHERE id=%s", (active["id"],))
+                    db.commit()
+                    cur.close()
+                    db.close()
+
+                    pay_url = f"{TRACKING_BASE_URL}/pay?order_id={active['order_id']}&amount={amount}"
+
+                    send_url_button(
+                        to=active["customer_number"],
+                        text=(
+                            f"🧾 *Store Receipt Bill Uploaded (₹{amount})*\n"
+                            f"━━━━━━━━━━━━━━━━━━━━━\n"
+                            f"📝 Order: #{active['order_id']}\n"
+                            f"🧾 Store Bill Amount: *₹{amount}*\n\n"
+                            f"⚠️ *Payment Notice:* Since store bill exceeds ₹200, please complete online UPI payment for the items so your helper can pick up."
+                        ),
+                        button_text=f"💳 Pay Store Bill ₹{int(amount)}",
+                        url=pay_url
+                    )
+
                     send_message(
-                        active["customer_number"],
-                        f"✅ *Bill Confirmed*\n\nYour bill amount is ₹{amount}. The helper will now pick up the items."
+                        phone,
+                        f"📸 Store bill photo & amount of *₹{amount}* submitted.\n\n"
+                        f"⏳ *Store bill exceeds ₹200.* Online UPI payment link sent to customer.\n"
+                        f"Please wait at the store. You will receive notification as soon as customer pays online."
                     )
-                    
-                    # Add delivery link
-                    delivery_link = f"https://www.google.com/maps/dir/?api=1&destination={active['customer_lat']},{active['customer_lng']}" if active.get('customer_lat') else ""
-                    
-                    msg = (
-                        f"✅ Bill of ₹{amount} confirmed.\n"
-                        "🛍️ Pick up items from the store, then tap *Picked Up*."
-                    )
-                    send_reply_buttons(phone, msg, [
-                        {"id": f"PICKED_UP|{active['id']}", "title": "🛍️ Picked Up"}
-                    ])
                 else:
-                    send_message(phone, "📤 Bill submitted. Waiting for processing.")
+                    # SMALL AMOUNT BILL (<= ₹200): Customer can pay COD or Online UPI at doorstep
+                    if auto_approve_bill(active["order_id"]):
+                        log_event(active["id"], "BILL_AUTO_APPROVED", "System auto-approved bill", "SYSTEM")
+
+                        send_message(
+                            active["customer_number"],
+                            f"✅ *Store Bill Uploaded (₹{amount})*\n\n"
+                            f"Your store bill is ₹{amount}. You can pay COD (Cash on Delivery) or Online UPI at doorstep."
+                        )
+
+                        msg = (
+                            f"✅ Bill of ₹{amount} submitted.\n"
+                            "🛍️ Pick up items from the store, then tap *Picked Up*."
+                        )
+                        send_reply_buttons(phone, msg, [
+                            {"id": f"PICKED_UP|{active['id']}", "title": "🛍️ Picked Up"}
+                        ])
+                    else:
+                        send_message(phone, "📤 Bill submitted. Waiting for processing.")
                 return
 
             if btn_id == "REENTER_BILL":
