@@ -1,11 +1,12 @@
 """
 =================================================
-Need2Done – Custom Work Stateful Session Handler (v3.5)
+Need2Done – Custom Work Stateful Session Handler (v3.6)
 =================================================
 ✔ Stateful Session Manager & Confidence Gate Engine
 ✔ Decoupled Task Category + Operational Flow Routing
-✔ 3-Tier Confidence Check (High -> Auto, Med -> Clarify, Low -> Interactive Options)
-✔ Location Message Mapping by Active Session State (No re-classification)
+✔ Instant Button Action Handlers (CW_OPT_BUY, CW_OPT_PICK, CW_OPT_REPAIR, CW_EDIT_TASK, CW_RETRY_VOICE)
+✔ Mandatory English + Telugu Bilingual Templates for Customer Intake
+✔ Item Name, Quantity & Brand Spec Intake Engine
 ✔ Server-Side Quoting & Itemized Payment Policy Engine
 """
 
@@ -27,7 +28,7 @@ NODE_BACKEND_URL = "http://localhost:5000/api/custom-work/quote"
 def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str, Any]]) -> Optional[str]:
     """
     Stateful handler for Custom Work task processing over WhatsApp.
-    Processes messages against active session state, enforces confidence gates, and maps location pins accurately.
+    Processes messages against active session state, resolves button actions instantly, and enforces confidence gates.
     """
     try:
         step = session.get("custom_work_step", "INIT")
@@ -68,12 +69,13 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                     session["custom_work_step"] = "WAITING_DROP_LOCATION"
                     d_name = session.get("drop_name_label", "Drop-off Point")
                     body = (
-                        f"🏁 *Step 2 of 2: Drop-off Location Needed*\n"
+                        f"🏁 *Step 2 of 2: Drop-off Location Needed / డెలివరీ ప్రదేశం*\n"
                         f"━━━━━━━━━━━━━━━━━━━━━\n"
                         f"✅ *Pickup Location set:* {session['pickup_location']}\n\n"
                         f"Please share the **DROP-OFF location** for *'{d_name}'*:\n"
                         f"• Tap 📎 in WhatsApp to send **Location Pin** 📍, or\n"
-                        f"• Type exact street address / landmark below."
+                        f"• Type exact street address / landmark below.\n\n"
+                        f"దయచేసి డెలివరీ చేయవలసిన **లోకేషన్ పిన్ 📍** లేదా ల్యాండ్‌మార్క్ అడ్రస్ పంపండి."
                     )
                     buttons = [
                         {"id": "CW_SEND_LOC_GUIDE", "title": "📍 Share Location Pin"},
@@ -93,6 +95,119 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                     return _generate_price_quote(session, task_text, user)
 
         # =========================================================================
+        # GLOBAL INTERACTIVE BUTTON ACTION HANDLERS (Direct Resolution)
+        # =========================================================================
+        if text_clean == "CW_CANCEL_TASK":
+            session["custom_work_step"] = "INIT"
+            session["stage"] = "MENU"
+            body = "❌ *Task Canceled / అభ్యర్థన రద్దు చేయబడింది.*\n\nYou can start a new request anytime by typing *HI*."
+            if user:
+                send_message(user, body)
+                return None
+            return body
+
+        if text_clean == "CW_RETRY_VOICE":
+            session["custom_work_step"] = "WAITING_DETAILS"
+            body = (
+                "🎙️ *Record Voice Note / వాయిస్ రికార్డ్ చేయండి*\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n"
+                "Hold the 🎤 microphone button in WhatsApp and describe your task clearly in **Telugu, Hindi, or English**.\n\n"
+                "💡 *Tip:* Please mention **Item Name, Quantity, and Brand** if buying items.\n"
+                "దయచేసి **వస్తువు పేరు, పరిమాణం (Quantity) మరియు బ్రాండ్** వివరాలను చెప్పండి."
+            )
+            if user:
+                send_message(user, body)
+                return None
+            return body
+
+        if text_clean in ["CW_EDIT_TASK", "EDIT_TASK"]:
+            session["custom_work_step"] = "WAITING_DETAILS_TYPED"
+            body = (
+                "✍️ *Edit Task Details / వివరాలను సరిదిద్దండి*\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n"
+                "Please type your item name, quantity, brand or task requirements below:\n"
+                "• E.g.: _'Dettol Handwash 250ml - 2 bottles'_\n\n"
+                "దయచేసి మీ సరుకుల పేరు, పరిమాణం (Quantity), బ్రాండ్ మరియు వివరాలను క్రింద టైప్ చేయండి:\n"
+                "• ఉదా: _'డెట్టాల్ హ్యాండ్‌వాష్ 250ml - 2 బాటిళ్లు'_"
+            )
+            if user:
+                send_message(user, body)
+                return None
+            return body
+
+        if text_clean == "CW_OPT_BUY":
+            session["category"] = "buy_and_bring"
+            session["task_type"] = "buy_and_bring"
+            session["flow"] = "store_to_drop"
+            session["is_single_location"] = False
+            session["has_shopping"] = True
+            session["pickup_name_label"] = "Store / Vendor Point"
+            session["drop_name_label"] = "Delivery Address"
+
+            task_text = session.get("pending_task_text") or session.get("task_description") or "Custom Shopping Request"
+            if task_text.startswith("CW_OPT_"):
+                task_text = session.get("task_description") or "Custom Shopping Request"
+            session["task_description"] = task_text
+            session["pending_task_text"] = task_text
+
+            if not session.get("quantity_clarified"):
+                session["custom_work_step"] = "WAITING_QUANTITY_DETAILS"
+                body = (
+                    f"🛒 *Buy & Bring Details / సరుకుల వివరాలు*\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"📝 *Requested Item / అభ్యర్థించిన వస్తువు:* _{task_text[:100]}_\n\n"
+                    f"Please specify **Item Name, Quantity, and Brand preference**:\n"
+                    f"• E.g.: _'Dettol Handwash 250ml - 1 bottle'_\n\n"
+                    f"దయచేసి **వస్తువు పేరు, పరిమాణం (Quantity) మరియు బ్రాండ్** వివరాలను తెలియజేయండి:\n"
+                    f"• ఉదా: _'డెట్టాల్ హ్యాండ్‌వాష్ 250ml - 1 బాటిల్'_"
+                )
+                buttons = [
+                    {"id": "CW_QTY_DEFAULT", "title": "✅ Proceed with This"},
+                    {"id": "CW_EDIT_TASK", "title": "✍️ Add Brand & Qty"},
+                    {"id": "CW_RETRY_VOICE", "title": "🎙️ Record Again"}
+                ]
+                if user:
+                    send_reply_buttons(to=user, body=body, buttons=buttons)
+                    return None
+                return body
+            return prompt_for_locations_or_quote(session, task_text, user)
+
+        if text_clean == "CW_OPT_PICK":
+            session["category"] = "retrieve"
+            session["task_type"] = "retrieve"
+            session["flow"] = "pickup_to_drop"
+            session["is_single_location"] = False
+            session["has_shopping"] = False
+            session["pickup_name_label"] = "Pickup Point"
+            session["drop_name_label"] = "Drop-off Point"
+
+            task_text = session.get("pending_task_text") or session.get("task_description") or "Pick and Drop Errand"
+            if task_text.startswith("CW_OPT_"):
+                task_text = session.get("task_description") or "Pick and Drop Errand"
+            session["task_description"] = task_text
+            session["pending_task_text"] = task_text
+            return prompt_for_locations_or_quote(session, task_text, user)
+
+        if text_clean == "CW_OPT_REPAIR":
+            session["category"] = "unique_custom_task"
+            session["task_type"] = "unique_custom_task"
+            session["flow"] = "single_location"
+            session["is_single_location"] = True
+            session["has_shopping"] = False
+
+            task_text = session.get("pending_task_text") or session.get("task_description") or "Repair / Breakdown Service"
+            if task_text.startswith("CW_OPT_"):
+                task_text = session.get("task_description") or "Repair / Breakdown Service"
+            session["task_description"] = task_text
+            session["pending_task_text"] = task_text
+            return prompt_for_locations_or_quote(session, task_text, user)
+
+        if text_clean == "CW_QTY_DEFAULT":
+            session["quantity_clarified"] = True
+            task_text = session.get("pending_task_text") or session.get("task_description") or "Custom Task"
+            return prompt_for_locations_or_quote(session, task_text, user)
+
+        # =========================================================================
         # STEP 1: INIT / TASK INTAKE PROMPT
         # =========================================================================
         if step == "INIT":
@@ -109,12 +224,15 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
             body = (
                 "💼 *Need2Done Custom Work (Bhongir Pilot)*\n"
                 "━━━━━━━━━━━━━━━━━━━━━\n"
-                "Please describe your task in plain text or send a voice note.\n\n"
-                "💡 *Examples:*\n"
+                "Please describe your task in plain text or send a voice note.\n"
+                "*(Please include Item Name, Quantity, Brand, or Task details)*\n\n"
+                "దయచేసి మీ పని వివరాలను టైప్ చేయండి లేదా వాయిస్ మెసేజ్ పంపండి.\n"
+                "*(వస్తువు పేరు, పరిమాణం (Quantity), బ్రాండ్ వివరాలు తెలపండి)*\n\n"
+                "💡 *Examples / ఉదాహరణలు:*\n"
+                "• _'Dettol Handwash 250ml 1 bottle from store'_\n"
                 "• _'My bike is not starting near SBI bank'_\n"
                 "• _'Collect charger from home and bring to my office'_\n"
-                "• _'Bring 2L emergency petrol to Bhongir bypass'_\n"
-                "• _'Stand in line at MeeSeva counter'_"
+                "• _'Bring 2L emergency petrol to Bhongir bypass'_"
             )
             buttons = [
                 {"id": "CW_VOICE_GUIDE", "title": "🎙️ Send Voice Note"},
@@ -128,14 +246,35 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
         # =========================================================================
         # STEP 2: DETAILS INTAKE (TEXT OR VOICE) & AI PARSING
         # =========================================================================
+        if step == "WAITING_DETAILS_TYPED":
+            if len(text_clean) < 3:
+                return (
+                    "Please provide item name, quantity, brand or task details (at least a few words).\n"
+                    "దయచేసి వస్తువు పేరు, పరిమాణం (Quantity) మరియు వివరాలు టైప్ చేయండి."
+                )
+            session["pending_task_text"] = text_clean
+            session["task_description"] = text_clean
+            session["custom_work_step"] = "WAITING_DETAILS"
+            return _evaluate_intent_and_route(session, text_clean, user)
+
         if step == "WAITING_DETAILS":
             if text_clean == "CW_VOICE_GUIDE":
                 if user:
-                    send_message(user, "🎙️ *Voice Note Instructions:*\n\nHold the microphone button in WhatsApp and describe your task clearly in **Telugu, Hindi, English, or Teluglish**.")
+                    send_message(
+                        user,
+                        "🎙️ *Voice Note Instructions / వాయిస్ వివరాలు:*\n\n"
+                        "Hold the microphone button in WhatsApp and describe your task clearly in **Telugu, Hindi, English, or Teluglish**.\n"
+                        "Please mention **Item Name, Quantity, and Brand**.\n\n"
+                        "వాట్సాప్‌లో మైక్ బటన్ నొక్కి పట్టుకుని మీ పని వివరాలు స్పష్టంగా చెప్పండి."
+                    )
                     return None
             elif text_clean == "CW_TEXT_GUIDE":
                 if user:
-                    send_message(user, "✍️ Please type your task description below:")
+                    send_message(
+                        user,
+                        "✍️ Please type your task description below (Include Item Name, Quantity & Brand):\n\n"
+                        "దయచేసి మీ పని వివరాలు, సరుకుల పేరు, పరిమాణం మరియు బ్రాండ్ క్రింద టైప్ చేయండి:"
+                    )
                     return None
 
             # Audio Voice Note Processing
@@ -155,10 +294,11 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
 
                         if not orig_text and not eng_text:
                             body = (
-                                "⚠️ *Could not hear audio clearly*\n"
+                                "⚠️ *Could not hear audio clearly / వాయిస్ స్పష్టంగా లేదు*\n"
                                 "━━━━━━━━━━━━━━━━━━━━━\n"
                                 "We could not detect clear speech in your voice note.\n\n"
-                                "Please record again or type your task in plain text."
+                                "Please record again or type your task in plain text.\n"
+                                "దయచేసి మరలా వాయిస్ మెసేజ్ పంపండి లేదా టైప్ చేయండి."
                             )
                             buttons = [
                                 {"id": "CW_RETRY_VOICE", "title": "🔄 Record Again"},
@@ -172,14 +312,20 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                         session["pending_task_text"] = eng_text or orig_text
                         session["custom_work_step"] = "CONFIRM_AUDIO_TRANSCRIPT"
 
+                        telugu_line = f"\n🗣️ *Spoken Speech:* _{orig_text}_\n" if orig_text and orig_text != eng_text else ""
+
                         body = (
-                            f"🎙️ *Voice Note Transcribed:*\n"
-                            f"_{eng_text or orig_text}_\n\n"
+                            f"🎙️ *Voice Note Transcribed / వాయిస్ వివరాలు:*\n"
+                            f"_{eng_text or orig_text}_\n"
+                            f"{telugu_line}\n"
                             f"━━━━━━━━━━━━━━━━━━━━━\n"
-                            f"*Is this task description correct?*"
+                            f"*Is this task description correct? / ఈ వివరాలు సరిగా ఉన్నాయా?*\n\n"
+                            f"💡 *Tip:* Please ensure item name, quantity, and brand are specified.\n"
+                            f"(వస్తువు పేరు, పరిమాణం (Quantity) మరియు బ్రాండ్ నమోదు చేశారా?)"
                         )
                         buttons = [
                             {"id": "CW_CONFIRM_VOICE", "title": "✅ Confirm & Proceed"},
+                            {"id": "CW_EDIT_TASK", "title": "✍️ Edit Details"},
                             {"id": "CW_RETRY_VOICE", "title": "🔄 Record Again"}
                         ]
                         if user:
@@ -188,7 +334,10 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                         return body
 
             if len(text_clean) < 3:
-                return "Please provide a brief description of your task (at least a few words)."
+                return (
+                    "Please provide a brief description of your task (at least a few words).\n"
+                    "దయచేసి మీ పని వివరాలు టైప్ చేయండి."
+                )
 
             session["pending_task_text"] = text_clean
             return _evaluate_intent_and_route(session, text_clean, user)
@@ -198,9 +347,28 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
             if text_clean.upper() in ["1", "YES", "Y", "CONFIRM", "OK", "CW_CONFIRM_VOICE"]:
                 task_text = session.get("pending_task_text", "Custom Task Errand")
                 return _evaluate_intent_and_route(session, task_text, user)
+            elif text_clean in ["CW_EDIT_TASK", "EDIT_TASK"]:
+                session["custom_work_step"] = "WAITING_DETAILS_TYPED"
+                body = (
+                    "✍️ *Edit Task Details / వివరాలను సరిదిద్దండి*\n"
+                    "━━━━━━━━━━━━━━━━━━━━━\n"
+                    "Please type your item name, quantity, brand or task requirements below:\n"
+                    "• E.g.: _'Dettol Handwash 250ml - 2 bottles'_\n\n"
+                    "దయచేసి మీ సరుకుల పేరు, పరిమాణం (Quantity), బ్రాండ్ మరియు వివరాలను క్రింద టైప్ చేయండి:\n"
+                    "• ఉదా: _'డెట్టాల్ హ్యాండ్‌వాష్ 250ml - 2 బాటిళ్లు'_"
+                )
+                if user:
+                    send_message(user, body)
+                    return None
+                return body
             else:
                 session["custom_work_step"] = "WAITING_DETAILS"
-                body = "🔄 Please tap 🎙️ to record your voice note again or type your task description in plain text."
+                body = (
+                    "🔄 *Record Again / మరలా ప్రయత్నించండి*\n"
+                    "━━━━━━━━━━━━━━━━━━━━━\n"
+                    "Please tap 🎙️ to record your voice note again or type your task description in plain text.\n\n"
+                    "దయచేసి మరలా వాయిస్ మెసేజ్ పంపండి లేదా టైప్ చేయండి."
+                )
                 if user:
                     send_message(user, body)
                     return None
@@ -217,12 +385,19 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                 qty_str = "1 Litre Emergency Petrol"
             elif text_clean == "CW_QTY_TYPE":
                 if user:
-                    send_message(user, "✍️ Please type exact quantity / details (e.g. *1 Litre petrol* or *5kg Rice, 1L Oil*):")
+                    send_message(
+                        user,
+                        "✍️ Please type exact item name, quantity & brand (e.g. *Dettol Handwash 250ml - 2 bottles* or *5kg Fortune Rice*):\n\n"
+                        "దయచేసి వస్తువు పేరు, పరిమాణం (Quantity) & బ్రాండ్ టైప్ చేయండి:"
+                    )
                     return None
             elif len(text_clean) >= 2 and text_clean.upper() not in ["CW_CANCEL_TASK"]:
                 qty_str = text_clean
             else:
-                return "Please specify the item quantity (e.g. 1 Litre petrol or 5kg Rice)."
+                return (
+                    "Please specify the item quantity and brand (e.g. 1 Litre petrol, Dettol Handwash 250ml).\n"
+                    "దయచేసి పరిమాణం మరియు బ్రాండ్ వివరాలు టైప్ చేయండి."
+                )
 
             session["quantity_clarified"] = True
             current_task = session.get("pending_task_text") or session.get("task_description") or "Custom Task"
@@ -236,7 +411,12 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
         if step == "WAITING_WORK_LOCATION":
             if text_clean == "CW_SEND_LOC_GUIDE":
                 if user:
-                    send_message(user, "📍 *Location Pin Instructions:*\n\nTap the attachment icon (📎) in WhatsApp and select *Location* to send your live location pin.")
+                    send_message(
+                        user,
+                        "📍 *Location Pin Instructions / లోకేషన్ పిన్ పంపే విధానం:*\n\n"
+                        "Tap the attachment icon (📎) in WhatsApp and select *Location* to send your live location pin.\n\n"
+                        "వాట్సాప్‌లో 📎 గుర్తు నొక్కి *Location* ఎంచుకుని పిన్ పంపండి."
+                    )
                     return None
 
             if len(text_clean) >= 3 and text_clean.upper() not in ["CW_CANCEL_TASK"]:
@@ -246,7 +426,10 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                 task_text = session.get("pending_task_text") or session.get("task_description") or "Custom Work Task"
                 return _generate_price_quote(session, task_text, user)
             else:
-                return "📍 Please share your breakdown/work location pin 📍 or type landmark address below."
+                return (
+                    "📍 Please share your breakdown/work location pin 📍 or type landmark address below.\n"
+                    "దయచేసి లోకేషన్ పిన్ పంపండి లేదా అడ్రస్ టైప్ చేయండి."
+                )
 
         # Pickup Location Intake (2-Location / Store Transfer)
         if step == "WAITING_PICKUP_LOCATION":
@@ -254,13 +437,18 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                 session["pickup_location"] = "Nearest Store / Vendor, Bhongir"
             elif text_clean == "CW_SEND_LOC_GUIDE":
                 if user:
-                    send_message(user, "📍 *Location Pin Instructions:*\n\nTap the attachment icon (📎) in WhatsApp and select *Location* to send your live location pin.")
+                    send_message(
+                        user,
+                        "📍 *Location Pin Instructions / లోకేషన్ పిన్ పంపే విధానం:*\n\n"
+                        "Tap the attachment icon (📎) in WhatsApp and select *Location* to send your live location pin.\n\n"
+                        "వాట్సాప్‌లో 📎 గుర్తు నొక్కి *Location* ఎంచుకుని పిన్ పంపండి."
+                    )
                     return None
             elif len(text_clean) >= 3 and text_clean.upper() not in ["CW_CANCEL_TASK"]:
                 session["pickup_location"] = f"{text_clean}, Bhongir"
             else:
                 p_name = session.get("pickup_name_label", "Pickup Point")
-                return f"📍 Please type store/pickup location for '{p_name}', send a location pin, or tap 'Use Nearest Store'."
+                return f"📍 Please type store/pickup location for '{p_name}', send a location pin, or tap 'Use Nearest Store'.\nదయచేసి పికప్ లోకేషన్ లేదా దుకాణం వివరాలు తెలపండి."
 
             if session.get("flow") in ["single_location", "queueing"] or session.get("is_single_location"):
                 session["drop_location"] = "On-Site Work Location (No Drop Required)"
@@ -270,12 +458,13 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
             session["custom_work_step"] = "WAITING_DROP_LOCATION"
             d_name = session.get("drop_name_label", "Drop-off Point")
             body = (
-                f"🏁 *Step 2 of 2: Drop-off Location Needed*\n"
+                f"🏁 *Step 2 of 2: Drop-off Location Needed / డెలివరీ ప్రదేశం*\n"
                 f"━━━━━━━━━━━━━━━━━━━━━\n"
                 f"✅ *Pickup set:* {session['pickup_location']}\n\n"
                 f"Please provide the **DROP-OFF location** for *'{d_name}'*:\n"
                 f"• Tap 📎 in WhatsApp to send **Location Pin** 📍, or\n"
-                f"• Type exact street address / landmark below."
+                f"• Type exact street address / landmark below.\n\n"
+                f"దయచేసి డెలివరీ చేయవలసిన **లోకేషన్ పిన్ 📍** లేదా ల్యాండ్‌మార్క్ అడ్రస్ పంపండి."
             )
             buttons = [
                 {"id": "CW_SEND_LOC_GUIDE", "title": "📍 Share Location Pin"},
@@ -290,14 +479,19 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
         if step == "WAITING_DROP_LOCATION":
             if text_clean == "CW_SEND_LOC_GUIDE":
                 if user:
-                    send_message(user, "📍 *Location Pin Instructions:*\n\nTap the attachment icon (📎) in WhatsApp and select *Location* to send your live location pin.")
+                    send_message(
+                        user,
+                        "📍 *Location Pin Instructions / లోకేషన్ పిన్ పంపే విధానం:*\n\n"
+                        "Tap the attachment icon (📎) in WhatsApp and select *Location* to send your live location pin.\n\n"
+                        "వాట్సాప్‌లో 📎 గుర్తు నొక్కి *Location* ఎంచుకుని పిన్ పంపండి."
+                    )
                     return None
 
             if len(text_clean) >= 3 and text_clean.upper() not in ["CW_CANCEL_TASK"]:
                 session["drop_location"] = f"{text_clean}, Bhongir"
             else:
                 d_name = session.get("drop_name_label", "Drop-off Point")
-                return f"🏁 Please type your exact drop-off address for '{d_name}' or send a location pin."
+                return f"🏁 Please type your exact drop-off address for '{d_name}' or send a location pin.\nదయచేసి డెలివరీ అడ్రస్ టైప్ చేయండి."
 
             task_text = session.get("pending_task_text") or session.get("task_description") or "Custom Work Task"
             return _generate_price_quote(session, task_text, user)
@@ -334,7 +528,11 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
 
                 if not order_id:
                     print(f"[CUSTOM_WORK] Order finalization failed for session user {user}")
-                    body = "❌ *Order placement failed.* Please try confirming again or type *HI* to restart."
+                    body = (
+                        "❌ *Order placement failed / ఆర్డర్ విఫలమైంది.*\n"
+                        "Please try confirming again or type *HI* to restart.\n"
+                        "దయచేసి మరలా ప్రయత్నించండి."
+                    )
                     if user:
                         send_message(user, body)
                         return None
@@ -346,18 +544,18 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                 tracking_url = f"{TRACKING_BASE_URL}/track/{order_id}"
 
                 item_pay_note = (
-                    "💳 *Payment Method & Amount Payable on Delivery:*\n"
+                    "💳 *Payment Method & Amount Payable on Delivery / చెల్లింపు వివరాలు:*\n"
                     "• *Actual Store Receipt Bill* (Advanced by Helper at store/pump)\n"
                     f"• *Quoted Service Fee:* ₹{quoted}\n"
                     "• Pay via *Cash to Helper* or *Instant UPI* upon delivery."
                 ) if has_shop or any(w in task_text.lower() for w in ['petrol', 'fuel', 'buy', 'bring', 'grocery', 'medicine']) else (
-                    "💳 *Payment Method & Amount Payable on Delivery:*\n"
+                    "💳 *Payment Method & Amount Payable on Delivery / చెల్లింపు వివరాలు:*\n"
                     f"• *Quoted Service Fee:* ₹{quoted}\n"
                     "• Pay via *Cash to Helper* or *Instant UPI* upon delivery."
                 )
 
                 body = (
-                    f"✅ *Order Confirmed! (#{order_id})*\n"
+                    f"✅ *Order Confirmed! (#{order_id}) / ఆర్డర్ ఖాయమైంది!*\n"
                     f"━━━━━━━━━━━━━━━━━━━━━\n"
                     f"🛵 *Helper Dispatch:* Assigning nearest verified Need2Done helper in Bhongir...\n\n"
                     f"📍 *Work / Pickup:* {p_loc}\n"
@@ -379,7 +577,7 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
             else:
                 session["custom_work_step"] = "INIT"
                 session["stage"] = "MENU"
-                body = "❌ *Task Canceled.* You can start a new request anytime by typing *HI*."
+                body = "❌ *Task Canceled / రద్దు చేయబడింది.* You can start a new request anytime by typing *HI*."
                 if user:
                     send_message(user, body)
                     return None
@@ -409,7 +607,7 @@ def _evaluate_intent_and_route(session: Dict[str, Any], task_text: str, user: Op
         session["custom_work_step"] = "INIT"
         session["stage"] = "MENU"
         body = (
-            "⛔ *Task Restricted*\n"
+            "⛔ *Task Restricted / అనుమతించబడని అభ్యర్థన*\n"
             "━━━━━━━━━━━━━━━━━━━━━\n"
             "I cannot accept that task. Requests involving restricted or illegal items (alcohol, unverified cash transfers, adult services, etc.) cannot be auto-assigned."
         )
@@ -430,10 +628,11 @@ def _evaluate_intent_and_route(session: Dict[str, Any], task_text: str, user: Op
     if avg_conf < 0.70:
         session["custom_work_step"] = "WAITING_DETAILS"
         body = (
-            "🤔 *Let's clarify your request*\n"
+            "🤔 *Let's clarify your request / మీ అభ్యర్థనను స్పష్టం చేయండి*\n"
             "━━━━━━━━━━━━━━━━━━━━━\n"
-            f"📝 *You requested:* _{task_text[:100]}_\n\n"
-            "Which of these best describes what you need?"
+            f"📝 *You requested / మీ వివరాలు:* _{task_text[:100]}_\n\n"
+            "Which of these best describes what you need?\n"
+            "దయచేసి క్రింది వర్గాలలో ఒకదాన్ని ఎంచుకోండి:"
         )
         buttons = [
             {"id": "CW_OPT_BUY", "title": "🛒 Buy & Bring"},
@@ -450,7 +649,7 @@ def _evaluate_intent_and_route(session: Dict[str, Any], task_text: str, user: Op
         session["custom_work_step"] = "WAITING_CLARIFICATION"
         clarify_q = ai_intent.get("clarification_question")
         body = (
-            "❓ *Clarification Needed*\n"
+            "❓ *Clarification Needed / వివరాలు తెలపండి*\n"
             "━━━━━━━━━━━━━━━━━━━━━\n"
             f"📝 *Task:* _{task_text[:100]}_\n\n"
             f"{clarify_q}"
@@ -469,9 +668,9 @@ def prompt_for_locations_or_quote(session: Dict[str, Any], task_text: str, user:
     Intelligently determines intake steps based on operational flow (single_location vs store_to_drop vs pickup_to_drop).
     """
     ai_intent = session.get("ai_intent") or classify_custom_work_intent_gemini(task_text)
-    task_type = ai_intent.get("category") or "unique_custom_task"
-    flow = ai_intent.get("flow") or "single_location"
-    is_single_loc = (flow in ["single_location", "queueing"])
+    task_type = session.get("category") or ai_intent.get("category") or "unique_custom_task"
+    flow = session.get("flow") or ai_intent.get("flow") or "single_location"
+    is_single_loc = (flow in ["single_location", "queueing"]) or session.get("is_single_location", False)
 
     session["task_type"] = task_type
     session["flow"] = flow
@@ -489,12 +688,13 @@ def prompt_for_locations_or_quote(session: Dict[str, Any], task_text: str, user:
         if is_fuel and not any(q in task_text.lower() for q in ['1l', '2l', 'litre', 'liter', '100rs', '200rs']):
             session["custom_work_step"] = "WAITING_QUANTITY_DETAILS"
             body = (
-                f"⛽ *Emergency Fuel Quantity Needed*\n"
+                f"⛽ *Emergency Fuel Quantity Needed / పెట్రోల్ పరిమాణం*\n"
                 f"━━━━━━━━━━━━━━━━━━━━━\n"
                 f"📝 *Task:* {task_text[:100]}\n\n"
                 f"Please specify how much petrol you need:\n"
                 f"• E.g. *1 Litre (~₹105)*, *₹100 worth*, or *2 Litres*.\n\n"
-                f"_(Default for stranded bikes is 1 Litre)_"
+                f"దయచేసి ఎంత పెట్రోల్ కావాలో తెలపండి (ఉదా: 1 లీటర్).\n"
+                f"_(Default for stranded bikes is 1 Litre / సాధారణంగా 1 లీటర్)_"
             )
             buttons = [
                 {"id": "CW_QTY_1L", "title": "⛽ Default 1 Litre"},
@@ -510,12 +710,13 @@ def prompt_for_locations_or_quote(session: Dict[str, Any], task_text: str, user:
         if not session.get("work_location") and not session.get("pickup_location"):
             session["custom_work_step"] = "WAITING_WORK_LOCATION"
             body = (
-                f"📍 *Work Site / Stranded Location Needed*\n"
+                f"📍 *Work Site / Stranded Location Needed / పనిచేసే ప్రదేశం*\n"
                 f"━━━━━━━━━━━━━━━━━━━━━\n"
                 f"📝 *Task:* {task_text[:100]}\n\n"
-                f"Please share your **exact location pin 📍** or landmark address where the helper/mechanic should arrive to assist you:\n"
+                f"Please share your **exact location pin 📍** or landmark address where the helper/mechanic should arrive:\n"
                 f"• Tap 📎 in WhatsApp to send **Location Pin** 📍, or\n"
-                f"• Type exact street address / landmark below."
+                f"• Type exact street address / landmark below.\n\n"
+                f"దయచేసి సహాయకుడు రావలసిన **లోకేషన్ పిన్ 📍** లేదా ల్యాండ్‌మార్క్ అడ్రస్ పంపండి."
             )
             buttons = [
                 {"id": "CW_SEND_LOC_GUIDE", "title": "📍 Share Location Pin"},
@@ -533,13 +734,14 @@ def prompt_for_locations_or_quote(session: Dict[str, Any], task_text: str, user:
     if not session.get("pickup_location"):
         session["custom_work_step"] = "WAITING_PICKUP_LOCATION"
         body = (
-            f"📍 *Step 1 of 2: Store / Pickup Location Needed*\n"
+            f"📍 *Step 1 of 2: Store / Pickup Location Needed / పికప్ ప్రదేశం*\n"
             f"━━━━━━━━━━━━━━━━━━━━━\n"
             f"📝 *Task:* {task_text[:100]}\n\n"
             f"Please specify where to pick up or buy items from (*'{p_name}'*):\n"
             f"• Type store name or address below, or\n"
             f"• Tap 📎 to send **Location Pin** 📍, or\n"
-            f"• Tap **Use Nearest Store** if helper can select nearest vendor."
+            f"• Tap **Use Nearest Store** if helper can select nearest vendor.\n\n"
+            f"దయచేసి దుకాణం పేరు లేదా పికప్ లోకేషన్ వివరాలు తెలపండి."
         )
         buttons = [
             {"id": "CW_USE_NEAREST_STORE", "title": "🏪 Use Nearest Store"},
@@ -554,13 +756,14 @@ def prompt_for_locations_or_quote(session: Dict[str, Any], task_text: str, user:
     if not session.get("drop_location"):
         session["custom_work_step"] = "WAITING_DROP_LOCATION"
         body = (
-            f"🏁 *Step 2 of 2: Drop-off Location Needed*\n"
+            f"🏁 *Step 2 of 2: Drop-off Location Needed / డెలివరీ ప్రదేశం*\n"
             f"━━━━━━━━━━━━━━━━━━━━━\n"
             f"📝 *Task:* {task_text[:100]}\n"
             f"📍 *Pickup set:* {session.get('pickup_location', 'Shared')}\n\n"
             f"Please provide the **DROP-OFF / DELIVERY location** for *'{d_name}'*:\n"
             f"• Tap 📎 in WhatsApp to send **Location Pin** 📍, or\n"
-            f"• Type exact street address / landmark below."
+            f"• Type exact street address / landmark below.\n\n"
+            f"దయచేసి డెలివరీ చేయవలసిన **లోకేషన్ పిన్ 📍** లేదా ల్యాండ్‌మార్క్ అడ్రస్ పంపండి."
         )
         buttons = [
             {"id": "CW_SEND_LOC_GUIDE", "title": "📍 Share Location Pin"},
@@ -582,7 +785,7 @@ def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optiona
     session["custom_work_step"] = "CONFIRM_QUOTE"
 
     ai_intent = session.get("ai_intent") or classify_custom_work_intent_gemini(task_text)
-    task_type = session.get("task_type") or ai_intent.get("category") or "unique_custom_task"
+    task_type = session.get("category") or session.get("task_type") or ai_intent.get("category") or "unique_custom_task"
     has_shopping = session.get("has_shopping", False)
 
     pickup_loc = session.get("pickup_location") or session.get("work_location") or "Nearest Store / Vendor (Bhongir)"
@@ -649,15 +852,15 @@ def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optiona
     if session.get("is_single_location"):
         loc_block = f"📍 *Work Site Location:* {pickup_loc}\n"
         goods_policy = (
-            "🛠️ *On-Site Service & Breakdown Policy:*\n"
-            "• *On-Site Arrival:* Assigned helper/mechanic will arrive directly at your specified breakdown/work location.\n"
+            "🛠️ *On-Site Service & Breakdown Policy / విధానము:*\n"
+            "• *On-Site Arrival:* Assigned helper/mechanic will arrive directly at your specified location.\n"
             "• *Upon Completion:* Pay Helper: *Quoted Service Fee (₹" + str(service_fee) + ")* + actual parts cost (if advanced by helper).\n"
             "• *Payment Options:* Cash to Helper (COD) or Instant UPI."
         )
     elif has_shopping or any(w in task_text.lower() for w in ['petrol', 'fuel', 'buy', 'bring', 'grocery', 'medicine', 'store']):
         loc_block = f"📍 *Pickup:* {pickup_loc}\n🏁 *Drop:* {drop_loc}\n"
         goods_policy = (
-            "🛒 *Item Purchase & Goods Payment Policy:*\n"
+            "🛒 *Item Purchase & Goods Payment Policy / సరుకుల విధానము:*\n"
             "• *Item Purchase:* Helper advances cash at store/pump on your behalf.\n"
             "• *Upon Delivery:* Reimburse Helper for: *Actual Store Receipt Amount + Quoted Service Fee (₹" + str(service_fee) + ")*.\n"
             "• *Payment Options:* Cash to Helper (COD) or Instant UPI."
@@ -665,25 +868,25 @@ def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optiona
     else:
         loc_block = f"📍 *Pickup:* {pickup_loc}\n🏁 *Drop:* {drop_loc}\n"
         goods_policy = (
-            "📦 *Pickup & Delivery Policy:*\n"
+            "📦 *Pickup & Delivery Policy / డెలివరీ విధానము:*\n"
             "• Helper will collect item at Pickup location and deliver directly to Drop location.\n"
             "• *Upon Delivery:* Pay Helper: *Quoted Service Fee (₹" + str(service_fee) + ")* via Cash or UPI."
         )
 
     cat_title = task_type.replace('_', ' ').title()
     body = (
-        f"🧾 *Need2Done Custom Work Quote*\n"
+        f"🧾 *Need2Done Custom Work Quote / ధర వివరాలు*\n"
         f"━━━━━━━━━━━━━━━━━━━━━\n"
         f"📝 *Task:* {task_text[:120]}\n"
         f"🏷️ *Category:* {cat_title}\n\n"
         f"{loc_block}"
         f"🛣️ *Est. Service Distance:* {est_dist} km (via Ola Maps road route)\n"
         f"⏱️ *Included Handling:* Up to 15 mins\n\n"
-        f"📊 *Itemized Fee Breakdown:*\n"
+        f"📊 *Itemized Fee Breakdown / వివరాలు:*\n"
         f"{breakdown_text}\n"
         f"━━━━━━━━━━━━━━━━━━━━━\n"
         f"💵 *Quoted Service Fee:* *₹{service_fee}*\n"
-        f"_(No percentage markups on merchant goods)_\n\n"
+        f"_(No percentage markups on merchant goods / సరుకులపై అదనపు ఛార్జీలు ఉండవు)_\n\n"
         f"{goods_policy}"
     )
 
