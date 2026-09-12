@@ -719,7 +719,7 @@ export default function CustomWorkAdmin() {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
                         {/* 1. Micro Errand Rate Card */}
                         <div style={{ backgroundColor: '#0f172a', padding: '18px', borderRadius: '10px', border: '1px solid #10b981' }}>
-                            <label style={{ fontSize: '13px', color: '#10b981', display: 'block', marginBottom: '8px', fontWeight: '700' }}>🛒 1. Micro Errand / Small Buy (< ₹250) Fee (₹)</label>
+                            <label style={{ fontSize: '13px', color: '#10b981', display: 'block', marginBottom: '8px', fontWeight: '700' }}>🛒 1. Micro Errand / Small Buy (Under ₹250) Fee (₹)</label>
                             <input 
                                 type="number" 
                                 value={rateCard.MICRO_ERRAND_FEE || 39} 
@@ -906,7 +906,7 @@ export default function CustomWorkAdmin() {
                                 onChange={(e) => handleRateChange('HIGH_BILL_ONLINE_THRESHOLD', e.target.value)}
                                 style={{ width: '100%', padding: '12px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '6px', color: '#ffffff', fontWeight: '700', fontSize: '16px' }}
                             />
-                            <span style={{ fontSize: '12px', color: '#94a3b8', marginTop: '6px', display: 'block' }}>Bills > ₹200 require online payment before pickup</span>
+                            <span style={{ fontSize: '12px', color: '#94a3b8', marginTop: '6px', display: 'block' }}>Bills over ₹200 require online payment before pickup</span>
                         </div>
                     </div>
 
