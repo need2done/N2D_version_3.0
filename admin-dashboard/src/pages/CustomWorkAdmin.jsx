@@ -711,54 +711,202 @@ export default function CustomWorkAdmin() {
             {/* TAB 2: RATE CARD CONFIGURATOR */}
             {activeTab === 'rates' && (
                 <div style={{ backgroundColor: '#1e293b', borderRadius: '12px', padding: '24px', border: '1px solid #334155' }}>
-                    <h3 style={{ fontSize: '20px', fontWeight: '800', marginBottom: '8px', color: '#ffffff' }}>Bhongir Pilot Dynamic Rate Cards</h3>
+                    <h3 style={{ fontSize: '20px', fontWeight: '800', marginBottom: '8px', color: '#ffffff' }}>Bhongir Pilot Category Rate Cards</h3>
                     <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '24px' }}>
-                        Modify city rate card variables. Changes apply instantly to live pricing API without server restart.
+                        Modify city rate cards & helper payouts for all 8 Custom Work categories. Changes apply live instantly without server restart.
                     </p>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+                        {/* 1. Micro Errand Rate Card */}
                         <div style={{ backgroundColor: '#0f172a', padding: '18px', borderRadius: '10px', border: '1px solid #10b981' }}>
-                            <label style={{ fontSize: '13px', color: '#10b981', display: 'block', marginBottom: '8px', fontWeight: '700' }}>Slab 1: Micro Errand (0 - 2.0 km) Fare (₹)</label>
+                            <label style={{ fontSize: '13px', color: '#10b981', display: 'block', marginBottom: '8px', fontWeight: '700' }}>🛒 1. Micro Errand / Small Buy (< ₹250) Fee (₹)</label>
                             <input 
                                 type="number" 
-                                value={rateCard.SLAB_0_2KM || 59} 
-                                onChange={(e) => handleRateChange('SLAB_0_2KM', e.target.value)}
+                                value={rateCard.MICRO_ERRAND_FEE || 39} 
+                                onChange={(e) => handleRateChange('MICRO_ERRAND_FEE', e.target.value)}
                                 style={{ width: '100%', padding: '12px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '6px', color: '#ffffff', fontWeight: '700', fontSize: '16px' }}
                             />
-                            <span style={{ fontSize: '12px', color: '#94a3b8', marginTop: '6px', display: 'block' }}>Helper Payout: ₹{rateCard.SLAB_0_2KM_HELPER || 40}</span>
+                            <div style={{ marginTop: '10px' }}>
+                                <label style={{ fontSize: '12px', color: '#94a3b8' }}>Helper Payout (₹):</label>
+                                <input 
+                                    type="number" 
+                                    value={rateCard.MICRO_ERRAND_HELPER || 25} 
+                                    onChange={(e) => handleRateChange('MICRO_ERRAND_HELPER', e.target.value)}
+                                    style={{ width: '100%', padding: '8px 12px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '6px', color: '#6ee7b7', fontWeight: '700', fontSize: '14px', marginTop: '4px' }}
+                                />
+                            </div>
                         </div>
 
+                        {/* 2. Standard Shopping */}
                         <div style={{ backgroundColor: '#0f172a', padding: '18px', borderRadius: '10px', border: '1px solid #3b82f6' }}>
-                            <label style={{ fontSize: '13px', color: '#60a5fa', display: 'block', marginBottom: '8px', fontWeight: '700' }}>Slab 2: Bhongir Local Town (2.1 - 3.5 km) Fare (₹)</label>
+                            <label style={{ fontSize: '13px', color: '#60a5fa', display: 'block', marginBottom: '8px', fontWeight: '700' }}>🛍️ 2. Standard Shopping (buy_and_bring) Fee (₹)</label>
                             <input 
                                 type="number" 
                                 value={rateCard.SLAB_2_3_5KM || 79} 
                                 onChange={(e) => handleRateChange('SLAB_2_3_5KM', e.target.value)}
                                 style={{ width: '100%', padding: '12px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '6px', color: '#ffffff', fontWeight: '700', fontSize: '16px' }}
                             />
-                            <span style={{ fontSize: '12px', color: '#94a3b8', marginTop: '6px', display: 'block' }}>Helper Payout: ₹{rateCard.SLAB_2_3_5KM_HELPER || 55}</span>
+                            <div style={{ marginTop: '10px' }}>
+                                <label style={{ fontSize: '12px', color: '#94a3b8' }}>Helper Payout (₹):</label>
+                                <input 
+                                    type="number" 
+                                    value={rateCard.SLAB_2_3_5KM_HELPER || 55} 
+                                    onChange={(e) => handleRateChange('SLAB_2_3_5KM_HELPER', e.target.value)}
+                                    style={{ width: '100%', padding: '8px 12px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '6px', color: '#93c5fd', fontWeight: '700', fontSize: '14px', marginTop: '4px' }}
+                                />
+                            </div>
                         </div>
 
+                        {/* 3. Prepaid Store Pickup */}
                         <div style={{ backgroundColor: '#0f172a', padding: '18px', borderRadius: '10px', border: '1px solid #f59e0b' }}>
-                            <label style={{ fontSize: '13px', color: '#fbbf24', display: 'block', marginBottom: '8px', fontWeight: '700' }}>Slab 3: Extended Town (3.6 - 5.0 km) Fare (₹)</label>
+                            <label style={{ fontSize: '13px', color: '#fbbf24', display: 'block', marginBottom: '8px', fontWeight: '700' }}>📦 3. Prepaid Store Pickup (Cake/Meds) Fee (₹)</label>
                             <input 
                                 type="number" 
-                                value={rateCard.SLAB_3_5_5KM || 99} 
-                                onChange={(e) => handleRateChange('SLAB_3_5_5KM', e.target.value)}
+                                value={rateCard.PREPAID_PICKUP_FEE || 49} 
+                                onChange={(e) => handleRateChange('PREPAID_PICKUP_FEE', e.target.value)}
                                 style={{ width: '100%', padding: '12px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '6px', color: '#ffffff', fontWeight: '700', fontSize: '16px' }}
                             />
-                            <span style={{ fontSize: '12px', color: '#94a3b8', marginTop: '6px', display: 'block' }}>Helper Payout: ₹{rateCard.SLAB_3_5_5KM_HELPER || 68}</span>
+                            <div style={{ marginTop: '10px' }}>
+                                <label style={{ fontSize: '12px', color: '#94a3b8' }}>Helper Payout (₹):</label>
+                                <input 
+                                    type="number" 
+                                    value={rateCard.PREPAID_PICKUP_HELPER || 35} 
+                                    onChange={(e) => handleRateChange('PREPAID_PICKUP_HELPER', e.target.value)}
+                                    style={{ width: '100%', padding: '8px 12px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '6px', color: '#fde047', fontWeight: '700', fontSize: '14px', marginTop: '4px' }}
+                                />
+                            </div>
                         </div>
 
+                        {/* 4. Retrieve Forgotten Items */}
                         <div style={{ backgroundColor: '#0f172a', padding: '18px', borderRadius: '10px', border: '1px solid #a855f7' }}>
-                            <label style={{ fontSize: '13px', color: '#c084fc', display: 'block', marginBottom: '8px', fontWeight: '700' }}>Slab 4: Above 5 km Extra Rate (₹/km)</label>
+                            <label style={{ fontSize: '13px', color: '#c084fc', display: 'block', marginBottom: '8px', fontWeight: '700' }}>🔑 4. Retrieve Forgotten Item Fee (₹)</label>
                             <input 
                                 type="number" 
-                                value={rateCard.PER_KM_ABOVE_5KM || 8} 
-                                onChange={(e) => handleRateChange('PER_KM_ABOVE_5KM', e.target.value)}
+                                value={rateCard.RETRIEVE_FEE || 59} 
+                                onChange={(e) => handleRateChange('RETRIEVE_FEE', e.target.value)}
                                 style={{ width: '100%', padding: '12px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '6px', color: '#ffffff', fontWeight: '700', fontSize: '16px' }}
                             />
-                            <span style={{ fontSize: '12px', color: '#94a3b8', marginTop: '6px', display: 'block' }}>Helper Rate: ₹{rateCard.PER_KM_ABOVE_5KM_HELPER || 5}/km</span>
+                            <div style={{ marginTop: '10px' }}>
+                                <label style={{ fontSize: '12px', color: '#94a3b8' }}>Helper Payout (₹):</label>
+                                <input 
+                                    type="number" 
+                                    value={rateCard.RETRIEVE_HELPER || 40} 
+                                    onChange={(e) => handleRateChange('RETRIEVE_HELPER', e.target.value)}
+                                    style={{ width: '100%', padding: '8px 12px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '6px', color: '#e9d5ff', fontWeight: '700', fontSize: '14px', marginTop: '4px' }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* 5. Direct Parcel Pickup */}
+                        <div style={{ backgroundColor: '#0f172a', padding: '18px', borderRadius: '10px', border: '1px solid #ec4899' }}>
+                            <label style={{ fontSize: '13px', color: '#f472b6', display: 'block', marginBottom: '8px', fontWeight: '700' }}>🚚 5. Direct Parcel Pickup Fee (₹)</label>
+                            <input 
+                                type="number" 
+                                value={rateCard.DIRECT_PICKUP_FEE || 59} 
+                                onChange={(e) => handleRateChange('DIRECT_PICKUP_FEE', e.target.value)}
+                                style={{ width: '100%', padding: '12px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '6px', color: '#ffffff', fontWeight: '700', fontSize: '16px' }}
+                            />
+                            <div style={{ marginTop: '10px' }}>
+                                <label style={{ fontSize: '12px', color: '#94a3b8' }}>Helper Payout (₹):</label>
+                                <input 
+                                    type="number" 
+                                    value={rateCard.DIRECT_PICKUP_HELPER || 40} 
+                                    onChange={(e) => handleRateChange('DIRECT_PICKUP_HELPER', e.target.value)}
+                                    style={{ width: '100%', padding: '8px 12px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '6px', color: '#fbcfe8', fontWeight: '700', fontSize: '14px', marginTop: '4px' }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* 6. Queueing & Paperwork */}
+                        <div style={{ backgroundColor: '#0f172a', padding: '18px', borderRadius: '10px', border: '1px solid #6366f1' }}>
+                            <label style={{ fontSize: '13px', color: '#818cf8', display: 'block', marginBottom: '8px', fontWeight: '700' }}>🏛️ 6. Queueing & Paperwork Min Fee (₹)</label>
+                            <input 
+                                type="number" 
+                                value={rateCard.QUEUE_PAPERWORK_MIN || 89} 
+                                onChange={(e) => handleRateChange('QUEUE_PAPERWORK_MIN', e.target.value)}
+                                style={{ width: '100%', padding: '12px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '6px', color: '#ffffff', fontWeight: '700', fontSize: '16px' }}
+                            />
+                            <div style={{ marginTop: '10px' }}>
+                                <label style={{ fontSize: '12px', color: '#94a3b8' }}>Helper Payout (₹):</label>
+                                <input 
+                                    type="number" 
+                                    value={rateCard.QUEUE_PAPERWORK_HELPER_MIN || 60} 
+                                    onChange={(e) => handleRateChange('QUEUE_PAPERWORK_HELPER_MIN', e.target.value)}
+                                    style={{ width: '100%', padding: '8px 12px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '6px', color: '#c7d2fe', fontWeight: '700', fontSize: '14px', marginTop: '4px' }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* 7. Multi-Stop Errand */}
+                        <div style={{ backgroundColor: '#0f172a', padding: '18px', borderRadius: '10px', border: '1px solid #14b8a6' }}>
+                            <label style={{ fontSize: '13px', color: '#2dd4bf', display: 'block', marginBottom: '8px', fontWeight: '700' }}>🔄 7. Multi-Stop Errand Base Fee (₹)</label>
+                            <input 
+                                type="number" 
+                                value={rateCard.MULTI_STOP_MIN || 119} 
+                                onChange={(e) => handleRateChange('MULTI_STOP_MIN', e.target.value)}
+                                style={{ width: '100%', padding: '12px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '6px', color: '#ffffff', fontWeight: '700', fontSize: '16px' }}
+                            />
+                            <div style={{ marginTop: '10px' }}>
+                                <label style={{ fontSize: '12px', color: '#94a3b8' }}>Extra Stop Fee (₹):</label>
+                                <input 
+                                    type="number" 
+                                    value={rateCard.EXTRA_STOP || 30} 
+                                    onChange={(e) => handleRateChange('EXTRA_STOP', e.target.value)}
+                                    style={{ width: '100%', padding: '8px 12px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '6px', color: '#99f6e4', fontWeight: '700', fontSize: '14px', marginTop: '4px' }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* 8. Heavy Cargo Auto */}
+                        <div style={{ backgroundColor: '#0f172a', padding: '18px', borderRadius: '10px', border: '1px solid #f97316' }}>
+                            <label style={{ fontSize: '13px', color: '#fb923c', display: 'block', marginBottom: '8px', fontWeight: '700' }}>🛺 8. Heavy Cargo Auto Min Fee (₹)</label>
+                            <input 
+                                type="number" 
+                                value={rateCard.CARGO_AUTO_MIN || 149} 
+                                onChange={(e) => handleRateChange('CARGO_AUTO_MIN', e.target.value)}
+                                style={{ width: '100%', padding: '12px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '6px', color: '#ffffff', fontWeight: '700', fontSize: '16px' }}
+                            />
+                            <div style={{ marginTop: '10px' }}>
+                                <label style={{ fontSize: '12px', color: '#94a3b8' }}>Helper Payout (₹):</label>
+                                <input 
+                                    type="number" 
+                                    value={rateCard.CARGO_AUTO_HELPER_MIN || 110} 
+                                    onChange={(e) => handleRateChange('CARGO_AUTO_HELPER_MIN', e.target.value)}
+                                    style={{ width: '100%', padding: '8px 12px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '6px', color: '#ffedd5', fontWeight: '700', fontSize: '14px', marginTop: '4px' }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* 9. Bike Breakdown / Repair */}
+                        <div style={{ backgroundColor: '#0f172a', padding: '18px', borderRadius: '10px', border: '1px solid #ef4444' }}>
+                            <label style={{ fontSize: '13px', color: '#f87171', display: 'block', marginBottom: '8px', fontWeight: '700' }}>🛠️ 9. Bike Breakdown / Repair Fee (₹)</label>
+                            <input 
+                                type="number" 
+                                value={rateCard.BREAKDOWN_REPAIR_FEE || 99} 
+                                onChange={(e) => handleRateChange('BREAKDOWN_REPAIR_FEE', e.target.value)}
+                                style={{ width: '100%', padding: '12px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '6px', color: '#ffffff', fontWeight: '700', fontSize: '16px' }}
+                            />
+                            <div style={{ marginTop: '10px' }}>
+                                <label style={{ fontSize: '12px', color: '#94a3b8' }}>Helper Payout (₹):</label>
+                                <input 
+                                    type="number" 
+                                    value={rateCard.BREAKDOWN_REPAIR_HELPER || 75} 
+                                    onChange={(e) => handleRateChange('BREAKDOWN_REPAIR_HELPER', e.target.value)}
+                                    style={{ width: '100%', padding: '8px 12px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '6px', color: '#fca5a5', fontWeight: '700', fontSize: '14px', marginTop: '4px' }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* 10. Store Bill Threshold */}
+                        <div style={{ backgroundColor: '#0f172a', padding: '18px', borderRadius: '10px', border: '1px solid #84cc16' }}>
+                            <label style={{ fontSize: '13px', color: '#a3e635', display: 'block', marginBottom: '8px', fontWeight: '700' }}>💳 10. High Store Bill Online UPI Threshold (₹)</label>
+                            <input 
+                                type="number" 
+                                value={rateCard.HIGH_BILL_ONLINE_THRESHOLD || 200} 
+                                onChange={(e) => handleRateChange('HIGH_BILL_ONLINE_THRESHOLD', e.target.value)}
+                                style={{ width: '100%', padding: '12px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '6px', color: '#ffffff', fontWeight: '700', fontSize: '16px' }}
+                            />
+                            <span style={{ fontSize: '12px', color: '#94a3b8', marginTop: '6px', display: 'block' }}>Bills > ₹200 require online payment before pickup</span>
                         </div>
                     </div>
 
