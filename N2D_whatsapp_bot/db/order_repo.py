@@ -600,6 +600,8 @@ def get_order(order_id: str):
 
 ACTIVE_STATUSES = (
     "HELPER_ACCEPTED",
+    "ARRIVED_AT_STORE",
+    "ARRIVED_AT_CUSTOMER",
     "BILL_IMAGE_UPLOADED",
     "ADMIN_APPROVED_BILL",
     "ITEMS_PICKED_UP",
