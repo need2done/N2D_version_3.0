@@ -1274,7 +1274,7 @@ Share this with helper."""
 
                 log_event(order_db_id, "BILL_UPI_REQUESTED", f"Helper requested online UPI payment for ₹{total_customer}", "HELPER")
 
-                pay_url = f"{TRACKING_BASE_URL}/pay?order_id={order['order_id']}&amount={total_customer}"
+                pay_url = f"{TRACKING_BASE_URL}/payment.html?orderId={order['order_id']}&amount={total_customer}"
 
                 # Send Payment Request to Customer
                 send_url_button(
@@ -1413,7 +1413,7 @@ Share this with helper."""
                     cur.close()
                     db.close()
 
-                    pay_url = f"{TRACKING_BASE_URL}/pay?order_id={active['order_id']}&amount={amount}"
+                    pay_url = f"{TRACKING_BASE_URL}/payment.html?orderId={active['order_id']}&amount={amount}"
 
                     send_url_button(
                         to=active["customer_number"],

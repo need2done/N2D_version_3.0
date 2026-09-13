@@ -79,7 +79,7 @@ def handle_customer_interactive(
                 order = get_order_by_db_id(order_db_id)
                 if order:
                     total = float(order.get("total_amount") or 0.0)
-                    pay_url = f"{TRACKING_BASE_URL}/pay?order_id={order['order_id']}&amount={total}"
+                    pay_url = f"{TRACKING_BASE_URL}/payment.html?orderId={order['order_id']}&amount={total}"
                     send_url_button(from_number, f"💳 Click below to complete online UPI payment for order #{order['order_id']}:", "💳 Pay Online", pay_url)
                 return True
 

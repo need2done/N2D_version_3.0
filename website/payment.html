@@ -213,7 +213,7 @@
 
   <script>
     const urlParams = new URLSearchParams(window.location.search);
-    const orderId = urlParams.get('orderId') || '';
+    const orderId = urlParams.get('orderId') || urlParams.get('order_id') || '';
     const amount = parseFloat(urlParams.get('amount')) || 0;
     
     // Default bot phone for fallback
