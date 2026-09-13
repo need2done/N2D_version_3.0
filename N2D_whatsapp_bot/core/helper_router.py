@@ -574,7 +574,10 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                     )
 
                 service_title = order.get('service', 'General Service')
-                earnings_val = order.get('helper_charge', 20)
+                earnings_val = order.get('helper_charge')
+                if not earnings_val or float(earnings_val) == 0.0:
+                    payload = safe_parse_payload(order.get("payload"))
+                    earnings_val = payload.get("helper_charge", 25.0 if is_anywork else 20.0)
 
                 accept_body = (
                     f"✅ *Order Accepted*\n\n"
@@ -582,7 +585,7 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                     f"🛠️ Service : {service_title}\n"
                     f"👤 Customer : {order['customer_name']}\n"
                     f"{phone_line}"
-                    f"💰 Earnings : ₹{earnings_val}\n\n"
+                    f"💰 Earnings : ₹{float(earnings_val):.2f}\n\n"
                     f"{items_text}"
                     f"{loc_label}\n{nav_link or 'Check details'}\n\n"
                     f"📱 *Open Agent App:*\n{helper_live_url}\n\n"
@@ -590,13 +593,17 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                     f"{ride_safety_rider}"
                 )
 
-
-                if order.get("engine_type") == "RIDE" or is_anywork or is_home_service:
-                    # RIDE, AnyWork, Home Service: Include "Arrived" button directly
+                if is_anywork:
+                    # Custom Work: Button is "📷 Upload Bill Photo"
+                    send_reply_buttons(phone, accept_body, [
+                        {"id": f"ARRIVED_STORE|{order['id']}", "title": "📷 Upload Bill Photo"}
+                    ])
+                elif order.get("engine_type") == "RIDE" or is_home_service:
+                    # RIDE, Home Service: Include "Arrived" button directly
                     send_reply_buttons(phone, accept_body, [
                         {"id": f"ARRIVED|{order['id']}", "title": "📍 Arrived"}
                     ])
-                elif order["status"] == "ADMIN_APPROVED_BILL":
+                elif order.get("status") == "ADMIN_APPROVED_BILL":
                     # Needs "Picked Up" button first
                     send_reply_buttons(phone, accept_body, [
                         {"id": f"PICKED_UP|{order['id']}", "title": "🛍️ Picked Up"}
@@ -1092,16 +1099,24 @@ Share this with helper."""
             # ------------------------------------------------
             # SETTLE POCKET (Helper paid cash/UPI at store)
             # ------------------------------------------------
-            if btn_id.startswith("SETTLE_POCKET|"):
-                parts = btn_id.split("|")
-                order_db_id = int(parts[1])
-                amount = float(parts[2])
-                order = get_order_by_db_id(order_db_id)
+            if btn_id.startswith("SETTLE_POCKET|") or "PAID FROM POCKET" in btn_id.upper() or "PAID FROM POCKET" in text_clean.upper():
+                order = None
+                if btn_id.startswith("SETTLE_POCKET|"):
+                    parts = btn_id.split("|")
+                    order_db_id = int(parts[1])
+                    amount = float(parts[2])
+                    order = get_order_by_db_id(order_db_id)
+                elif active:
+                    order = active
+                    amount = float(active.get("bill_amount") or 0.0)
+
                 if not order:
-                    send_message(phone, "❌ Order not found.")
+                    send_message(phone, "❌ Active order not found.")
                     return
 
-                base_fee = float(order.get("total_amount") or 39.0)
+                order_db_id = order["id"]
+                payload = safe_parse_payload(order.get("payload"))
+                base_fee = float(payload.get("estimated_cost") or order.get("total_amount") or 39.0)
                 total_customer = amount + base_fee
 
                 from db.mysql_conn import get_db
@@ -1117,7 +1132,6 @@ Share this with helper."""
 
                 log_event(order_db_id, "BILL_PAID_FROM_POCKET", f"Helper paid ₹{amount} from pocket. Total COD: ₹{total_customer}", "HELPER")
 
-                payload = safe_parse_payload(order.get("payload"))
                 d_loc = payload.get("drop_location") or order.get("customer_address") or "Customer Location"
 
                 # Notify Helper
@@ -1133,31 +1147,45 @@ Share this with helper."""
                     [{"id": f"ARRIVED_DROP|{order_db_id}", "title": "📍 Arrived at Customer"}]
                 )
 
-                # Notify Customer
-                send_message(
-                    order["customer_number"],
-                    f"🛍️ *Helper Purchased Your Items! / సరుకులు కొనుగోలు చేశారు*\n"
-                    f"━━━━━━━━━━━━━━━━━━━━━\n"
-                    f"🧾 Store Bill Amount: ₹{amount}\n"
-                    f"🛵 Service Fee: ₹{base_fee}\n"
-                    f"💵 *Total Amount Payable at Doorstep:* ₹{total_customer} (Cash or UPI)\n\n"
-                    f"Helper {helper['name']} is on the way to your delivery location!"
+                # Notify Customer with Cash / UPI payment buttons
+                send_reply_buttons(
+                    to=order["customer_number"],
+                    body=(
+                        f"🛍️ *Helper Purchased Your Items! / సరుకులు కొనుగోలు చేశారు*\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━\n"
+                        f"🧾 Store Bill Amount: ₹{amount}\n"
+                        f"🛵 Service Fee: ₹{base_fee}\n"
+                        f"💵 *Total Amount Payable at Doorstep:* ₹{total_customer} (Cash or UPI)\n\n"
+                        f"Helper {helper['name']} is on the way to your delivery location!"
+                    ),
+                    buttons=[
+                        {"id": f"CUST_PAY_CASH|{order_db_id}", "title": "💵 Pay Cash"},
+                        {"id": f"CUST_PAY_UPI|{order_db_id}", "title": "💳 Pay Online UPI"}
+                    ]
                 )
                 return
 
             # ------------------------------------------------
             # SETTLE UPI (Helper requested Customer to pay online)
             # ------------------------------------------------
-            if btn_id.startswith("SETTLE_UPI|"):
-                parts = btn_id.split("|")
-                order_db_id = int(parts[1])
-                amount = float(parts[2])
-                order = get_order_by_db_id(order_db_id)
+            if btn_id.startswith("SETTLE_UPI|") or "REQUEST UPI" in btn_id.upper() or "REQUEST UPI" in text_clean.upper():
+                order = None
+                if btn_id.startswith("SETTLE_UPI|"):
+                    parts = btn_id.split("|")
+                    order_db_id = int(parts[1])
+                    amount = float(parts[2])
+                    order = get_order_by_db_id(order_db_id)
+                elif active:
+                    order = active
+                    amount = float(active.get("bill_amount") or 0.0)
+
                 if not order:
-                    send_message(phone, "❌ Order not found.")
+                    send_message(phone, "❌ Active order not found.")
                     return
 
-                base_fee = float(order.get("total_amount") or 39.0)
+                order_db_id = order["id"]
+                payload = safe_parse_payload(order.get("payload"))
+                base_fee = float(payload.get("estimated_cost") or order.get("total_amount") or 39.0)
                 total_customer = amount + base_fee
 
                 from db.mysql_conn import get_db
@@ -1203,13 +1231,19 @@ Share this with helper."""
             # ------------------------------------------------
             # ARRIVED AT CUSTOMER DROP LOCATION
             # ------------------------------------------------
-            if btn_id.startswith("ARRIVED_DROP|"):
-                order_db_id = int(btn_id.split("|")[1])
-                order = get_order_by_db_id(order_db_id)
+            if btn_id.startswith("ARRIVED_DROP|") or "ARRIVED AT CUSTOMER" in btn_id.upper() or "ARRIVED AT CUSTOMER" in text_clean.upper():
+                order = None
+                if btn_id.startswith("ARRIVED_DROP|"):
+                    order_db_id = int(btn_id.split("|")[1])
+                    order = get_order_by_db_id(order_db_id)
+                elif active:
+                    order = active
+
                 if not order:
-                    send_message(phone, "❌ Order not found.")
+                    send_message(phone, "❌ Active order not found.")
                     return
 
+                order_db_id = order["id"]
                 from db.mysql_conn import get_db
                 db = get_db()
                 cur = db.cursor()
@@ -1222,21 +1256,65 @@ Share this with helper."""
 
                 total = float(order.get("total_amount") or 0.0)
                 is_paid = (order.get("payment_status") == "PAID" or order.get("status") in ("PAID", "ADMIN_APPROVED_BILL_PAID"))
+                status_text = f"✅ Payment of ₹{total} completed online." if is_paid else f"💵 Collect *₹{total}* in Cash / UPI from customer."
 
-                if is_paid:
-                    send_message(
-                        phone,
-                        f"📍 *Arrived at Customer Location.*\n"
-                        f"✅ Payment of ₹{total} completed online.\n\n"
-                        f"Please ask customer for the *DELIVERY OTP* and reply with 4-digit OTP (e.g. *1234*)."
-                    )
-                else:
-                    send_message(
-                        phone,
-                        f"📍 *Arrived at Customer Location.*\n"
-                        f"💵 Collect *₹{total}* in Cash / UPI from customer.\n\n"
-                        f"Please ask customer for the *DELIVERY OTP* and reply with 4-digit OTP (e.g. *1234*)."
-                    )
+                send_reply_buttons(
+                    phone,
+                    f"📍 *Arrived at Customer Location!*\n"
+                    f"{status_text}\n\n"
+                    f"Tap button below to trigger the 4-digit Delivery OTP to the customer:",
+                    [{"id": f"TRIGGER_DELIVERY_OTP|{order_db_id}", "title": "🔐 Trigger Delivery OTP"}]
+                )
+                return
+
+            # ------------------------------------------------
+            # TRIGGER DELIVERY OTP (Sent to Customer WhatsApp)
+            # ------------------------------------------------
+            if btn_id.startswith("TRIGGER_DELIVERY_OTP|") or "TRIGGER DELIVERY OTP" in btn_id.upper() or "TRIGGER OTP" in text_clean.upper():
+                order = None
+                if btn_id.startswith("TRIGGER_DELIVERY_OTP|"):
+                    order_db_id = int(btn_id.split("|")[1])
+                    order = get_order_by_db_id(order_db_id)
+                elif active:
+                    order = active
+
+                if not order:
+                    send_message(phone, "❌ Active order not found.")
+                    return
+
+                order_db_id = order["id"]
+                import random
+                import json
+                payload = safe_parse_payload(order.get("payload"))
+                if "end_otp" not in payload or not payload.get("end_otp"):
+                    payload["end_otp"] = str(random.randint(1000, 9999))
+                    from db.mysql_conn import get_db
+                    db = get_db()
+                    cur = db.cursor()
+                    cur.execute("UPDATE orders SET payload=%s WHERE id=%s", (json.dumps(payload, ensure_ascii=False), order_db_id))
+                    db.commit()
+                    cur.close()
+                    db.close()
+
+                end_otp = payload.get("end_otp")
+                total = float(order.get("total_amount") or 0.0)
+
+                # Send OTP to Customer
+                send_message(
+                    order["customer_number"],
+                    f"🔐 *Need2Done Delivery OTP: {end_otp}*\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"Your helper {helper['name']} is at your delivery location!\n"
+                    f"Please pay ₹{total} (Cash / UPI) and share this Delivery OTP *{end_otp}* with your helper to complete your order."
+                )
+
+                # Notify Helper
+                send_message(
+                    phone,
+                    f"🔐 *Delivery OTP Sent to Customer ({order['customer_number']})!*\n\n"
+                    f"💵 Collect ₹{total} payment from customer and ask for the *4-digit Delivery OTP*.\n"
+                    f"Reply with the 4-digit OTP (e.g. *{end_otp}*):"
+                )
                 return
 
             # ------------------------------------------------

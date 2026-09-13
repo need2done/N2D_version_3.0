@@ -71,6 +71,18 @@ def handle_customer_interactive(
             parts = btn_id.split("|")
             action = parts[0]
             
+            if action == "CUST_PAY_CASH":
+                send_message(from_number, "💵 Thank you! Please hand over cash/UPI to your helper upon delivery.")
+                return True
+            if action == "CUST_PAY_UPI":
+                order_db_id = int(parts[1])
+                order = get_order_by_db_id(order_db_id)
+                if order:
+                    total = float(order.get("total_amount") or 0.0)
+                    pay_url = f"{TRACKING_BASE_URL}/pay?order_id={order['order_id']}&amount={total}"
+                    send_url_button(from_number, f"💳 Click below to complete online UPI payment for order #{order['order_id']}:", "💳 Pay Online", pay_url)
+                return True
+
             if action in ("CUST_EXT_APPROVE", "CUST_EXT_DECLINE"):
                 order_db_id = int(parts[1])
                 order = get_order_by_db_id(order_db_id)
