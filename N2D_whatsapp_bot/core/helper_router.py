@@ -1078,13 +1078,26 @@ Share this with helper."""
                     send_message(phone, "❌ Order not found.")
                     return
 
-                from db.mysql_conn import get_db
-                db = get_db()
-                cur = db.cursor()
-                cur.execute("UPDATE orders SET status='ARRIVED_AT_STORE', updated_at=NOW() WHERE id=%s", (order_db_id,))
-                db.commit()
-                cur.close()
-                db.close()
+                try:
+                    from db.mysql_conn import get_db
+                    db = get_db()
+                    cur = db.cursor()
+                    cur.execute("UPDATE orders SET status='ARRIVED_AT_STORE', updated_at=NOW() WHERE id=%s", (order_db_id,))
+                    db.commit()
+                    cur.close()
+                    db.close()
+                except Exception as e:
+                    logger.error(f"Failed to update status to ARRIVED_AT_STORE: {e}")
+                    try:
+                        from db.mysql_conn import get_db
+                        db = get_db()
+                        cur = db.cursor()
+                        cur.execute("UPDATE orders SET status='HELPER_ARRIVED', updated_at=NOW() WHERE id=%s", (order_db_id,))
+                        db.commit()
+                        cur.close()
+                        db.close()
+                    except Exception as ex:
+                        logger.error(f"Fallback HELPER_ARRIVED update failed: {ex}")
 
                 log_event(order_db_id, "ARRIVED_AT_STORE", "Helper arrived at store", "HELPER")
 
