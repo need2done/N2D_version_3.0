@@ -78,7 +78,7 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                         f"దయచేసి డెలివరీ చేయవలసిన **లోకేషన్ పిన్ 📍** లేదా ల్యాండ్‌మార్క్ అడ్రస్ పంపండి."
                     )
                     buttons = [
-                        {"id": "CW_SEND_LOC_GUIDE", "title": "📍 Share Location Pin"},
+                        {"id": "CW_SEND_LOC_GUIDE", "title": "📍 Share Location"},
                         {"id": "CW_CANCEL_TASK", "title": "❌ Cancel"}
                     ]
                     if user:
@@ -324,7 +324,7 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                             f"(వస్తువు పేరు, పరిమాణం (Quantity) మరియు బ్రాండ్ నమోదు చేశారా?)"
                         )
                         buttons = [
-                            {"id": "CW_CONFIRM_VOICE", "title": "✅ Confirm & Proceed"},
+                            {"id": "CW_CONFIRM_VOICE", "title": "✅ Confirm Details"},
                             {"id": "CW_EDIT_TASK", "title": "✍️ Edit Details"},
                             {"id": "CW_RETRY_VOICE", "title": "🔄 Record Again"}
                         ]
@@ -637,7 +637,7 @@ def _evaluate_intent_and_route(session: Dict[str, Any], task_text: str, user: Op
         buttons = [
             {"id": "CW_OPT_BUY", "title": "🛒 Buy & Bring"},
             {"id": "CW_OPT_PICK", "title": "📦 Pick & Drop"},
-            {"id": "CW_OPT_REPAIR", "title": "🛠️ Repair / Breakdown"}
+            {"id": "CW_OPT_REPAIR", "title": "🛠️ Repair Service"}
         ]
         if user:
             send_reply_buttons(to=user, body=body, buttons=buttons)
@@ -744,8 +744,8 @@ def prompt_for_locations_or_quote(session: Dict[str, Any], task_text: str, user:
             f"దయచేసి దుకాణం పేరు లేదా పికప్ లోకేషన్ వివరాలు తెలపండి."
         )
         buttons = [
-            {"id": "CW_USE_NEAREST_STORE", "title": "🏪 Use Nearest Store"},
-            {"id": "CW_SEND_LOC_GUIDE", "title": "📍 Share Location Pin"}
+            {"id": "CW_USE_NEAREST_STORE", "title": "🏪 Nearest Store"},
+            {"id": "CW_SEND_LOC_GUIDE", "title": "📍 Share Location"}
         ]
         if user:
             send_reply_buttons(to=user, body=body, buttons=buttons)
@@ -798,13 +798,18 @@ def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optiona
     d_lng = session.get("drop_lng")
 
     est_dist = 2.5
-    if p_lat and p_lng and d_lat and d_lng:
+    has_gps_coords = bool(p_lat and p_lng and d_lat and d_lng)
+    if has_gps_coords:
         est_dist = round(get_road_distance(p_lat, p_lng, d_lat, d_lng), 1)
 
     # Dynamic Category Base Fee Tiering Engine
     is_micro_errand = (
         task_type == "buy_and_bring" and 
-        (len(task_text) < 45 or any(q in task_text.lower() for q in ['1l', '1 bottle', 'handwash', 'packet', 'single', 'small', 'oil', 'milk', 'bread', 'curd']))
+        (
+            len(task_text) < 45 or 
+            any(q in task_text.lower() for q in ['1l', '1 bottle', 'handwash', 'packet', 'single', 'small', 'oil', 'milk', 'bread', 'curd', 'kobari', 'coconut', 'agarbatti', 'dhoop', 'pooja', 'soap', 'biscuit', 'chips', 'chocolate', 'medicine', 'pill'])
+        ) and
+        not any(g in task_text.lower() for g in ['family', 'full grocery', 'supermarket', 'weekly', 'multiple items', 'shopping list'])
     )
 
     if is_micro_errand:
@@ -838,6 +843,7 @@ def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optiona
             "distanceKm": est_dist,
             "hasAccessCoordination": ai_intent.get("has_access_coordination", False),
             "hasShopping": has_shopping,
+            "isMicroErrand": is_micro_errand,
             "itemLines": ai_intent.get("item_lines_count", 0),
             "extraStops": ai_intent.get("extra_stops", 0),
             "description": task_text
@@ -859,13 +865,13 @@ def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optiona
     session["calculated_distance"] = est_dist
 
     # Itemized Breakdown
-    extra_dist_km = max(0.0, round(est_dist - 3.0, 1))
+    extra_dist_km = max(0.0, round(est_dist - 3.5, 1))
     dist_charge = int(extra_dist_km * 8)
     base_fare = service_fee - dist_charge
     if base_fare < 25: base_fare = service_fee
 
     breakdown_lines = [
-        f"• Base Service Fee ({task_type.replace('_',' ').title()} incl. handling): ₹{base_fare}",
+        f"• Base Service Fee ({'Micro Errand' if is_micro_errand else task_type.replace('_',' ').title()} incl. handling): ₹{base_fare}",
     ]
     if dist_charge > 0:
         breakdown_lines.append(f"• Route Distance Charge ({extra_dist_km} km extra @ ₹8/km): ₹{dist_charge}")
@@ -877,6 +883,8 @@ def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optiona
     else:
         loc_block = f"📍 *Pickup:* {pickup_loc}\n🏁 *Drop:* {drop_loc}\n"
 
+    dist_str = f"{est_dist} km (via Ola Maps road route)" if has_gps_coords else f"~{est_dist} km (Local Bhongir Town Store)"
+
     payment_policy = (
         "💳 *Base Fee & Store Items Payment Policy / చెల్లింపు నిబంధనలు:*\n"
         f"1️⃣ *Upfront Base Fee:* Confirm & Pay ₹{service_fee} base service fee upfront to place order and dispatch helper.\n"
@@ -885,14 +893,14 @@ def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optiona
         "   • *Bill <= ₹200:* Cash on Delivery (COD) or Online UPI accepted at doorstep."
     )
 
-    cat_title = task_type.replace('_', ' ').title()
+    cat_title = "Micro Errand / Small Buy (< ₹250)" if is_micro_errand else task_type.replace('_', ' ').title()
     body = (
         f"🧾 *Need2Done Custom Work Quote / వివరాలు*\n"
         f"━━━━━━━━━━━━━━━━━━━━━\n"
         f"📝 *Task:* {task_text[:120]}\n"
         f"🏷️ *Category:* {cat_title}\n\n"
         f"{loc_block}"
-        f"🛣️ *Est. Service Distance:* {est_dist} km (via Ola Maps road route)\n\n"
+        f"🛣️ *Est. Service Distance:* {dist_str}\n\n"
         f"📊 *Fee Breakdown / వసూలు వివరాలు:*\n"
         f"{breakdown_text}\n"
         f"━━━━━━━━━━━━━━━━━━━━━\n"
@@ -901,8 +909,12 @@ def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optiona
         f"{payment_policy}"
     )
 
+    accept_btn_title = f"💳 Pay ₹{service_fee} & Confirm"
+    if len(accept_btn_title) > 20:
+        accept_btn_title = "💳 Confirm & Pay Fee"
+
     buttons = [
-        {"id": "CW_ACCEPT_QUOTE", "title": "✅ Pay Base Fee & Place Order"},
+        {"id": "CW_ACCEPT_QUOTE", "title": accept_btn_title},
         {"id": "CW_EDIT_LOCATIONS", "title": "📍 Edit Locations"},
         {"id": "CW_CANCEL_TASK", "title": "❌ Cancel"}
     ]
