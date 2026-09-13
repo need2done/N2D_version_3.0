@@ -264,6 +264,36 @@ def classify_custom_work_intent_gemini(raw_text: str) -> Dict[str, Any]:
         default_payload["customer_intent"]["needs_delivery"] = True
         default_payload["is_single_location_task"] = True
 
+    # High Confidence Shopping / Buy & Bring Auto-Classification
+    shopping_items = [
+        'milk', 'paneer', 'curd', 'butter', 'cheese', 'ghee', 'doodh', 'dahi',
+        'rice', 'dal', 'atta', 'flour', 'sugar', 'salt', 'oil', 'masala', 'chilli', 'coriander',
+        'vegetable', 'vegetables', 'veggies', 'tomato', 'tomatoes', 'potato', 'potatoes', 'onion', 'onions',
+        'fruit', 'fruits', 'apple', 'apples', 'banana', 'bananas', 'lemon',
+        'soap', 'shampoo', 'dettol', 'handwash', 'paste', 'brush', 'surf', 'detergent',
+        'biscuit', 'biscuits', 'chips', 'chocolate', 'egg', 'eggs', 'bread', 'bun',
+        'medicine', 'medicines', 'tablet', 'tablets', 'syrup', 'ointment', 'buy', 'purchase', 'get', 'bring', 'store', 'shop'
+    ]
+    non_shopping_verbs = ['repair', 'mechanic', 'puncture', 'flat', 'tyre', 'not starting', 'plumber', 'electrician', 'breakdown', 'stranded', 'died', 'pickup from', 'bring from home', 'collect key', 'forgot', 'charger', 'keys', 'meeseva', 'queue']
+
+    is_shopping_intent = any(k in lower_req for k in shopping_items) or (
+        len(raw_text.strip().split()) <= 6 and not any(v in lower_req for v in non_shopping_verbs)
+    )
+
+    if is_shopping_intent and not any(v in lower_req for v in non_shopping_verbs):
+        default_payload["category"] = "buy_and_bring"
+        default_payload["task_type"] = "buy_and_bring"
+        default_payload["subcategory"] = "grocery_shopping"
+        default_payload["flow"] = "store_to_drop"
+        default_payload["is_single_location_task"] = False
+        default_payload["has_shopping"] = True
+        default_payload["confidence"]["category"] = 0.95
+        default_payload["confidence"]["flow"] = 0.95
+        default_payload["entities"]["item"] = raw_text
+        default_payload["pickup_location"] = "Store / Vendor Point"
+        default_payload["drop_location"] = "Delivery Address"
+        return default_payload
+
     # =========================================================================
     # LAYER 2 & 3: GEMINI FLASH PARSER WITH FEW-SHOT EXAMPLES & CONFIDENCE
     # =========================================================================

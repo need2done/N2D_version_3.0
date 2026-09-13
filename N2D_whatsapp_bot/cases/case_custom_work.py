@@ -381,7 +381,7 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
 
         # Quantity / Specs Intake
         if step == "WAITING_QUANTITY_DETAILS":
-            if text_clean in ["CW_QTY_DEFAULT", "PROCEED AS IS"]:
+            if text_clean in ["CW_QTY_DEFAULT", "PROCEED AS IS", "PROCEED WITH THIS"]:
                 session["quantity_clarified"] = True
                 task_text = session.get("pending_task_text") or session.get("task_description") or "Custom Task"
                 return prompt_for_locations_or_quote(session, task_text, user)
@@ -721,18 +721,17 @@ def prompt_for_locations_or_quote(session: Dict[str, Any], task_text: str, user:
         elif task_type == "buy_and_bring" and not has_quantity_specs:
             session["custom_work_step"] = "WAITING_QUANTITY_DETAILS"
             body = (
-                f"🛒 *Quantity Needed (Brand Optional) / పరిమాణం మరియు బ్రాండ్*\n"
+                f"🛒 *Buy & Bring Details / సరుకుల వివరాలు*\n"
                 f"━━━━━━━━━━━━━━━━━━━━━\n"
-                f"📝 *Task:* {task_text[:100]}\n\n"
-                f"📌 **Quantity is Required** (e.g. 500g, 1L, 2 pkts)\n"
-                f"🏷️ **Brand is Optional** (e.g. Jersey, Amul, Heritage, or any brand)\n\n"
-                f"• E.g.: _'Paneer 200g (Amul), Milk 1L (Heritage), Curd 500g'_\n\n"
-                f"దయచేసి ప్రతీ వస్తువు **పరిమాణం (కంపల్సరీ)** మరియు **బ్రాండ్ (ఐచ్ఛికం)** వివరాలను తెలియజేయండి:\n"
-                f"• ఉదా: _'పనీర్ 200g, పాలు 1L, పెరుగు 500g'_"
+                f"📝 *Requested Item / అభ్యర్థించిన వస్తువు:* _{task_text[:100]}_\n\n"
+                f"Please specify *Item Name, Quantity, and Brand preference*:\n"
+                f"• E.g.: _'Dettol Handwash 250ml - 1 bottle'_\n\n"
+                f"దయచేసి *వస్తువు పేరు, పరిమాణం (Quantity) మరియు బ్రాండ్* వివరాలను తెలియజేయండి:\n"
+                f"• ఉదా: _'డెట్టాల్ హ్యాండ్‌వాష్ 250ml - 1 బాటిల్'_"
             )
             buttons = [
-                {"id": "CW_EDIT_TASK", "title": "✍️ Type Qty & Brand"},
-                {"id": "CW_QTY_DEFAULT", "title": "✅ Proceed As Is"},
+                {"id": "CW_QTY_DEFAULT", "title": "✅ Proceed with This"},
+                {"id": "CW_EDIT_TASK", "title": "✍️ Add Brand & Qty"},
                 {"id": "CW_RETRY_VOICE", "title": "🎙️ Record Again"}
             ]
             if user:
