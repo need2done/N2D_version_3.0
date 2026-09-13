@@ -510,7 +510,11 @@ def send_rich_service_list(to: str, name: str = None):
     if not to:
         return None
         
-    greeting = f"Nice to meet you, *{name}*! 😊\n" if name else ""
+    placeholder_names = ["live test customer", "test customer", "live test", "customer", "unknown", "user", "none", "null"]
+    if name and name.strip().lower() not in placeholder_names:
+        greeting = f"Nice to meet you, *{name.strip()}*! 😊\n"
+    else:
+        greeting = "Welcome to Need2Done! 😊\n"
     
     body = (
         f"{greeting}What do you need today? 👇"

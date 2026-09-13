@@ -814,19 +814,38 @@ def route_message(
             cur.close()
             db.close()
 
-            if customer and customer.get("name"):
-                forbidden_names = ["groceries", "medicines", "medicine", "parcel", "ride", "any work", "anywork", "support"]
-                if customer["name"].strip().lower() in forbidden_names:
-                    session["stage"] = "ASK_NAME"
-                    session["user_id"] = user  # ✅ FIX: always set user_id
-                    if detected_svc:
-                        session["pending_service"] = detected_svc
-                    send_rich_welcome(user)
-                    return
+            forbidden_names = [
+                "groceries", "medicines", "medicine", "parcel", "ride", "any work", "anywork", "support",
+                "live test customer", "test customer", "live test", "customer", "unknown", "user", "none", "null"
+            ]
 
-                session["name"] = customer["name"]
-                session["user_id"] = user  # ✅ FIX: always set user_id
-                
+            clean_pushname = (profile_name or "").strip()
+            db_name = (customer.get("name") if customer else "").strip()
+
+            effective_name = None
+            if db_name and db_name.lower() not in forbidden_names:
+                effective_name = db_name
+            elif clean_pushname and clean_pushname.lower() not in forbidden_names:
+                effective_name = clean_pushname
+                # Auto-update DB if DB had placeholder name or was missing
+                try:
+                    db = get_db()
+                    if db:
+                        cur = db.cursor()
+                        if customer:
+                            cur.execute("UPDATE customers SET name=%s WHERE phone=%s", (effective_name, user))
+                        else:
+                            cur.execute("INSERT INTO customers(phone, name) VALUES(%s, %s)", (user, effective_name))
+                        db.commit()
+                        cur.close()
+                        db.close()
+                except Exception as e:
+                    print("[ROLE_ROUTER] Customer name auto-sync notice:", e)
+
+            if effective_name:
+                session["name"] = effective_name
+                session["user_id"] = user
+
                 if detected_svc:
                     session["service"] = detected_svc
                     session["stage"] = "IN_CASE"
@@ -837,7 +856,7 @@ def route_message(
                     return
 
                 session["stage"] = "ASK_SERVICE"
-                
+
                 # Check for Draft
                 draft = check_for_draft_order(user)
                 if draft:
@@ -856,7 +875,7 @@ def route_message(
                         ]
                     )
                     return
-                
+
                 try:
                     send_rich_welcome(user, session["name"])
                 except:
@@ -865,7 +884,7 @@ def route_message(
                 return
             else:
                 session["stage"] = "ASK_NAME"
-                session["user_id"] = user  # ✅ FIX: always set user_id
+                session["user_id"] = user
                 if detected_svc:
                     session["pending_service"] = detected_svc
                 send_rich_welcome(user)
