@@ -333,10 +333,16 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                 )
 
                 # Context-sensitive action buttons
+                is_anywork = active.get("service") in ("AnyWork", 3, 5) or str(active.get("order_id", "")).startswith("N2DCW_")
+
                 if status == "HELPER_ACCEPTED":
-                    is_anywork = active.get("service") in ("AnyWork", 3, 5)
                     is_home_service = active.get("service") == "Home Services" or str(active.get("service")) == "10"
-                    if is_ride or is_anywork or is_home_service:
+                    if is_anywork:
+                        info += "\n🏁 Navigate to store location. Tap *Arrived at Store* once there."
+                        send_reply_buttons(phone, info, [
+                            {"id": f"ARRIVED_STORE|{active['id']}", "title": "📍 Arrived at Store"}
+                        ])
+                    elif is_ride or is_home_service:
                         info += "\n🏁 Navigate to location. Tap *Arrived* when there."
                         send_reply_buttons(phone, info, [
                             {"id": f"ARRIVED|{active['id']}", "title": "📍 Arrived"}
@@ -345,13 +351,34 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                         info += "\n🧾 Upload BILL IMAGE after purchase."
                         send_message(phone, info)
 
+                elif status == "ARRIVED_AT_STORE":
+                    info += "\n🧾 Please purchase requested items and upload store receipt bill photo once bought:"
+                    send_reply_buttons(phone, info, [
+                        {"id": f"PROMPT_BILL_UPLOAD|{active['id']}", "title": "📷 Upload Bill Photo"}
+                    ])
+
                 elif status == "BILL_IMAGE_UPLOADED":
-                    info += "\n💰 Send BILL AMOUNT (numbers only)."
-                    send_message(phone, info)
+                    info += "\n📸 Bill photo uploaded. Select an action below:"
+                    send_reply_buttons(phone, info, [
+                        {"id": f"ADD_MORE_BILL_PHOTO|{active['id']}", "title": "📸 Add Another Photo"},
+                        {"id": f"ENTER_BILL_AMOUNT|{active['id']}", "title": "💰 Enter Bill Amount"}
+                    ])
+
+                elif status == "BILL_PENDING_ONLINE_PAYMENT":
+                    info += "\n⏳ Payment link sent to customer. Waiting for online UPI payment...\n(Or tap 'Paid from Pocket' if customer paid cash)"
+                    send_reply_buttons(phone, info, [
+                        {"id": f"SETTLE_POCKET|{active['id']}|{active.get('bill_amount') or 0.0}", "title": "💵 Paid from Pocket"},
+                        {"id": f"RETYPE_AMOUNT|{active['id']}", "title": "✏️ Retype Amount"}
+                    ])
 
                 elif status == "ADMIN_APPROVED_BILL":
                     is_home_service = active.get("service") == "Home Services" or str(active.get("service")) == "10"
-                    if is_home_service:
+                    if is_anywork:
+                        info += "\n🛍️ Items purchased! Navigate to customer drop location.\nTap *Arrived at Customer* once you reach."
+                        send_reply_buttons(phone, info, [
+                            {"id": f"ARRIVED_DROP|{active['id']}", "title": "📍 Arrived at Customer"}
+                        ])
+                    elif is_home_service:
                         info += "\n🏁 Navigate to location. Tap *Arrived* when there."
                         send_reply_buttons(phone, info, [
                             {"id": f"ARRIVED|{active['id']}", "title": "📍 Arrived"}
@@ -361,6 +388,12 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                         send_reply_buttons(phone, info, [
                             {"id": f"PICKED_UP|{active['id']}", "title": "🛍️ Picked Up"}
                         ])
+
+                elif status == "ARRIVED_AT_CUSTOMER":
+                    info += "\n📍 Arrived at customer location!\nTap below to send the 4-digit Delivery OTP to the customer:"
+                    send_reply_buttons(phone, info, [
+                        {"id": f"TRIGGER_DELIVERY_OTP|{active['id']}", "title": "🔐 Delivery OTP"}
+                    ])
 
                 elif status == "ITEMS_PICKED_UP":
                     info += "\n📍 Go to customer. Tap *Arrived* when there."
@@ -385,13 +418,15 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                     send_message(phone, info)
 
                 elif status == "PAYMENT_GENERATED":
-                    info += "\n⏳ Waiting for customer payment."
-                    send_message(phone, info)
+                    info += "\n🔐 Send Delivery OTP to customer:"
+                    send_reply_buttons(phone, info, [
+                        {"id": f"TRIGGER_DELIVERY_OTP|{active['id']}", "title": "🔐 Delivery OTP"}
+                    ])
 
                 elif status == "PAID":
                     info += "\n🔐 Tap to send delivery OTP to customer."
                     send_reply_buttons(phone, info, [
-                        {"id": f"TRIGGER_OTP|{active['id']}", "title": "🔐 Send OTP"}
+                        {"id": f"TRIGGER_DELIVERY_OTP|{active['id']}", "title": "🔐 Delivery OTP"}
                     ])
 
                 elif status == "OTP_SUBMITTED":
