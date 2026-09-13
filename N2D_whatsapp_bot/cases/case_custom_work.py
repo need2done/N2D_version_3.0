@@ -381,21 +381,30 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
 
         # Quantity / Specs Intake
         if step == "WAITING_QUANTITY_DETAILS":
-            if text_clean in ["CW_QTY_DEFAULT_PETROL", "CW_QTY_1L", "DEFAULT 1 LITRE"]:
+            if text_clean in ["CW_QTY_DEFAULT", "PROCEED AS IS"]:
+                session["quantity_clarified"] = True
+                task_text = session.get("pending_task_text") or session.get("task_description") or "Custom Task"
+                return prompt_for_locations_or_quote(session, task_text, user)
+            elif text_clean in ["CW_QTY_DEFAULT_PETROL", "CW_QTY_1L", "DEFAULT 1 LITRE"]:
                 qty_str = "1 Litre Emergency Petrol"
-            elif text_clean == "CW_QTY_TYPE":
+            elif text_clean in ["CW_QTY_TYPE", "CW_EDIT_TASK"]:
+                session["custom_work_step"] = "WAITING_DETAILS_TYPED"
+                body = (
+                    "✍️ *Type Quantity & Brand Details / పరిమాణం మరియు బ్రాండ్*\n"
+                    "━━━━━━━━━━━━━━━━━━━━━\n"
+                    "Please type exact item name, quantity & brand preference:\n"
+                    "• E.g.: _'Paneer 200g (Amul), Milk 1L (Heritage), Curd 500g'_\n\n"
+                    "దయచేసి ప్రతీ వస్తువు పరిమాణం (Quantity) మరియు బ్రాండ్ టైప్ చేయండి:"
+                )
                 if user:
-                    send_message(
-                        user,
-                        "✍️ Please type exact item name, quantity & brand (e.g. *Dettol Handwash 250ml - 2 bottles* or *5kg Fortune Rice*):\n\n"
-                        "దయచేసి వస్తువు పేరు, పరిమాణం (Quantity) & బ్రాండ్ టైప్ చేయండి:"
-                    )
+                    send_message(user, body)
                     return None
+                return body
             elif len(text_clean) >= 2 and text_clean.upper() not in ["CW_CANCEL_TASK"]:
                 qty_str = text_clean
             else:
                 return (
-                    "Please specify the item quantity and brand (e.g. 1 Litre petrol, Dettol Handwash 250ml).\n"
+                    "Please specify the item quantity and brand (e.g. Paneer 200g Amul, Milk 1L Heritage).\n"
                     "దయచేసి పరిమాణం మరియు బ్రాండ్ వివరాలు టైప్ చేయండి."
                 )
 
@@ -685,6 +694,8 @@ def prompt_for_locations_or_quote(session: Dict[str, Any], task_text: str, user:
     # Check for missing quantities/specs in fuel or shopping requests
     if (task_type == "buy_and_bring" or "petrol" in task_text.lower()) and not session.get("quantity_clarified"):
         is_fuel = any(w in task_text.lower() for w in ['petrol', 'fuel', 'bike'])
+        has_quantity_specs = bool(re.search(r'\d+|\b(kg|g|l|ml|packet|packets|pkt|box|boxes|bottle|bottles|liter|litre|gm|gms|half|quarter|amul|heritage|jersey|dettol|fortune|tata|vijaya)\b', task_text, re.I))
+
         if is_fuel and not any(q in task_text.lower() for q in ['1l', '2l', 'litre', 'liter', '100rs', '200rs']):
             session["custom_work_step"] = "WAITING_QUANTITY_DETAILS"
             body = (
@@ -699,6 +710,27 @@ def prompt_for_locations_or_quote(session: Dict[str, Any], task_text: str, user:
             buttons = [
                 {"id": "CW_QTY_1L", "title": "⛽ Default 1 Litre"},
                 {"id": "CW_QTY_TYPE", "title": "✍️ Type Quantity"}
+            ]
+            if user:
+                send_reply_buttons(to=user, body=body, buttons=buttons)
+                return None
+            return body
+
+        elif task_type == "buy_and_bring" and not has_quantity_specs:
+            session["custom_work_step"] = "WAITING_QUANTITY_DETAILS"
+            body = (
+                f"🛒 *Quantity & Brand Needed / పరిమాణం మరియు బ్రాండ్*\n"
+                f"━━━━━━━━━━━━━━━━━━━━━\n"
+                f"📝 *Task:* {task_text[:100]}\n\n"
+                f"Please specify the **Quantity & Brand** for your items:\n"
+                f"• E.g.: _'Paneer 200g (Amul), Milk 1L (Heritage), Curd 500g (Jersey)'_\n\n"
+                f"దయచేసి ప్రతీ వస్తువు **పరిమాణం (Quantity) మరియు బ్రాండ్** వివరాలను తెలియజేయండి:\n"
+                f"• ఉదా: _'పనీర్ 200g, పాలు 1L, పెరుగు 500g'_"
+            )
+            buttons = [
+                {"id": "CW_EDIT_TASK", "title": "✍️ Type Qty & Brand"},
+                {"id": "CW_QTY_DEFAULT", "title": "✅ Proceed As Is"},
+                {"id": "CW_RETRY_VOICE", "title": "🎙️ Record Again"}
             ]
             if user:
                 send_reply_buttons(to=user, body=body, buttons=buttons)
