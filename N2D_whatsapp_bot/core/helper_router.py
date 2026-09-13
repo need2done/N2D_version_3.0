@@ -498,7 +498,7 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                 if order.get("engine_type") == "RIDE":
                     instr = "🏁 Go to Pickup location. Tap 'ARRIVED' once there."
                 elif is_anywork:
-                    instr = "🏁 Go to task location. Tap 'Upload Bill Photo' once there."
+                    instr = "🏁 Go to store/vendor location. Tap 'Arrived at Store' once there."
                 elif is_home_service:
                     instr = "🏁 Go to customer location to perform the service. Tap 'ARRIVED' once there."
                 elif order["status"] == "ADMIN_APPROVED_BILL":
@@ -595,9 +595,9 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                 )
 
                 if is_anywork:
-                    # Custom Work: Button is "📷 Upload Bill Photo"
+                    # Custom Work: Helper first taps "Arrived at Store"
                     send_reply_buttons(phone, accept_body, [
-                        {"id": f"ARRIVED_STORE|{order['id']}", "title": "📷 Upload Bill Photo"}
+                        {"id": f"ARRIVED_STORE|{order['id']}", "title": "📍 Arrived at Store"}
                     ])
                 elif order.get("engine_type") == "RIDE" or is_home_service:
                     # RIDE, Home Service: Include "Arrived" button directly
@@ -1065,7 +1065,7 @@ Share this with helper."""
             # =================================================
             # ARRIVED AT STORE (Custom Work Shopping / Buy & Bring)
             # =================================================
-            if btn_id.startswith("ARRIVED_STORE|") or "UPLOAD BILL" in text_clean.upper() or "ARRIVED AT STORE" in text_clean.upper():
+            if btn_id.startswith("ARRIVED_STORE|") or "ARRIVED AT STORE" in text_clean.upper():
                 order = None
                 if btn_id.startswith("ARRIVED_STORE|"):
                     order_db_id = int(btn_id.split("|")[1])
@@ -1108,11 +1108,24 @@ Share this with helper."""
                     f"👤 Helper {helper['name']} is purchasing your requested items..."
                 )
 
-                # Prompt Helper to upload Bill Photo
-                send_message(
+                # Prompt Helper to upload Bill Photo with button
+                send_reply_buttons(
                     phone,
                     "📍 *Marked as ARRIVED AT STORE.*\n\n"
-                    "🧾 Please purchase items and upload **STORE RECEIPT BILL PHOTO**, then reply with the exact bill amount (numbers only)."
+                    "🧾 Please purchase items and upload **STORE RECEIPT BILL PHOTO** once bought:",
+                    [{"id": f"PROMPT_BILL_UPLOAD|{order_db_id}", "title": "📷 Upload Bill Photo"}]
+                )
+                return
+
+            # ------------------------------------------------
+            # PROMPT BILL UPLOAD BUTTON CLICK
+            # ------------------------------------------------
+            if btn_id.startswith("PROMPT_BILL_UPLOAD|") or "UPLOAD BILL" in text_clean.upper() or "UPLOAD BILL PHOTO" in text_clean.upper():
+                send_message(
+                    phone,
+                    "📷 *Upload Store Bill Photo / రసీదు ఫోటో పంపండి*\n"
+                    "━━━━━━━━━━━━━━━━━━━━━\n"
+                    "Please snap & send your store bill receipt photo below:"
                 )
                 return
 
