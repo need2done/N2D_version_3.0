@@ -338,6 +338,7 @@ router.post('/:id/assign', authenticateAdmin, async (req, res) => {
             calculatedEarning = isAnyWork ? 25.0 : (calculatedEarning || 20.0);
         }
         const helperEarning = calculatedEarning ? `💰 *Earnings:* ₹${parseFloat(calculatedEarning).toFixed(2)}\n` : '';
+        const serviceName = order.service || 'General Service';
 
         // ==========================================
         // 💬 SEND ASSIGNMENT OFFER TO HELPER
@@ -365,7 +366,7 @@ router.post('/:id/assign', authenticateAdmin, async (req, res) => {
         }
     } catch (err) {
         console.error('Error assigning helper:', err);
-        res.status(500).json({ success: false, error: 'DB error' });
+        res.status(500).json({ success: false, error: err.message || 'DB error' });
     }
 });
 
