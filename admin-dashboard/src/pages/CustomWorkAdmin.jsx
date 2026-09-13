@@ -439,8 +439,7 @@ export default function CustomWorkAdmin() {
                     { id: 'categories', label: '📂 8 Category AI & Flow Explorer', icon: Layers3 },
                     { id: 'rates', label: '💰 Dynamic Rate Card Configurator', icon: Settings },
                     { id: 'safety', label: '🛡️ Safety & Restricted Shield', icon: Shield },
-                    { id: 'unclassified', label: '📥 AI Classification Audit Queue', icon: MessageSquare },
-                    { id: 'corrections', label: '🔄 Model Training Flywheel', icon: Activity }
+                    { id: 'unclassified', label: '📥 AI Classification Audit Queue', icon: MessageSquare }
                 ].map(tab => {
                     const Icon = tab.icon;
                     const isActive = activeTab === tab.id;
@@ -1028,26 +1027,6 @@ export default function CustomWorkAdmin() {
                 </div>
             )}
 
-            {/* TAB 5: TRAINING FLYWHEEL */}
-            {activeTab === 'corrections' && (
-                <div style={{ backgroundColor: '#1e293b', borderRadius: '12px', padding: '24px', border: '1px solid #334155' }}>
-                    <h3 style={{ fontSize: '20px', fontWeight: '800', marginBottom: '8px', color: '#ffffff' }}>Model Training Flywheel</h3>
-                    <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '24px' }}>
-                        Training data corrections log for prompt optimization.
-                    </p>
-
-                    <div style={{ backgroundColor: '#0f172a', borderRadius: '10px', padding: '18px', border: '1px solid #334155' }}>
-                        {corrections.map(c => (
-                            <div key={c.id} style={{ borderBottom: '1px solid #334155', paddingBottom: '12px', marginBottom: '12px' }}>
-                                <strong style={{ color: '#f59e0b' }}>"{c.message}"</strong>
-                                <p style={{ fontSize: '13px', color: '#cbd5e1', margin: '4px 0 0 0' }}>
-                                    AI Predicted: <span style={{ color: '#ef4444' }}>{c.aiCategory} ({c.aiFlow})</span> ➔ Corrected To: <span style={{ color: '#10b981', fontWeight: '700' }}>{c.correctCategory} ({c.correctFlow})</span> by {c.correctedBy} on {c.date}
-                                </p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
         </div>
     );
 }
