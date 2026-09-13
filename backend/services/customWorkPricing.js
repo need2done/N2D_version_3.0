@@ -30,6 +30,9 @@ let CONFIG = {
     // Category Specific Rate Cards
     MICRO_ERRAND_FEE: 39,
     MICRO_ERRAND_HELPER: 25,
+    MICRO_ERRAND_MAX_ITEMS: 2,
+    MICRO_ERRAND_MAX_BILL: 250,
+    STANDARD_SHOPPING_MAX_ITEMS: 6,
     PREPAID_PICKUP_FEE: 49,
     PREPAID_PICKUP_HELPER: 35,
     RETRIEVE_FEE: 59,
@@ -152,11 +155,20 @@ function calculateCustomWorkPrice(params) {
 
     const tiered = getSmoothTieredFare(dist);
 
+    const maxMicroItems = parseInt(CONFIG.MICRO_ERRAND_MAX_ITEMS || 2, 10);
+    const maxMicroBill = parseFloat(CONFIG.MICRO_ERRAND_MAX_BILL || 250);
+
+    const rawItemCount = itemLines > 0 ? itemLines : (
+        description ? description.split(/,|\n| and |&|\+/i).filter(s => s.trim().length > 0).length : 1
+    );
+
     const isMicroErrand = (
         params.isMicroErrand === true || 
         params.isSmallBuy === true || 
         (
             taskType === 'buy_and_bring' && 
+            rawItemCount <= maxMicroItems &&
+            (goodsInvoiceAmount <= 0 || goodsInvoiceAmount <= maxMicroBill) &&
             (
                 /1l|1\s*litre|1\s*liter|handwash|packet|single|small|oil|milk|bread|curd|kobari|coconut|agarbatti|dhoop|pooja|soap|biscuit|chips|chocolate|medicine|pill|1-2 items|small buy|micro errand/i.test(descLower)
             ) &&

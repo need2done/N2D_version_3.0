@@ -719,7 +719,7 @@ export default function CustomWorkAdmin() {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
                         {/* 1. Micro Errand Rate Card */}
                         <div style={{ backgroundColor: '#0f172a', padding: '18px', borderRadius: '10px', border: '1px solid #10b981' }}>
-                            <label style={{ fontSize: '13px', color: '#10b981', display: 'block', marginBottom: '8px', fontWeight: '700' }}>🛒 1. Micro Errand / Small Buy (Under ₹250) Fee (₹)</label>
+                            <label style={{ fontSize: '13px', color: '#10b981', display: 'block', marginBottom: '8px', fontWeight: '700' }}>🛒 1. Micro Errand / Small Buy Fee (₹)</label>
                             <input 
                                 type="number" 
                                 value={rateCard.MICRO_ERRAND_FEE || 39} 
@@ -733,6 +733,25 @@ export default function CustomWorkAdmin() {
                                     value={rateCard.MICRO_ERRAND_HELPER || 25} 
                                     onChange={(e) => handleRateChange('MICRO_ERRAND_HELPER', e.target.value)}
                                     style={{ width: '100%', padding: '8px 12px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '6px', color: '#6ee7b7', fontWeight: '700', fontSize: '14px', marginTop: '4px' }}
+                                />
+                            </div>
+                            <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px dashed #334155' }}>
+                                <label style={{ fontSize: '12px', color: '#34d399', fontWeight: '600', display: 'block' }}>Max Items Limit for Micro Errand:</label>
+                                <input 
+                                    type="number" 
+                                    value={rateCard.MICRO_ERRAND_MAX_ITEMS || 2} 
+                                    onChange={(e) => handleRateChange('MICRO_ERRAND_MAX_ITEMS', e.target.value)}
+                                    style={{ width: '100%', padding: '6px 10px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '6px', color: '#ffffff', fontWeight: '700', fontSize: '13px', marginTop: '4px' }}
+                                />
+                                <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginTop: '4px' }}>Orders with more items upgrade to Standard Shopping</span>
+                            </div>
+                            <div style={{ marginTop: '8px' }}>
+                                <label style={{ fontSize: '12px', color: '#34d399', fontWeight: '600', display: 'block' }}>Max Bill Amount Limit (₹):</label>
+                                <input 
+                                    type="number" 
+                                    value={rateCard.MICRO_ERRAND_MAX_BILL || 250} 
+                                    onChange={(e) => handleRateChange('MICRO_ERRAND_MAX_BILL', e.target.value)}
+                                    style={{ width: '100%', padding: '6px 10px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '6px', color: '#ffffff', fontWeight: '700', fontSize: '13px', marginTop: '4px' }}
                                 />
                             </div>
                         </div>
@@ -754,6 +773,16 @@ export default function CustomWorkAdmin() {
                                     onChange={(e) => handleRateChange('SLAB_2_3_5KM_HELPER', e.target.value)}
                                     style={{ width: '100%', padding: '8px 12px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '6px', color: '#93c5fd', fontWeight: '700', fontSize: '14px', marginTop: '4px' }}
                                 />
+                            </div>
+                            <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px dashed #334155' }}>
+                                <label style={{ fontSize: '12px', color: '#60a5fa', fontWeight: '600', display: 'block' }}>Max Items Limit for Standard Shopping:</label>
+                                <input 
+                                    type="number" 
+                                    value={rateCard.STANDARD_SHOPPING_MAX_ITEMS || 6} 
+                                    onChange={(e) => handleRateChange('STANDARD_SHOPPING_MAX_ITEMS', e.target.value)}
+                                    style={{ width: '100%', padding: '6px 10px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '6px', color: '#ffffff', fontWeight: '700', fontSize: '13px', marginTop: '4px' }}
+                                />
+                                <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginTop: '4px' }}>Items beyond this limit incur extra effort charge</span>
                             </div>
                         </div>
 
