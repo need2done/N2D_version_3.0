@@ -332,9 +332,12 @@ router.post('/:id/assign', authenticateAdmin, async (req, res) => {
             itemsText = order.items_text;
         }
 
-        const itemsBlock = itemsText ? `🛍️ *Items / Details:*\n${itemsText}\n\n` : '';
-        const helperEarning = order.helper_charge ? `💰 *Earnings:* ₹${order.helper_charge}\n` : '';
-        const serviceName = order.service || 'General Service';
+        const isAnyWork = order.service === 'AnyWork' || (order.order_id && order.order_id.startsWith('N2DCW_'));
+        let calculatedEarning = order.helper_charge;
+        if (!calculatedEarning || parseFloat(calculatedEarning) === 0 || (isAnyWork && parseFloat(calculatedEarning) === 20.0)) {
+            calculatedEarning = isAnyWork ? 25.0 : (calculatedEarning || 20.0);
+        }
+        const helperEarning = calculatedEarning ? `💰 *Earnings:* ₹${parseFloat(calculatedEarning).toFixed(2)}\n` : '';
 
         // ==========================================
         // 💬 SEND ASSIGNMENT OFFER TO HELPER
@@ -479,7 +482,12 @@ router.post('/:id/verify-items', authenticateAdmin, async (req, res) => {
             platformFeeKey = 'PLATFORM_FEE_HOMESERVICES';
         }
 
-        const HELPER_CHARGE = parseFloat(process.env[helperChargeKey] || process.env.HELPER_CHARGE || '20');
+        let HELPER_CHARGE = order.helper_charge ? parseFloat(order.helper_charge) : parseFloat(process.env[helperChargeKey] || process.env.HELPER_CHARGE || '20');
+        if (svcLower.includes('anywork') || svcLower.includes('any work') || (order.order_id && order.order_id.startsWith('N2DCW_'))) {
+            if (!HELPER_CHARGE || HELPER_CHARGE === 20.0) {
+                HELPER_CHARGE = 25.0;
+            }
+        }
         const PLATFORM_FEE = parseFloat(process.env[platformFeeKey] || process.env.PLATFORM_FEE || '5');
 
         if (order.status !== 'ITEM_PHOTO_UPLOADED') {

@@ -495,11 +495,12 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
 
                 # Determine next instruction based on engine
                 is_anywork = order.get("service") in ("AnyWork", 3, 5)
-                is_home_service = order.get("service") == "Home Services" or str(order.get("service")) == "10"
                 if order.get("engine_type") == "RIDE":
                     instr = "🏁 Go to Pickup location. Tap 'ARRIVED' once there."
-                elif is_anywork or is_home_service:
-                    instr = "🏁 Go to task location. Tap 'ARRIVED' once there."
+                elif is_anywork:
+                    instr = "🏁 Go to task location. Tap 'Upload Bill Photo' once there."
+                elif is_home_service:
+                    instr = "🏁 Go to customer location to perform the service. Tap 'ARRIVED' once there."
                 elif order["status"] == "ADMIN_APPROVED_BILL":
                     # If it was fast-tracked!
                     if has_vendor:
@@ -575,9 +576,9 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
 
                 service_title = order.get('service', 'General Service')
                 earnings_val = order.get('helper_charge')
-                if not earnings_val or float(earnings_val) == 0.0:
+                if not earnings_val or float(earnings_val) == 0.0 or (is_anywork and float(earnings_val) == 20.0):
                     payload = safe_parse_payload(order.get("payload"))
-                    earnings_val = payload.get("helper_charge", 25.0 if is_anywork else 20.0)
+                    earnings_val = payload.get("helper_charge") or (25.0 if is_anywork else 20.0)
 
                 accept_body = (
                     f"✅ *Order Accepted*\n\n"
@@ -1064,9 +1065,15 @@ Share this with helper."""
             # =================================================
             # ARRIVED AT STORE (Custom Work Shopping / Buy & Bring)
             # =================================================
-            if btn_id.startswith("ARRIVED_STORE|"):
-                order_db_id = int(btn_id.split("|")[1])
-                order = get_order_by_db_id(order_db_id)
+            if btn_id.startswith("ARRIVED_STORE|") or "UPLOAD BILL" in text_clean.upper() or "ARRIVED AT STORE" in text_clean.upper():
+                order = None
+                if btn_id.startswith("ARRIVED_STORE|"):
+                    order_db_id = int(btn_id.split("|")[1])
+                    order = get_order_by_db_id(order_db_id)
+                elif active:
+                    order = active
+                    order_db_id = active["id"]
+
                 if not order:
                     send_message(phone, "❌ Order not found.")
                     return
@@ -1439,6 +1446,30 @@ Share this with helper."""
                 send_message(phone, "❌ Invalid image.")
                 return
 
+            is_anywork = active.get("service") in ("AnyWork", 3, 5) or active.get("engine_type") == "TASK" or str(active.get("order_id", "")).startswith("N2DCW_")
+            if is_anywork and active["status"] in ("HELPER_ACCEPTED", "CONFIRMED", "ARRIVED_AT_STORE", "HELPER_ARRIVED", "BILL_IMAGE_UPLOADED"):
+                save_bill_image(active["order_id"], media_id)
+                save_item_photo(active["order_id"], media_id)
+                log_event(active["id"], "BILL_IMAGE_UPLOADED", "Bill image uploaded", "HELPER")
+                
+                from db.mysql_conn import get_db
+                db = get_db()
+                cur = db.cursor()
+                cur.execute("UPDATE orders SET status='BILL_IMAGE_UPLOADED', updated_at=NOW() WHERE id=%s", (active["id"],))
+                db.commit()
+                cur.close()
+                db.close()
+                active["status"] = "BILL_IMAGE_UPLOADED"
+
+                send_message(
+                    phone,
+                    "📸 *Store receipt bill photo uploaded!*\n\n"
+                    "Now, please type the exact **STORE RECEIPT BILL AMOUNT** (numbers only, e.g. 150):\n"
+                    "_(Or upload another receipt photo if you have multiple bill receipts)_\n\n"
+                    "దయచేసి షాప్ రసీదు బిల్లు మొత్తం (రూపాయల్లో) టైప్ చేయండి:"
+                )
+                return
+
             if active["status"] in ("HELPER_ACCEPTED", "BILL_IMAGE_UPLOADED"):
                 save_bill_image(active["order_id"], media_id)
                 log_event(active["id"], "BILL_IMAGE_UPLOADED", "Bill image uploaded", "HELPER")
@@ -1664,8 +1695,8 @@ Share this with helper."""
                         send_message(phone, "ℹ️ Please enter the *4-digit OTP* provided by the customer.")
                         return
 
-                    # Case 2: Bill Amount (When status is BILL_IMAGE_UPLOADED or ARRIVED_AT_STORE)
-                    if active["status"] in ("BILL_IMAGE_UPLOADED", "ARRIVED_AT_STORE"):
+                    # Case 2: Bill Amount (When status is BILL_IMAGE_UPLOADED, ARRIVED_AT_STORE, or HELPER_ACCEPTED)
+                    if active["status"] in ("BILL_IMAGE_UPLOADED", "ARRIVED_AT_STORE", "HELPER_ACCEPTED", "CONFIRMED"):
                         amount = float(text)
                         base_fee = float(active.get("total_amount") or 39.0)
                         total_payable = amount + base_fee

@@ -170,6 +170,11 @@ def finalize_order(session: dict) -> str | None:
             if existing_row:
                 order_code = existing_order_id
                 order_db_id = existing_row["id"]
+                hc_val = session.get("helper_charge") or data.get("helper_charge")
+                if not hc_val or float(hc_val) == 0.0 or (service_id in (3, 5) and float(hc_val) == 20.0):
+                    is_micro = data.get("isMicroErrand") or session.get("is_micro_errand")
+                    hc_val = 25.0 if is_micro else 55.0
+
                 cur.execute(
                     """
                     UPDATE orders SET
@@ -179,6 +184,7 @@ def finalize_order(session: dict) -> str | None:
                         service=%s,
                         payload=%s,
                         total_amount=%s,
+                        helper_charge=%s,
                         status='CONFIRMED',
                         payment_status='PENDING',
                         customer_lat=%s,
@@ -192,6 +198,7 @@ def finalize_order(session: dict) -> str | None:
                         service_name(service_id),
                         json.dumps(data, ensure_ascii=False),
                         db_estimated_cost,
+                        hc_val,
                         customer_lat,
                         customer_lng,
                         order_db_id
@@ -356,14 +363,17 @@ def finalize_order(session: dict) -> str | None:
                 from config import get_service_pricing
                 pricing_svc = get_service_pricing(service_name(service_id))
                 
-                # Default to base charges
-                p_fee = pricing_svc["platform_fee"]
-                base_hc = pricing_svc["helper_charge"]
-                h_charge = base_hc
-                
                 # Check if it is AnyWork (service_id = 3 or 5)
                 is_anywork = service_id in (3, 5)
                 anywork_type = data.get("anywork_type")
+
+                if is_anywork:
+                    custom_hc = session.get("helper_charge") or data.get("helper_charge")
+                    if custom_hc and float(custom_hc) > 0 and float(custom_hc) != 20.0:
+                        h_charge = float(custom_hc)
+                    else:
+                        is_micro = data.get("isMicroErrand") or session.get("is_micro_errand")
+                        h_charge = 25.0 if is_micro else 55.0
 
                 if is_anywork and anywork_type == "PICK_DROP" and session.get("pickup_latitude") and session.get("latitude"):
                     # Calculate route distance between Pickup and Drop coordinates
