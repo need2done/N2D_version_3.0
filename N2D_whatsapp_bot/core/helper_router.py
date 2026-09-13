@@ -1117,6 +1117,19 @@ Share this with helper."""
                 return
 
             # ------------------------------------------------
+            # RETYPE AMOUNT (Helper mistyped bill amount)
+            # ------------------------------------------------
+            if btn_id.startswith("RETYPE_AMOUNT|") or "RETYPE AMOUNT" in text_clean.upper() or "RETYPE" in text_clean.upper() or "EDIT AMOUNT" in text_clean.upper():
+                send_message(
+                    phone,
+                    "✏️ *Retype Store Bill Amount / బిల్లు మొత్తం మార్చండి*\n"
+                    "━━━━━━━━━━━━━━━━━━━━━\n"
+                    "Please reply with the correct **STORE RECEIPT BILL AMOUNT** (numbers only, e.g. 150):\n\n"
+                    "దయచేసి సరియైన షాప్ రసీదు బిల్లు మొత్తం (రూపాయల్లో) టైప్ చేయండి:"
+                )
+                return
+
+            # ------------------------------------------------
             # SETTLE POCKET (Helper paid cash/UPI at store)
             # ------------------------------------------------
             if btn_id.startswith("SETTLE_POCKET|") or "PAID FROM POCKET" in btn_id.upper() or "PAID FROM POCKET" in text_clean.upper():
@@ -1723,7 +1736,8 @@ Share this with helper."""
                         )
                         send_reply_buttons(phone, confirm_msg, [
                             {"id": f"SETTLE_POCKET|{active['id']}|{amount}", "title": "💵 Paid from Pocket"},
-                            {"id": f"SETTLE_UPI|{active['id']}|{amount}", "title": "💳 Request UPI Payment"}
+                            {"id": f"SETTLE_UPI|{active['id']}|{amount}", "title": "💳 Request UPI Payment"},
+                            {"id": f"RETYPE_AMOUNT|{active['id']}", "title": "✏️ Retype Amount"}
                         ])
                         return
 
