@@ -217,6 +217,11 @@ def finalize_order(session: dict) -> str | None:
             order_prefix = prefix_map.get(service_id, "N2D")
             order_code = f"{order_prefix}{uuid.uuid4().hex[:4].upper()}"
 
+            hc_val = session.get("helper_charge") or data.get("helper_charge")
+            if not hc_val or float(hc_val) == 0.0:
+                is_micro = data.get("isMicroErrand") or session.get("is_micro_errand")
+                hc_val = 25.0 if is_micro else 55.0
+
             cur.execute(
                 """
                 INSERT INTO orders (
@@ -228,6 +233,7 @@ def finalize_order(session: dict) -> str | None:
                     service,
                     payload,
                     total_amount,
+                    helper_charge,
                     status,
                     payment_status,
                     customer_lat,
@@ -235,7 +241,7 @@ def finalize_order(session: dict) -> str | None:
                     created_at
                 )
                 VALUES (
-                    %s,%s,%s,%s,%s,%s,%s,%s,
+                    %s,%s,%s,%s,%s,%s,%s,%s,%s,
                     'CONFIRMED',
                     'PENDING',
                     %s,%s,
@@ -251,6 +257,7 @@ def finalize_order(session: dict) -> str | None:
                     service_name(service_id),
                     json.dumps(data, ensure_ascii=False),
                     db_estimated_cost,
+                    hc_val,
                     customer_lat,
                     customer_lng
                 )

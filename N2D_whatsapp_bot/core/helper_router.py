@@ -1090,6 +1090,156 @@ Share this with helper."""
                 return
 
             # ------------------------------------------------
+            # SETTLE POCKET (Helper paid cash/UPI at store)
+            # ------------------------------------------------
+            if btn_id.startswith("SETTLE_POCKET|"):
+                parts = btn_id.split("|")
+                order_db_id = int(parts[1])
+                amount = float(parts[2])
+                order = get_order_by_db_id(order_db_id)
+                if not order:
+                    send_message(phone, "❌ Order not found.")
+                    return
+
+                base_fee = float(order.get("total_amount") or 39.0)
+                total_customer = amount + base_fee
+
+                from db.mysql_conn import get_db
+                db = get_db()
+                cur = db.cursor()
+                cur.execute(
+                    "UPDATE orders SET status='ADMIN_APPROVED_BILL', bill_amount=%s, total_amount=%s, updated_at=NOW() WHERE id=%s",
+                    (amount, total_customer, order_db_id)
+                )
+                db.commit()
+                cur.close()
+                db.close()
+
+                log_event(order_db_id, "BILL_PAID_FROM_POCKET", f"Helper paid ₹{amount} from pocket. Total COD: ₹{total_customer}", "HELPER")
+
+                payload = safe_parse_payload(order.get("payload"))
+                d_loc = payload.get("drop_location") or order.get("customer_address") or "Customer Location"
+
+                # Notify Helper
+                send_reply_buttons(
+                    phone,
+                    f"🛍️ *Items Purchased (Paid from Pocket)*\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"🧾 Store Bill: ₹{amount}\n"
+                    f"🛵 Base Service Fee: ₹{base_fee}\n"
+                    f"💵 *Collect from Customer:* ₹{total_customer} (Cash/UPI at doorstep)\n\n"
+                    f"🏁 *Delivery Location:* {d_loc}\n\n"
+                    f"Tap *Arrived at Customer* once you reach drop location.",
+                    [{"id": f"ARRIVED_DROP|{order_db_id}", "title": "📍 Arrived at Customer"}]
+                )
+
+                # Notify Customer
+                send_message(
+                    order["customer_number"],
+                    f"🛍️ *Helper Purchased Your Items! / సరుకులు కొనుగోలు చేశారు*\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"🧾 Store Bill Amount: ₹{amount}\n"
+                    f"🛵 Service Fee: ₹{base_fee}\n"
+                    f"💵 *Total Amount Payable at Doorstep:* ₹{total_customer} (Cash or UPI)\n\n"
+                    f"Helper {helper['name']} is on the way to your delivery location!"
+                )
+                return
+
+            # ------------------------------------------------
+            # SETTLE UPI (Helper requested Customer to pay online)
+            # ------------------------------------------------
+            if btn_id.startswith("SETTLE_UPI|"):
+                parts = btn_id.split("|")
+                order_db_id = int(parts[1])
+                amount = float(parts[2])
+                order = get_order_by_db_id(order_db_id)
+                if not order:
+                    send_message(phone, "❌ Order not found.")
+                    return
+
+                base_fee = float(order.get("total_amount") or 39.0)
+                total_customer = amount + base_fee
+
+                from db.mysql_conn import get_db
+                db = get_db()
+                cur = db.cursor()
+                cur.execute(
+                    "UPDATE orders SET status='BILL_PENDING_ONLINE_PAYMENT', bill_amount=%s, total_amount=%s, updated_at=NOW() WHERE id=%s",
+                    (amount, total_customer, order_db_id)
+                )
+                db.commit()
+                cur.close()
+                db.close()
+
+                log_event(order_db_id, "BILL_UPI_REQUESTED", f"Helper requested online UPI payment for ₹{total_customer}", "HELPER")
+
+                pay_url = f"{TRACKING_BASE_URL}/pay?order_id={order['order_id']}&amount={total_customer}"
+
+                # Send Payment Request to Customer
+                send_url_button(
+                    to=order["customer_number"],
+                    text=(
+                        f"💳 *Store Items Online Payment Request / చెల్లింపు లింక్*\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━\n"
+                        f"📝 Order: #{order['order_id']}\n"
+                        f"🧾 Store Bill Amount: ₹{amount}\n"
+                        f"🛵 Service Fee: ₹{base_fee}\n"
+                        f"💵 *Total Payable Amount:* ₹{total_customer}\n\n"
+                        f"Please complete online UPI payment so your helper can pick up items & deliver:"
+                    ),
+                    button_text=f"💳 Pay ₹{int(total_customer)} Online",
+                    url=pay_url
+                )
+
+                # Notify Helper
+                send_message(
+                    phone,
+                    f"📸 Store bill photo & amount of *₹{amount}* (Total: ₹{total_customer}) submitted.\n\n"
+                    f"⏳ *Payment Request Sent to Customer.* Online UPI payment link sent to customer.\n"
+                    f"Please wait at the store. You will receive an instant notification as soon as customer pays online."
+                )
+                return
+
+            # ------------------------------------------------
+            # ARRIVED AT CUSTOMER DROP LOCATION
+            # ------------------------------------------------
+            if btn_id.startswith("ARRIVED_DROP|"):
+                order_db_id = int(btn_id.split("|")[1])
+                order = get_order_by_db_id(order_db_id)
+                if not order:
+                    send_message(phone, "❌ Order not found.")
+                    return
+
+                from db.mysql_conn import get_db
+                db = get_db()
+                cur = db.cursor()
+                cur.execute("UPDATE orders SET status='HELPER_ARRIVED', updated_at=NOW() WHERE id=%s", (order_db_id,))
+                db.commit()
+                cur.close()
+                db.close()
+
+                log_event(order_db_id, "HELPER_ARRIVED_DROP", "Helper arrived at drop location", "HELPER")
+
+                total = float(order.get("total_amount") or 0.0)
+                is_paid = (order.get("payment_status") == "PAID" or order.get("status") in ("PAID", "ADMIN_APPROVED_BILL_PAID"))
+
+                if is_paid:
+                    send_message(
+                        phone,
+                        f"📍 *Arrived at Customer Location.*\n"
+                        f"✅ Payment of ₹{total} completed online.\n\n"
+                        f"Please ask customer for the *DELIVERY OTP* and reply with 4-digit OTP (e.g. *1234*)."
+                    )
+                else:
+                    send_message(
+                        phone,
+                        f"📍 *Arrived at Customer Location.*\n"
+                        f"💵 Collect *₹{total}* in Cash / UPI from customer.\n\n"
+                        f"Please ask customer for the *DELIVERY OTP* and reply with 4-digit OTP (e.g. *1234*)."
+                    )
+                return
+
+            # ------------------------------------------------
             # BILL CONFIRMATION (High Amount > ₹200 vs Small Amount <= ₹200)
             # ------------------------------------------------
             if btn_id.startswith("CONFIRM_BILL|"):
@@ -1241,9 +1391,28 @@ Share this with helper."""
                 send_message(phone, "💰 Send BILL AMOUNT (numbers only).")
                 return
 
-            if active["status"] == "HELPER_ARRIVED":
+            if active["status"] in ("HELPER_ARRIVED", "ARRIVED_AT_STORE"):
                 save_item_photo(active["order_id"], media_id)
                 log_event(active["id"], "ITEM_PHOTO_UPLOADED", "Item photo uploaded", "HELPER")
+                
+                is_anywork = active.get("service") in ("AnyWork", 3, 5) or active.get("engine_type") == "TASK"
+                if is_anywork:
+                    from db.mysql_conn import get_db
+                    db = get_db()
+                    cur = db.cursor()
+                    cur.execute("UPDATE orders SET status='BILL_IMAGE_UPLOADED', updated_at=NOW() WHERE id=%s", (active["id"],))
+                    db.commit()
+                    cur.close()
+                    db.close()
+
+                    send_message(
+                        phone,
+                        "📸 *Store receipt bill photo uploaded!*\n\n"
+                        "Now, please type the exact **STORE RECEIPT BILL AMOUNT** (numbers only, e.g. 150):\n"
+                        "_(Or upload another receipt photo if you have multiple bill receipts)_\n\n"
+                        "దయచేసి షాప్ రసీదు బిల్లు మొత్తం (రూపాయల్లో) టైప్ చేయండి:"
+                    )
+                    return
                 
                 # -----------------------------------------------------
                 # Check if already paid or chosen COD (Cart Orders)
@@ -1417,13 +1586,22 @@ Share this with helper."""
                         send_message(phone, "ℹ️ Please enter the *4-digit OTP* provided by the customer.")
                         return
 
-                    # Case 2: Bill Amount (When status is BILL_IMAGE_UPLOADED)
-                    if active["status"] == "BILL_IMAGE_UPLOADED":
+                    # Case 2: Bill Amount (When status is BILL_IMAGE_UPLOADED or ARRIVED_AT_STORE)
+                    if active["status"] in ("BILL_IMAGE_UPLOADED", "ARRIVED_AT_STORE"):
                         amount = float(text)
-                        confirm_msg = f"📝 You entered ₹{amount}.\nIs this amount correct?"
+                        base_fee = float(active.get("total_amount") or 39.0)
+                        total_payable = amount + base_fee
+                        confirm_msg = (
+                            f"🧾 *Store Bill Amount:* ₹{amount}\n"
+                            f"🛵 *Base Service Fee:* ₹{base_fee}\n"
+                            f"💵 *Total Customer Amount:* ₹{total_payable}\n"
+                            f"━━━━━━━━━━━━━━━━━━━━━\n"
+                            f"How would you like to settle the store bill payment?\n"
+                            f"దయచేసి చెల్లింపు విధానాన్ని ఎంచుకోండి:"
+                        )
                         send_reply_buttons(phone, confirm_msg, [
-                            {"id": f"CONFIRM_BILL|{amount}", "title": "✅ Confirm"},
-                            {"id": "REENTER_BILL", "title": "❌ Re-enter"}
+                            {"id": f"SETTLE_POCKET|{active['id']}|{amount}", "title": "💵 Paid from Pocket"},
+                            {"id": f"SETTLE_UPI|{active['id']}|{amount}", "title": "💳 Request UPI Payment"}
                         ])
                         return
 

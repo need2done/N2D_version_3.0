@@ -525,6 +525,8 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                 session["data"]["items"] = [task_text]
                 session["data"]["estimated_cost"] = quoted
                 session["data"]["cost"] = quoted
+                session["data"]["helper_charge"] = session.get("helper_charge", 25 if session.get("is_micro_errand") else 55)
+                session["data"]["isMicroErrand"] = session.get("is_micro_errand")
                 session["data"]["service_name"] = "AnyWork"
                 session["data"]["pickup_location"] = p_loc
                 session["data"]["drop_location"] = d_loc
@@ -846,22 +848,31 @@ def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optiona
 
     if is_micro_errand:
         service_fee = 39
+        helper_payout = 25
     elif task_type == "buy_and_bring":
         service_fee = 79
+        helper_payout = 55
     elif task_type == "prepaid_pickup":
         service_fee = 49
+        helper_payout = 35
     elif task_type in ["retrieve", "direct_pickup"]:
         service_fee = 59
+        helper_payout = 40
     elif task_type == "queue_paperwork":
         service_fee = 89
+        helper_payout = 60
     elif task_type == "multi_stop":
         service_fee = 119
+        helper_payout = 85
     elif task_type == "heavy_cargo_auto":
         service_fee = 149
+        helper_payout = 110
     elif task_type == "unique_custom_task":
         service_fee = 99
+        helper_payout = 75
     else:
         service_fee = 79
+        helper_payout = 55
 
     breakdown_list = []
 
@@ -886,14 +897,19 @@ def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optiona
             if data.get("success"):
                 summary = data.get("summary", {})
                 server_fee = summary.get("serviceFee")
+                server_helper = summary.get("helperPayout")
                 if server_fee and server_fee > 0:
                     service_fee = server_fee
+                if server_helper and server_helper > 0:
+                    helper_payout = server_helper
                 est_dist = data.get('calculatedDistanceKm', est_dist)
                 breakdown_list = data.get("breakdown", [])
     except Exception as e:
         print(f"[CUSTOM_WORK_BOT] Server quote notice: {e}")
 
     session["quoted_fee"] = service_fee
+    session["helper_charge"] = helper_payout
+    session["is_micro_errand"] = is_micro_errand
     session["calculated_distance"] = est_dist
 
     # Itemized Breakdown
