@@ -1117,6 +1117,28 @@ Share this with helper."""
                 return
 
             # ------------------------------------------------
+            # ADD MORE BILL PHOTO / ENTER BILL AMOUNT
+            # ------------------------------------------------
+            if btn_id.startswith("ADD_MORE_BILL_PHOTO|") or "ADD ANOTHER PHOTO" in text_clean.upper() or "ADD PHOTO" in text_clean.upper():
+                send_message(
+                    phone,
+                    "📸 *Upload Next Bill Photo / తదుపరి బిల్లు ఫోటో పంపండి*\n"
+                    "━━━━━━━━━━━━━━━━━━━━━\n"
+                    "Please snap & send your next store bill receipt photo below:"
+                )
+                return
+
+            if btn_id.startswith("ENTER_BILL_AMOUNT|") or "ENTER BILL AMOUNT" in text_clean.upper() or "ENTER AMOUNT" in text_clean.upper():
+                send_message(
+                    phone,
+                    "💰 *Enter Store Bill Amount / బిల్లు మొత్తం టైప్ చేయండి*\n"
+                    "━━━━━━━━━━━━━━━━━━━━━\n"
+                    "Please reply with the total **STORE RECEIPT BILL AMOUNT** (numbers only, e.g. 150):\n\n"
+                    "దయచేసి మొత్తం షాప్ రసీదు బిల్లు (రూపాయల్లో) టైప్ చేయండి:"
+                )
+                return
+
+            # ------------------------------------------------
             # RETYPE AMOUNT (Helper mistyped bill amount)
             # ------------------------------------------------
             if btn_id.startswith("RETYPE_AMOUNT|") or "RETYPE AMOUNT" in text_clean.upper() or "RETYPE" in text_clean.upper() or "EDIT AMOUNT" in text_clean.upper():
@@ -1474,26 +1496,40 @@ Share this with helper."""
 
             is_anywork = active.get("service") in ("AnyWork", 3, 5) or active.get("engine_type") == "TASK" or str(active.get("order_id", "")).startswith("N2DCW_")
             if is_anywork and active["status"] in ("HELPER_ACCEPTED", "CONFIRMED", "ARRIVED_AT_STORE", "HELPER_ARRIVED", "BILL_IMAGE_UPLOADED"):
-                save_bill_image(active["order_id"], media_id)
-                save_item_photo(active["order_id"], media_id)
-                log_event(active["id"], "BILL_IMAGE_UPLOADED", "Bill image uploaded", "HELPER")
-                
                 from db.mysql_conn import get_db
                 db = get_db()
-                cur = db.cursor()
+                cur = db.cursor(dictionary=True)
+                
+                cur.execute(
+                    "INSERT INTO order_images (order_id, media_id, image_type, uploaded_by) VALUES (%s, %s, 'BILL', 'HELPER')",
+                    (active["id"], media_id)
+                )
+                cur.execute(
+                    "SELECT COUNT(*) as cnt FROM order_images WHERE order_id = %s AND image_type = 'BILL'",
+                    (active["id"],)
+                )
+                row = cur.fetchone()
+                photo_count = row["cnt"] if row else 1
+                
                 cur.execute("UPDATE orders SET status='BILL_IMAGE_UPLOADED', updated_at=NOW() WHERE id=%s", (active["id"],))
                 db.commit()
                 cur.close()
                 db.close()
                 active["status"] = "BILL_IMAGE_UPLOADED"
 
-                send_message(
-                    phone,
-                    "📸 *Store receipt bill photo uploaded!*\n\n"
-                    "Now, please type the exact **STORE RECEIPT BILL AMOUNT** (numbers only, e.g. 150):\n"
-                    "_(Or upload another receipt photo if you have multiple bill receipts)_\n\n"
-                    "దయచేసి షాప్ రసీదు బిల్లు మొత్తం (రూపాయల్లో) టైప్ చేయండి:"
+                log_event(active["id"], "BILL_IMAGE_UPLOADED", f"Bill photo #{photo_count} uploaded", "HELPER")
+
+                msg = (
+                    f"📸 *Store Receipt Bill Photo #{photo_count} Uploaded!*\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"Do you have additional bill receipts to upload, or are you ready to enter the bill amount?\n\n"
+                    f"మరొక బిల్లు రసీదు ఫోటో ఉంటే పంపండి లేదా మొత్తం టైప్ చేయండి:"
                 )
+                buttons = [
+                    {"id": f"ADD_MORE_BILL_PHOTO|{active['id']}", "title": "📸 Add Another Photo"},
+                    {"id": f"ENTER_BILL_AMOUNT|{active['id']}", "title": "💰 Enter Bill Amount"}
+                ]
+                send_reply_buttons(phone, msg, buttons)
                 return
 
             if active["status"] in ("HELPER_ACCEPTED", "BILL_IMAGE_UPLOADED"):
