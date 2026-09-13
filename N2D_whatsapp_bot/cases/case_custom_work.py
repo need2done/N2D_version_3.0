@@ -837,13 +837,11 @@ def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optiona
         est_dist = round(get_road_distance(p_lat, p_lng, d_lat, d_lng), 1)
 
     # Dynamic Category Base Fee Tiering Engine
+    raw_items = [s for s in re.split(r',|\n| and |&|\+', task_text) if s.strip()]
     is_micro_errand = (
         task_type == "buy_and_bring" and 
-        (
-            len(task_text) < 45 or 
-            any(q in task_text.lower() for q in ['1l', '1 bottle', 'handwash', 'packet', 'single', 'small', 'oil', 'milk', 'bread', 'curd', 'kobari', 'coconut', 'agarbatti', 'dhoop', 'pooja', 'soap', 'biscuit', 'chips', 'chocolate', 'medicine', 'pill'])
-        ) and
-        not any(g in task_text.lower() for g in ['family', 'full grocery', 'supermarket', 'weekly', 'multiple items', 'shopping list'])
+        (len(raw_items) <= 2 or len(task_text) < 60) and
+        not any(g in task_text.lower() for g in ['family', 'full grocery', 'supermarket', 'weekly', 'multiple items', 'shopping list', 'big store'])
     )
 
     if is_micro_errand:

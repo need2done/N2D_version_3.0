@@ -169,9 +169,6 @@ function calculateCustomWorkPrice(params) {
             taskType === 'buy_and_bring' && 
             rawItemCount <= maxMicroItems &&
             (goodsInvoiceAmount <= 0 || goodsInvoiceAmount <= maxMicroBill) &&
-            (
-                /1l|1\s*litre|1\s*liter|handwash|packet|single|small|oil|milk|bread|curd|kobari|coconut|agarbatti|dhoop|pooja|soap|biscuit|chips|chocolate|medicine|pill|1-2 items|small buy|micro errand/i.test(descLower)
-            ) &&
             !/family|full grocery|supermarket|weekly|multiple items|big store|shopping list/i.test(descLower)
         )
     );

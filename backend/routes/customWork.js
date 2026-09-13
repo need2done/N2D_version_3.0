@@ -23,7 +23,9 @@ router.post('/quote', async (req, res) => {
             activeWorkMins = 0,
             goodsInvoiceAmount = 0,
             tipAmount = 0,
-            description = ''
+            description = '',
+            isMicroErrand,
+            isSmallBuy
         } = req.body;
 
         let calculatedDistance = parseFloat(distanceKm) || 0;
@@ -48,7 +50,9 @@ router.post('/quote', async (req, res) => {
             activeWorkMins,
             goodsInvoiceAmount,
             tipAmount,
-            description
+            description,
+            isMicroErrand,
+            isSmallBuy
         });
 
         if (!pricingResult.success) {
