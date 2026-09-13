@@ -392,9 +392,11 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                 body = (
                     "✍️ *Type Quantity & Brand Details / పరిమాణం మరియు బ్రాండ్*\n"
                     "━━━━━━━━━━━━━━━━━━━━━\n"
-                    "Please type exact item name, quantity & brand preference:\n"
+                    "📌 **Quantity is Required** (e.g. 500g, 1L, 2 pkts)\n"
+                    "🏷️ **Brand is Optional** (if unspecified, helper will pick available brand)\n\n"
+                    "Please type item names with quantities & optional brand preference:\n"
                     "• E.g.: _'Paneer 200g (Amul), Milk 1L (Heritage), Curd 500g'_\n\n"
-                    "దయచేసి ప్రతీ వస్తువు పరిమాణం (Quantity) మరియు బ్రాండ్ టైప్ చేయండి:"
+                    "దయచేసి ప్రతీ వస్తువు పరిమాణం (కంపల్సరీ) & బ్రాండ్ (ఐచ్ఛికం) టైప్ చేయండి:"
                 )
                 if user:
                     send_message(user, body)
@@ -719,12 +721,13 @@ def prompt_for_locations_or_quote(session: Dict[str, Any], task_text: str, user:
         elif task_type == "buy_and_bring" and not has_quantity_specs:
             session["custom_work_step"] = "WAITING_QUANTITY_DETAILS"
             body = (
-                f"🛒 *Quantity & Brand Needed / పరిమాణం మరియు బ్రాండ్*\n"
+                f"🛒 *Quantity Needed (Brand Optional) / పరిమాణం మరియు బ్రాండ్*\n"
                 f"━━━━━━━━━━━━━━━━━━━━━\n"
                 f"📝 *Task:* {task_text[:100]}\n\n"
-                f"Please specify the **Quantity & Brand** for your items:\n"
-                f"• E.g.: _'Paneer 200g (Amul), Milk 1L (Heritage), Curd 500g (Jersey)'_\n\n"
-                f"దయచేసి ప్రతీ వస్తువు **పరిమాణం (Quantity) మరియు బ్రాండ్** వివరాలను తెలియజేయండి:\n"
+                f"📌 **Quantity is Required** (e.g. 500g, 1L, 2 pkts)\n"
+                f"🏷️ **Brand is Optional** (e.g. Jersey, Amul, Heritage, or any brand)\n\n"
+                f"• E.g.: _'Paneer 200g (Amul), Milk 1L (Heritage), Curd 500g'_\n\n"
+                f"దయచేసి ప్రతీ వస్తువు **పరిమాణం (కంపల్సరీ)** మరియు **బ్రాండ్ (ఐచ్ఛికం)** వివరాలను తెలియజేయండి:\n"
                 f"• ఉదా: _'పనీర్ 200g, పాలు 1L, పెరుగు 500g'_"
             )
             buttons = [
