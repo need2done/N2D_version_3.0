@@ -120,10 +120,10 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                 return None
             return body
 
-        if text_clean in ["CW_EDIT_TASK", "EDIT_TASK"]:
+        if text_clean in ["CW_EDIT_TASK", "EDIT_TASK", "CW_RETYPE_TASK", "RETYPE_TASK"] or "EDIT TASK" in text_clean.upper() or "RETYPE TASK" in text_clean.upper() or "RETYPE" in text_clean.upper():
             session["custom_work_step"] = "WAITING_DETAILS_TYPED"
             body = (
-                "✍️ *Edit Task Details / వివరాలను సరిదిద్దండి*\n"
+                "✍️ *Edit / Retype Task Details / వివరాలను సరిదిద్దండి*\n"
                 "━━━━━━━━━━━━━━━━━━━━━\n"
                 "Please type your item name, quantity, brand or task requirements below:\n"
                 "• E.g.: _'Dettol Handwash 250ml - 2 bottles'_\n\n"
@@ -479,6 +479,7 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
             )
             buttons = [
                 {"id": "CW_SEND_LOC_GUIDE", "title": "📍 Share Location Pin"},
+                {"id": "CW_EDIT_TASK", "title": "✏️ Retype Task"},
                 {"id": "CW_CANCEL_TASK", "title": "❌ Cancel"}
             ]
             if user:
@@ -756,6 +757,7 @@ def prompt_for_locations_or_quote(session: Dict[str, Any], task_text: str, user:
             )
             buttons = [
                 {"id": "CW_SEND_LOC_GUIDE", "title": "📍 Share Location Pin"},
+                {"id": "CW_EDIT_TASK", "title": "✏️ Retype Task"},
                 {"id": "CW_CANCEL_TASK", "title": "❌ Cancel"}
             ]
             if user:
@@ -781,7 +783,8 @@ def prompt_for_locations_or_quote(session: Dict[str, Any], task_text: str, user:
         )
         buttons = [
             {"id": "CW_USE_NEAREST_STORE", "title": "🏪 Nearest Store"},
-            {"id": "CW_SEND_LOC_GUIDE", "title": "📍 Share Location"}
+            {"id": "CW_SEND_LOC_GUIDE", "title": "📍 Share Location"},
+            {"id": "CW_EDIT_TASK", "title": "✏️ Retype Task"}
         ]
         if user:
             send_reply_buttons(to=user, body=body, buttons=buttons)
@@ -803,6 +806,7 @@ def prompt_for_locations_or_quote(session: Dict[str, Any], task_text: str, user:
         )
         buttons = [
             {"id": "CW_SEND_LOC_GUIDE", "title": "📍 Share Location Pin"},
+            {"id": "CW_EDIT_TASK", "title": "✏️ Retype Task"},
             {"id": "CW_CANCEL_TASK", "title": "❌ Cancel"}
         ]
         if user:
@@ -963,7 +967,7 @@ def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optiona
 
     buttons = [
         {"id": "CW_ACCEPT_QUOTE", "title": accept_btn_title},
-        {"id": "CW_EDIT_LOCATIONS", "title": "📍 Edit Locations"},
+        {"id": "CW_EDIT_TASK", "title": "✏️ Retype Task"},
         {"id": "CW_CANCEL_TASK", "title": "❌ Cancel"}
     ]
 
