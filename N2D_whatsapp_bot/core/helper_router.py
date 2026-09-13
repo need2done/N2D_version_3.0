@@ -137,7 +137,9 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
     try:
 
         text = (text or "").strip()
+        text_clean = text
         upper = text.upper()
+        btn_id = ""
         msg_type = msg.get("type") if isinstance(msg, dict) else None
 
         print("\nHELPER MESSAGE:", phone, text, msg_type)
@@ -194,6 +196,9 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                 return
 
             btn_id = (btn.get("id") if btn else lst.get("id") if lst else "").strip()
+            btn_title = (btn.get("title") if btn else lst.get("title") if lst else "").strip()
+            if btn_title:
+                text_clean = btn_title
             print("HELPER ACTION CLICKED:", btn_id)
 
             # ------------------------------------------------
