@@ -1,3 +1,4 @@
+import re
 from db.mysql_conn import get_db
 
 def main():
