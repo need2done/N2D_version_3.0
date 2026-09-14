@@ -144,6 +144,7 @@ def run_auto_assigner():
             SELECT id, order_id, vendor_id, vendor_status, customer_lat, customer_lng, service, payload, updated_at
             FROM orders
             WHERE vendor_status = 'PENDING' AND vendor_id IS NOT NULL
+              AND status NOT IN ('CANCELLED', 'COMPLETED', 'EXPIRED', 'DELIVERED', 'REJECTED')
         """)
         pending_vendor_orders = cur.fetchall()
 
@@ -188,6 +189,11 @@ def run_auto_assigner():
                         {"id": f"VENDOR_ACCEPT|{order['order_id']}", "title": "✅ Accept"},
                         {"id": f"VENDOR_REJECT|{order['order_id']}", "title": "❌ Reject"}
                     ])
+                else:
+                    # No other vendor found, update status to UNASSIGNED so loop doesn't trigger every 30s
+                    cur.execute("UPDATE orders SET vendor_status = 'UNASSIGNED', updated_at = NOW() WHERE id = %s", (order['id'],))
+                    db.commit()
+                    logger.info(f"No alternative vendor found for order {order['order_id']}. Set vendor_status='UNASSIGNED'.")
                     
             elif elapsed >= 2 and elapsed < 3:
                 logger.info(f"Sending 2-min reminder to vendor {order['vendor_id']} for order {order['order_id']}")
