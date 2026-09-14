@@ -38,14 +38,13 @@ app.use(cors({
 
 
 
+const { requestLogger, logger } = require('./middleware/logger');
+
 // Apply general API rate limiting
 app.use('/api/', apiRateLimiter);
 
-// Simple Logger (Top Level)
-app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-    next();
-});
+// Centralized Request Logger (Logs to backend/logs/backend.log with file rotation)
+app.use(requestLogger);
 
 app.use(express.json());
 

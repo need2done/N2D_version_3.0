@@ -22,28 +22,46 @@ import logging
 from logging.handlers import RotatingFileHandler
 
 # ============================================================
-# LOGGING SETUP
+# LOGGING SETUP (CENTRALIZED WITH ROTATION & ERROR LOG)
 # ============================================================
 LOG_DIR = BASE_DIR / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 
-logger = logging.getLogger("N2D_Bot")
-logger.setLevel(logging.INFO)
+formatter = logging.Formatter('[%(asctime)s] %(levelname)s [%(name)s]: %(message)s')
 
-handler = RotatingFileHandler(
+# 1. Main Bot Log Handler (10MB x 10 = 100MB history)
+bot_file_handler = RotatingFileHandler(
     LOG_DIR / "bot.log", 
     maxBytes=10*1024*1024, # 10MB
-    backupCount=5,
+    backupCount=10,
     encoding='utf-8'
 )
-formatter = logging.Formatter('[%(asctime)s] %(levelname)s: %(message)s')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+bot_file_handler.setFormatter(formatter)
+bot_file_handler.setLevel(logging.INFO)
 
-# Also log to console
-console = logging.StreamHandler()
-console.setFormatter(formatter)
-logger.addHandler(console)
+# 2. Error Log Handler (Dedicated for ERROR / CRITICAL)
+error_file_handler = RotatingFileHandler(
+    LOG_DIR / "error.log",
+    maxBytes=10*1024*1024, # 10MB
+    backupCount=10,
+    encoding='utf-8'
+)
+error_file_handler.setFormatter(formatter)
+error_file_handler.setLevel(logging.ERROR)
+
+# 3. Console Handler
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(formatter)
+console_handler.setLevel(logging.INFO)
+
+# Attach to Root Logger so all modules log to files
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.INFO)
+root_logger.addHandler(bot_file_handler)
+root_logger.addHandler(error_file_handler)
+root_logger.addHandler(console_handler)
+
+logger = logging.getLogger("N2D_Bot")
 
 WHATSAPP_ACCESS_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN")
 INTERNAL_SECRET = os.getenv("INTERNAL_SECRET", "n2d_internal_2026_secure")
