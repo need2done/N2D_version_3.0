@@ -1425,7 +1425,7 @@ Share this with helper."""
                     helper_msg = (
                         f"🔐 *Delivery OTP Sent to Customer ({order['customer_number']})!*\n\n"
                         f"✅ *Payment Completed Online (₹{total})! / ఆన్‌లైన్ చెల్లింపు పూర్తయింది*\n"
-                        f"Please ask customer for the *4-digit Delivery OTP* and reply with the OTP (e.g. *{end_otp}*):"
+                        f"Please ask customer for the *4-digit Delivery OTP* and reply with the OTP:"
                     )
                 else:
                     cust_msg = (
@@ -1437,7 +1437,7 @@ Share this with helper."""
                     helper_msg = (
                         f"🔐 *Delivery OTP Sent to Customer ({order['customer_number']})!*\n\n"
                         f"💵 Collect ₹{total} payment from customer and ask for the *4-digit Delivery OTP*.\n"
-                        f"Reply with the 4-digit OTP (e.g. *{end_otp}*):"
+                        f"Reply with the 4-digit OTP:"
                     )
 
                 send_message(order["customer_number"], cust_msg)
