@@ -5,7 +5,7 @@ def main():
     cur = db.cursor()
     cur.execute("""
         UPDATE orders 
-        SET vendor_status = 'CANCELLED' 
+        SET vendor_status = 'UNASSIGNED' 
         WHERE status IN ('CANCELLED', 'COMPLETED', 'EXPIRED', 'DELIVERED', 'REJECTED') 
           AND vendor_status = 'PENDING'
     """)
