@@ -40,15 +40,13 @@ def find_nearest_helpers(customer_lat, customer_lng, radius_km, engine_type='TAS
             filtered_helpers = []
             for h in helpers:
                 cat = (h.get('category') or '').upper()
-                if cat in ('BOTH', 'TASK'):
+                if cat in ('BOTH', 'TASK', 'ANYWORK'):
                     filtered_helpers.append(h)
                 elif cat == 'FOOD' and 'food' in s_lower:
                     filtered_helpers.append(h)
                 elif cat == 'VEG_FRUITS' and ('veg' in s_lower or 'fruit' in s_lower):
                     filtered_helpers.append(h)
                 elif cat == 'MEDICINES' and 'medicine' in s_lower:
-                    filtered_helpers.append(h)
-                elif cat == 'ANYWORK' and 'anywork' in s_lower:
                     filtered_helpers.append(h)
                 elif cat == 'HOME_SERVICES' and ('home' in s_lower or 'service' in s_lower) and 'food' not in s_lower:
                     filtered_helpers.append(h)

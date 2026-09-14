@@ -10,12 +10,13 @@ import json
 import traceback
 
 from db.mysql_conn import get_db
-from whatsapp_client import send_admin_new_order_with_assign_refresh, send_helper_auto_assign
+from whatsapp_client import send_admin_new_order_with_assign_refresh, send_helper_auto_assign, send_message, send_reply_buttons
 from config import ADMIN_NUMBER
 from utils.tracking_link import generate_helper_tracking_link
 from admin_v2.sync_service import sync_new_order
 from utils.location import haversine
 from db.helper_repo import get_available_helpers
+from utils.timeline import log_event
 
 logger = logging.getLogger("N2D_Bot")
 
@@ -656,4 +657,130 @@ def push_unassigned_orders_to_helper(phone: str, lat: float, lng: float):
             
     except Exception:
         logger.error("⚠️ PUSH UNASSIGNED FAILED")
-        traceback.print_exc()
+        traceback.print_exc()
+
+
+# =================================================
+# 💳 PROCESS PAYMENT SUCCESS (CUSTOMER & HELPER HANDLER)
+# =================================================
+
+def process_payment_success(order_code: str, payment_method: str = "UPI", transaction_id: str = None) -> dict:
+    """
+    Handles payment confirmation cleanly for both:
+    1. Store Bill Payment (where helper is ALREADY assigned) -> Notifies Helper + sends Arrived at Customer button.
+    2. Initial Order Payment (where helper is NOT yet assigned) -> Triggers Helper Auto-Assignment.
+    """
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+    try:
+        cur.execute("SELECT * FROM orders WHERE order_id = %s OR id = %s", (str(order_code), int(order_code) if str(order_code).isdigit() else 0))
+        order = cur.fetchone()
+        
+        if not order:
+            logger.error(f"process_payment_success: Order '{order_code}' not found.")
+            return {"success": False, "error": "Order not found"}
+        
+        order_db_id = order["id"]
+        real_order_code = order["order_id"]
+        customer_phone = order.get("customer_number")
+        helper_id = order.get("helper_id")
+        current_status = order.get("status")
+        total_amount = float(order.get("total_amount") or 0.0)
+        bill_amount = float(order.get("bill_amount") or 0.0)
+        base_fee = round(total_amount - bill_amount, 2)
+        if base_fee < 0: base_fee = 39.0
+
+        log_event(order_db_id, "PAYMENT_SUCCESS_PROCESSING", f"Payment confirmed via {payment_method}. Status: {current_status}", "SYSTEM")
+
+        # CASE 1: STORE BILL ONLINE PAYMENT (Helper ALREADY assigned)
+        if helper_id or current_status in ("BILL_PENDING_ONLINE_PAYMENT", "BILL_IMAGE_UPLOADED", "ARRIVED_AT_STORE"):
+            cur.execute("""
+                UPDATE orders 
+                SET status = 'ADMIN_APPROVED_BILL', 
+                    payment_status = 'PAID', 
+                    payment_method = %s,
+                    updated_at = NOW() 
+                WHERE id = %s
+            """, (payment_method, order_db_id))
+            db.commit()
+
+            # Get helper details
+            helper = None
+            if helper_id:
+                cur.execute("SELECT phone, name FROM helpers WHERE id = %s", (helper_id,))
+                helper = cur.fetchone()
+
+            helper_name = helper["name"] if helper else "Helper"
+
+            # 1. Send Payment Receipt Invoice to Customer
+            if customer_phone:
+                invoice_msg = (
+                    f"💳 *Store Bill Payment Received! / చెల్లింపు పూర్తయింది*\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"📝 Order ID    : #{real_order_code}\n"
+                    f"🧾 Store Bill   : ₹{bill_amount}\n"
+                    f"🛵 Service Fee  : ₹{base_fee}\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"💵 *Total Paid   : ₹{total_amount}* ({payment_method})\n\n"
+                    f"✅ Your helper *{helper_name}* has been notified to pick up the items and deliver to your location."
+                )
+                send_message(customer_phone, invoice_msg)
+
+            # 2. Notify Helper with Arrived at Customer action button!
+            if helper and helper.get("phone"):
+                helper_msg = (
+                    f"✅ *Customer Paid Store Bill Online! / కస్టమర్ ఆన్‌లైన్‌లో చెల్లించారు*\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"📝 Order ID : #{real_order_code}\n"
+                    f"🧾 Store Bill: ₹{bill_amount}\n"
+                    f"💵 Total Paid: *₹{total_amount}*\n\n"
+                    f"🛍️ Pick up items from the store and tap *Arrived at Customer* once you reach drop location."
+                )
+                send_reply_buttons(
+                    helper["phone"],
+                    helper_msg,
+                    [{"id": f"ARRIVED_DROP|{order_db_id}", "title": "📍 Arrived at Customer"}]
+                )
+
+            logger.info(f"✅ STORE BILL PAID ONLINE for order #{real_order_code}. Helper {helper_name} notified.")
+            return {"success": True, "type": "BILL_PAYMENT", "order_id": real_order_code}
+
+        # CASE 2: INITIAL ORDER PAYMENT (No helper assigned yet)
+        else:
+            cur.execute("""
+                UPDATE orders 
+                SET status = 'CONFIRMED', 
+                    payment_status = 'PAID', 
+                    payment_method = %s,
+                    updated_at = NOW() 
+                WHERE id = %s
+            """, (payment_method, order_db_id))
+            db.commit()
+
+            # Trigger helper auto-assignment
+            try:
+                from core.helper_matcher import trigger_helper_assignment
+                trigger_helper_assignment(real_order_code)
+            except Exception as assign_err:
+                logger.error(f"Error triggering auto-assignment: {assign_err}")
+
+            if customer_phone:
+                confirm_msg = (
+                    f"🎉 *Payment Successful! / చెల్లింపు విజయవంతమైంది*\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"📝 Order ID: #{real_order_code}\n"
+                    f"💳 Total Paid: *₹{total_amount}* ({payment_method})\n\n"
+                    f"Your order is confirmed. A delivery helper is being assigned to your order."
+                )
+                send_message(customer_phone, confirm_msg)
+
+            logger.info(f"🎉 INITIAL ORDER PAID & CONFIRMED for order #{real_order_code}. Auto-assignment triggered.")
+            return {"success": True, "type": "INITIAL_ORDER", "order_id": real_order_code}
+
+    except Exception as e:
+        logger.error(f"Error in process_payment_success for {order_code}: {e}")
+        traceback.print_exc()
+        return {"success": False, "error": str(e)}
+    finally:
+        cur.close()
+        db.close()

@@ -333,3 +333,44 @@ Status: 🔍 Searching for Helper'''
         send_reply_buttons(payload.customerId, msg, btn)
         return {'success': True}
     return {'success': False, 'error': 'Unknown event'}
+
+# ============================================================
+# PAYMENT SUCCESS INTERNAL ENDPOINT
+# ============================================================
+
+class PaymentSuccessPayload(BaseModel):
+    order_code: str
+    payment_method: Optional[str] = "Razorpay"
+    transaction_id: Optional[str] = None
+    secret: Optional[str] = None
+
+@app.post("/internal/payment-success")
+async def internal_payment_success(payload: PaymentSuccessPayload):
+    if payload.secret and payload.secret != INTERNAL_SECRET:
+        raise HTTPException(status_code=403, detail="Invalid internal secret")
+    
+    from core.order_finalizer import process_payment_success
+    res = process_payment_success(payload.order_code, payload.payment_method or "Razorpay", payload.transaction_id)
+    return res
+
+# ============================================================
+# STARTUP EVENT (AUTO-ASSIGNER DAEMON THREAD)
+# ============================================================
+
+import threading
+
+def _start_auto_assigner_daemon():
+    from auto_assigner import run_auto_assigner
+    logger.info("🚀 Starting background Auto-Assigner daemon thread (30s interval)...")
+    while True:
+        try:
+            run_auto_assigner()
+        except Exception as e:
+            logger.error(f"Error in Auto-Assigner background thread: {e}")
+        time.sleep(30)
+
+@app.on_event("startup")
+def startup_event():
+    t = threading.Thread(target=_start_auto_assigner_daemon, daemon=True)
+    t.start()
+

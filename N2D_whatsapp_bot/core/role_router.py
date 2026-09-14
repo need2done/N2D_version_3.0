@@ -650,22 +650,8 @@ def route_message(
 
         if msg_type == "text" and upper.startswith("PAY_SUCCESS_"):
             order_code = raw_text.replace("PAY_SUCCESS_", "").strip()
-            # Confirm order in DB
-            db = get_db()
-            cur = db.cursor()
-            cur.execute("UPDATE orders SET status='CONFIRMED', payment_status='PAID', payment_method='UPI', customer_number=%s WHERE order_id=%s", (user, order_code))
-            db.commit()
-            cur.close()
-            db.close()
-            
-            # Trigger helper auto assignment
-            try:
-                from core.helper_matcher import trigger_helper_assignment
-                trigger_helper_assignment(order_code)
-            except Exception as assign_err:
-                print("Error triggers auto assignment:", assign_err)
-
-            send_message(user, f"🎉 *Payment Successful!*\n\nYour order `#{order_code}` is confirmed. A delivery helper is being assigned.")
+            from core.order_finalizer import process_payment_success
+            process_payment_success(order_code, payment_method="UPI")
             reset_session(user)
             return
 

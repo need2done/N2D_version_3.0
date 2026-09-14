@@ -2,7 +2,25 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const Razorpay = require('razorpay');
+const axios = require('axios');
 const pool = require('../config/db');
+
+// Helper to notify Python bot of payment success
+const notifyBotPaymentSuccess = async (orderId, paymentId) => {
+  try {
+    const internalSecret = process.env.INTERNAL_SECRET || 'n2d_internal_2026_secure';
+    const botUrl = process.env.BOT_INTERNAL_URL || 'http://127.0.0.1:8000/internal/payment-success';
+    await axios.post(botUrl, {
+      order_code: orderId,
+      payment_method: 'Razorpay',
+      transaction_id: paymentId,
+      secret: internalSecret
+    });
+    console.log(`[Razorpay Bot Notify]: Successfully notified bot for order ${orderId}`);
+  } catch (err) {
+    console.error(`[Razorpay Bot Notify Error]: ${err.message}`);
+  }
+};
 
 // Initialize Razorpay instance
 const getRazorpayInstance = () => {
@@ -88,20 +106,24 @@ router.post('/verify', async (req, res) => {
 
     if (isAuthentic) {
       // Update order status in DB if orderId provided
-      if (orderId && pool) {
-        try {
-          await pool.query(
-            `UPDATE orders 
-             SET payment_status = 'PAID', 
-                 payment_method = 'RAZORPAY', 
-                 razorpay_payment_id = ?, 
-                 updated_at = NOW() 
-             WHERE id = ? OR order_id = ?`,
-            [razorpay_payment_id, orderId, orderId]
-          );
-        } catch (dbErr) {
-          console.warn('[Razorpay DB Update Warning]:', dbErr.message);
+      if (orderId) {
+        if (pool) {
+          try {
+            await pool.query(
+              `UPDATE orders 
+               SET payment_status = 'PAID', 
+                   payment_method = 'RAZORPAY', 
+                   razorpay_payment_id = ?, 
+                   updated_at = NOW() 
+               WHERE id = ? OR order_id = ?`,
+              [razorpay_payment_id, orderId, orderId]
+            );
+          } catch (dbErr) {
+            console.warn('[Razorpay DB Update Warning]:', dbErr.message);
+          }
         }
+        // Notify Python Bot automatically to complete order flow / invoice receipt
+        notifyBotPaymentSuccess(orderId, razorpay_payment_id);
       }
 
       return res.json({
@@ -151,11 +173,14 @@ router.post('/webhook', async (req, res) => {
       const paymentEntity = payload.payment?.entity;
       const receiptId = paymentEntity?.notes?.orderId || paymentEntity?.receipt;
 
-      if (receiptId && pool) {
-        await pool.query(
-          `UPDATE orders SET payment_status = 'PAID', updated_at = NOW() WHERE id = ? OR order_id = ?`,
-          [receiptId, receiptId]
-        );
+      if (receiptId) {
+        if (pool) {
+          await pool.query(
+            `UPDATE orders SET payment_status = 'PAID', updated_at = NOW() WHERE id = ? OR order_id = ?`,
+            [receiptId, receiptId]
+          );
+        }
+        notifyBotPaymentSuccess(receiptId, paymentEntity?.id);
       }
     }
 
