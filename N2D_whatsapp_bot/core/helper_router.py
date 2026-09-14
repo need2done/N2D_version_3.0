@@ -1397,33 +1397,51 @@ Share this with helper."""
                 payload = safe_parse_payload(order.get("payload"))
                 if "end_otp" not in payload or not payload.get("end_otp"):
                     payload["end_otp"] = str(random.randint(1000, 9999))
-                    from db.mysql_conn import get_db
-                    db = get_db()
-                    cur = db.cursor()
-                    cur.execute("UPDATE orders SET payload=%s WHERE id=%s", (json.dumps(payload, ensure_ascii=False), order_db_id))
-                    db.commit()
-                    cur.close()
-                    db.close()
-
+                
                 end_otp = payload.get("end_otp")
                 total = float(order.get("total_amount") or 0.0)
+                is_paid = (order.get("payment_status") == "PAID")
 
-                # Send OTP to Customer
-                send_message(
-                    order["customer_number"],
-                    f"🔐 *Need2Done Delivery OTP: {end_otp}*\n"
-                    f"━━━━━━━━━━━━━━━━━━━━━\n"
-                    f"Your helper {helper['name']} is at your delivery location!\n"
-                    f"Please pay ₹{total} (Cash / UPI) and share this Delivery OTP *{end_otp}* with your helper to complete your order."
+                from db.mysql_conn import get_db
+                db = get_db()
+                cur = db.cursor()
+                cur.execute(
+                    "UPDATE orders SET payload=%s, otp=%s, otp_created_at=NOW(), status='ARRIVED_AT_CUSTOMER' WHERE id=%s", 
+                    (json.dumps(payload, ensure_ascii=False), end_otp, order_db_id)
                 )
+                db.commit()
+                cur.close()
+                db.close()
 
-                # Notify Helper
-                send_message(
-                    phone,
-                    f"🔐 *Delivery OTP Sent to Customer ({order['customer_number']})!*\n\n"
-                    f"💵 Collect ₹{total} payment from customer and ask for the *4-digit Delivery OTP*.\n"
-                    f"Reply with the 4-digit OTP (e.g. *{end_otp}*):"
-                )
+                # Send OTP to Customer (Payment Aware)
+                if is_paid:
+                    cust_msg = (
+                        f"🔐 *Need2Done Delivery OTP: {end_otp}*\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━\n"
+                        f"Your helper {helper['name']} is at your delivery location!\n"
+                        f"✅ Payment of *₹{total}* completed online.\n\n"
+                        f"Please share this Delivery OTP *{end_otp}* with your helper to complete your order."
+                    )
+                    helper_msg = (
+                        f"🔐 *Delivery OTP Sent to Customer ({order['customer_number']})!*\n\n"
+                        f"✅ *Payment Completed Online (₹{total})! / ఆన్‌లైన్ చెల్లింపు పూర్తయింది*\n"
+                        f"Please ask customer for the *4-digit Delivery OTP* and reply with the OTP (e.g. *{end_otp}*):"
+                    )
+                else:
+                    cust_msg = (
+                        f"🔐 *Need2Done Delivery OTP: {end_otp}*\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━\n"
+                        f"Your helper {helper['name']} is at your delivery location!\n"
+                        f"Please pay ₹{total} (Cash / UPI) and share this Delivery OTP *{end_otp}* with your helper to complete your order."
+                    )
+                    helper_msg = (
+                        f"🔐 *Delivery OTP Sent to Customer ({order['customer_number']})!*\n\n"
+                        f"💵 Collect ₹{total} payment from customer and ask for the *4-digit Delivery OTP*.\n"
+                        f"Reply with the 4-digit OTP (e.g. *{end_otp}*):"
+                    )
+
+                send_message(order["customer_number"], cust_msg)
+                send_message(phone, helper_msg)
                 return
 
             # ------------------------------------------------
@@ -1835,11 +1853,68 @@ Share this with helper."""
             pass
 
         # ------------------------------------------------
-        # 🔑 START/END OTP (RIDES & HOME SERVICES)
+        # 🔑 OTP VERIFICATION (DELIVERY, RIDE & HOME SERVICES)
         # ------------------------------------------------
-        is_pure_digit_otp = upper.strip().isdigit() and len(upper.strip()) == 4
+        is_pure_digit_otp = upper.strip().isdigit() and len(upper.strip()) in (4, 6)
 
-        if upper.startswith("START ") or upper.startswith("END ") or (is_pure_digit_otp and active):
+        # 1. TASK ENGINE DELIVERY OTP VERIFICATION (Groceries, Medicines, AnyWork, Custom Work, Food, etc.)
+        if active and active.get("engine_type") == "TASK" and (upper.startswith("OTP ") or is_pure_digit_otp):
+            otp_code = upper.replace("OTP ", "").strip()
+            payload_data = safe_parse_payload(active.get("payload"))
+            expected_otp = str(active.get("otp") or payload_data.get("end_otp") or payload_data.get("otp") or "").strip()
+
+            if expected_otp and otp_code == expected_otp:
+                from db.mysql_conn import get_db
+                db = get_db()
+                cur = db.cursor()
+                cur.execute("""
+                    UPDATE orders 
+                    SET status = 'COMPLETED', 
+                        payment_status = 'PAID', 
+                        completed_at = NOW(), 
+                        tracking_status = 'COMPLETED' 
+                    WHERE id = %s
+                """, (active["id"],))
+                if active.get("helper_id"):
+                    cur.execute("UPDATE helpers SET status = 'ONLINE' WHERE id = %s", (active["helper_id"],))
+                    cur.execute("UPDATE helper_status SET status = 'AVAILABLE' WHERE helper_id = %s", (active["helper_id"],))
+                db.commit()
+                cur.close()
+                db.close()
+
+                log_event(active["id"], "ORDER_COMPLETED_VIA_OTP", f"Order {active['order_id']} completed via Delivery OTP {otp_code}", "HELPER")
+
+                # Send completion notification to Helper
+                send_message(
+                    phone,
+                    f"🎉 *Order Completed! / ఆర్డర్ పూర్తయింది*\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"📝 Order ID: #{active['order_id']}\n"
+                    f"✅ Delivery OTP verified successfully.\n\n"
+                    f"🟢 You are now back ONLINE and available for new orders!"
+                )
+
+                # Send rating feedback buttons to Customer
+                send_reply_buttons(
+                    active["customer_number"],
+                    f"🎉 *Order Delivered & Completed!* 🎉\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"📝 Order ID: #{active['order_id']}\n"
+                    f"Thank you for choosing *Need2Done*! 🙏\n\n"
+                    f"How was your experience with your helper *{helper.get('name', 'Helper')}*?",
+                    [
+                        {"id": f"RATE_5|{active['id']}", "title": "⭐⭐⭐⭐⭐"},
+                        {"id": f"RATE_3|{active['id']}", "title": "⭐⭐⭐"},
+                        {"id": f"RATE_1|{active['id']}", "title": "⭐"}
+                    ]
+                )
+                return
+            elif expected_otp:
+                send_message(phone, f"❌ Invalid Delivery OTP (*{otp_code}*). Please verify the 4-digit Delivery OTP with the customer and try again.")
+                return
+
+        # 2. START/END OTP FOR RIDES & HOME SERVICES
+        if upper.startswith("START ") or upper.startswith("END ") or (is_pure_digit_otp and active and active.get("engine_type") == "RIDE"):
             
             is_home_service = active and (active.get("service") == "Home Services" or str(active.get("service")) == "10")
             
