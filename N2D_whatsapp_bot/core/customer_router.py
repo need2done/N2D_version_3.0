@@ -83,6 +83,57 @@ def handle_customer_interactive(
                     send_url_button(from_number, f"💳 Click below to complete online UPI payment for order #{order['order_id']}:", "💳 Pay Online", pay_url)
                 return True
 
+            if action == "CUST_CONT_WITHOUT":
+                order_code = parts[1]
+                order = get_order(order_code)
+                if order:
+                    helper_phone = order.get("helper_phone")
+                    send_message(from_number, "▶️ Continuing your order with available items. Your helper has been notified.")
+                    if helper_phone:
+                        send_message(helper_phone, f"▶️ *Customer Update for Order #{order_code}:*\nCustomer agreed to CONTINUE without the missing item. Please purchase remaining items and upload store bill photo.")
+                return True
+
+            if action == "CUST_CANCEL_ORDER":
+                order_code = parts[1]
+                order = get_order(order_code)
+                if order:
+                    from db.mysql_conn import get_db
+                    db = get_db()
+                    cur = db.cursor()
+                    cur.execute("UPDATE orders SET status='CANCELLED', updated_at=NOW() WHERE order_id=%s", (order_code,))
+                    if order.get("helper_id"):
+                        cur.execute("UPDATE helper_status SET status='AVAILABLE' WHERE helper_id=%s", (order["helper_id"],))
+                    db.commit()
+                    cur.close()
+                    db.close()
+                    
+                    helper_phone = order.get("helper_phone")
+                    send_message(from_number, f"❌ Order `#{order_code}` has been cancelled as requested.")
+                    if helper_phone:
+                        send_message(helper_phone, f"❌ *Order Cancelled: Order #{order_code}*\nCustomer cancelled the order due to item unavailability. You are now free for new orders.")
+                return True
+
+            if action == "CUST_ACCEPT_ALT":
+                order_code = parts[1]
+                alt_summary = parts[2] if len(parts) > 2 else "Alternative Medicine"
+                order = get_order(order_code)
+                if order:
+                    helper_phone = order.get("helper_phone")
+                    send_message(from_number, f"✅ *Alternative Accepted!*\nWe notified your helper to purchase *{alt_summary}*.")
+                    if helper_phone:
+                        send_message(helper_phone, f"✅ *Customer ACCEPTED Alternative for Order #{order_code}!*\nPlease purchase: *{alt_summary}* and upload store bill photo once bought.")
+                return True
+
+            if action == "CUST_SKIP_ALT":
+                order_code = parts[1]
+                order = get_order(order_code)
+                if order:
+                    helper_phone = order.get("helper_phone")
+                    send_message(from_number, "❌ Skipped alternative item. Your helper will proceed with the remaining items.")
+                    if helper_phone:
+                        send_message(helper_phone, f"ℹ️ *Customer SKIPPED Alternative for Order #{order_code}.*\nPlease proceed with remaining available items.")
+                return True
+
             if action in ("CUST_EXT_APPROVE", "CUST_EXT_DECLINE"):
                 order_db_id = int(parts[1])
                 order = get_order_by_db_id(order_db_id)
