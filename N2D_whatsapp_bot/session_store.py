@@ -34,7 +34,7 @@ SESSION_TTL = 30 * 60  # 30 minutes
 # =================================================
 
 _BASE_SESSION = {
-    "stage": None,
+    "stage": "",
     "name": "",
     "service": None,
     "case_state": "",
@@ -97,7 +97,8 @@ def get_session(user_id: str) -> Dict[str, Any]:
         session = _sessions[user_id]
 
         # Normalize session
-        session.setdefault("stage", "ASK_NAME")
+        if session.get("stage") is None:
+            session["stage"] = ""
         session.setdefault("name", "")
         session.setdefault("service", None)
         session.setdefault("case_state", "")

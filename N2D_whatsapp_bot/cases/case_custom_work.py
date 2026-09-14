@@ -45,6 +45,14 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
             address = loc_data.get("address") or loc_data.get("name") or "GPS Location Pin"
 
             if lat and lng:
+                if step not in ("WAITING_WORK_LOCATION", "WAITING_PICKUP_LOCATION", "WAITING_DROP_LOCATION"):
+                    if session.get("pickup_location") and not session.get("drop_location"):
+                        step = "WAITING_DROP_LOCATION"
+                    elif session.get("is_single_location") or session.get("flow") in ["single_location", "queueing"]:
+                        step = "WAITING_WORK_LOCATION"
+                    else:
+                        step = "WAITING_PICKUP_LOCATION"
+
                 if step == "WAITING_WORK_LOCATION":
                     session["work_location"] = to_map_link(lat, lng, name="Work Location", address=address)
                     session["pickup_location"] = session["work_location"]

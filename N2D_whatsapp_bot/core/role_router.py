@@ -755,20 +755,85 @@ def route_message(
             reset_session(user)
             session = get_session(user)
 
+        # =================================================
+        # 📍 CUSTOMER LOCATION HANDLER (PRIORITY)
+        # =================================================
+        if msg_type == "location":
+            location = msg.get("location", {})
+            lat = location.get("latitude")
+            lng = location.get("longitude")
+
+            if lat is None or lng is None:
+                send_message(user, "❌ Invalid location data.")
+                return
+
+            print(f"LOCATION: CUSTOMER LOCATION RECEIVED from {user} ({lat}, {lng})")
+
+            session["latitude"] = lat
+            session["longitude"] = lng
+            session["location_name"] = location.get("name")
+            session["location_address"] = location.get("address")
+            session["user_id"] = user
+
+            save_customer_location(user, lat, lng)
+
+            # Auto-recover draft session if stage is missing or inactive
+            if session.get("stage") != "IN_CASE" or not session.get("service"):
+                draft = check_for_draft_order(user)
+                if draft:
+                    service_map = {
+                        "Groceries": 1, "Medicines": 2, "Parcel": 3, "Ride": 4, 
+                        "Any Work": 5, "Vegetables & Fruits": 7, "Food Service": 9, "Home Services": 10
+                    }
+                    session["stage"] = "IN_CASE"
+                    session["order_id"] = draft["order_id"]
+                    session["service"] = service_map.get(draft.get("service"), 7)
+                    if session["service"] in (1, 7, 9):
+                        session["case_state"] = "ASK_LOCATION"
+                    elif session["service"] in (3, 5, 11):
+                        session["custom_work_step"] = "WAITING_WORK_LOCATION"
+                elif session.get("service"):
+                    session["stage"] = "IN_CASE"
+
+            if session.get("stage") == "IN_CASE" and session.get("service"):
+                # Also update customer coordinates in active order record in DB if order_id exists
+                if session.get("order_id"):
+                    try:
+                        db = get_db()
+                        if db:
+                            cur = db.cursor()
+                            cur.execute("UPDATE orders SET customer_lat=%s, customer_lng=%s WHERE order_id=%s", (lat, lng, session["order_id"]))
+                            db.commit()
+                            cur.close()
+                            db.close()
+                    except Exception as loc_db_err:
+                        print("Error updating customer coords in order:", loc_db_err)
+
+                reply = route(session, "LOCATION", msg)
+                if reply:
+                    send_message(user, reply)
+                return
+
+            # If user has no active order or service flow, acknowledge location and offer service list
+            send_message(user, "📍 Location pin received and saved! Select a service below to get started:")
+            session["stage"] = "ASK_SERVICE"
+            send_rich_service_list(user, session.get("name"))
+            return
+
         if not session.get("stage"):
             # SMART ACTIVE ORDER CHECK: Prevent interrupting ongoing orders
             if msg_type == "text":
                 active_order = get_active_order_details(user)
                 if active_order:
                     helper_str = f"Helper: {active_order['helper_name']} ({active_order['helper_phone']})\nOTP to share: {active_order.get('otp', 'N/A')}\n" if active_order.get("helper_phone") else "Helper: Not Assigned Yet\n"
-                    msg = (
+                    msg_txt = (
                         f"📦 *Active Order: #{active_order['order_id']}*\n"
                         f"Service: {active_order['service']}\n"
                         f"Status: {active_order['status']} 🚴\n"
                         f"Total: ₹{active_order['total_amount']}\n"
                         f"{helper_str}"
                     )
-                    send_message(user, msg)
+                    send_message(user, msg_txt)
                     
                     if active_order['status'] == 'PAYMENT_GENERATED':
                         from whatsapp_client import send_reply_buttons
@@ -875,46 +940,6 @@ def route_message(
                     session["pending_service"] = detected_svc
                 send_rich_welcome(user)
                 return
-
-
-        # =================================================
-        # 📍 CUSTOMER LOCATION HANDLER
-        # =================================================
-
-        if msg_type == "location":
-
-            location = msg.get("location", {})
-
-            lat = location.get("latitude")
-            lng = location.get("longitude")
-
-            if lat is None or lng is None:
-
-                send_message(user, "❌ Invalid location data.")
-
-                return
-
-            print("LOCATION: CUSTOMER LOCATION RECEIVED")
-
-            session["latitude"] = lat
-            session["longitude"] = lng
-            session["location_name"] = location.get("name")
-            session["location_address"] = location.get("address")
-
-            save_customer_location(user, lat, lng)
-
-            send_message(user, "📍 Location received successfully.")
-
-            if session.get("stage") in ["ASK_LOCATION", "IN_CASE"]:
-
-                session["stage"] = "IN_CASE"
-
-                reply = route(session, "LOCATION", msg)
-
-                if reply:
-                    send_message(user, reply)
-
-            return
 
 
 
