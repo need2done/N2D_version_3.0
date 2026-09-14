@@ -434,11 +434,11 @@ def get_available_helpers(engine_type: str = 'TASK', service: str = None) -> Lis
         helpers = cur.fetchall()
 
         if service and engine_type == 'TASK':
-            s_lower = service.lower()
+            s_lower = service.lower().replace(" ", "")
             filtered_helpers = []
             for h in helpers:
                 cat = (h.get('category') or '').upper()
-                if cat in ('BOTH', 'TASK'):
+                if cat in ('BOTH', 'TASK', 'ALL', 'GENERAL', 'DELIVERY'):
                     filtered_helpers.append(h)
                 elif cat == 'FOOD' and 'food' in s_lower:
                     filtered_helpers.append(h)
@@ -446,7 +446,9 @@ def get_available_helpers(engine_type: str = 'TASK', service: str = None) -> Lis
                     filtered_helpers.append(h)
                 elif cat == 'MEDICINES' and 'medicine' in s_lower:
                     filtered_helpers.append(h)
-                elif cat == 'ANYWORK' and 'anywork' in s_lower:
+                elif cat == 'ANYWORK' and ('anywork' in s_lower or 'parcel' in s_lower or 'custom' in s_lower):
+                    filtered_helpers.append(h)
+                elif cat == 'GROCERIES' and 'grocer' in s_lower:
                     filtered_helpers.append(h)
                 elif cat == 'HOME_SERVICES' and ('home' in s_lower or 'service' in s_lower) and 'food' not in s_lower:
                     filtered_helpers.append(h)

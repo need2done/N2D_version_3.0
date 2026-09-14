@@ -23,17 +23,21 @@ logger = logging.getLogger("N2D_Bot")
 # =================================================
 # 🛰️ FIND NEAREST HELPERS
 # =================================================
-def find_nearest_helpers(lat, lng, radius_km=5, engine_type='TASK', service=None):
+def find_nearest_helpers(lat, lng, radius_km=10, engine_type='TASK', service=None):
     """
     Returns list of helpers within radius_km and correct category.
-    Fallback to 50km if no one found in initial radius.
+    Fallback to 50km or missing coords if no one found in initial radius.
     """
     try:
-        if lat is None or lng is None:
-            return []
-            
         available = get_available_helpers(engine_type, service)
         logger.info(f"🛰️ FIND_NEAR: Found {len(available)} online helpers for engine {engine_type}")
+        if not available:
+            return []
+
+        if lat is None or lng is None or float(lat or 0) == 0:
+            for h in available:
+                h['distance'] = 0.0
+            return available
         
         def _get_near(target_radius):
             near = []
@@ -47,10 +51,10 @@ def find_nearest_helpers(lat, lng, radius_km=5, engine_type='TASK', service=None
                         h['distance'] = dist
                         near.append(h)
                 else:
-                    logger.warning(f"🛰️ Helper {h['phone']} has NO GPS data.")
+                    h['distance'] = 0.0
+                    near.append(h)
             near.sort(key=lambda x: x['distance'])
             return near
-
 
         results = _get_near(radius_km)
         if not results and radius_km < 50:

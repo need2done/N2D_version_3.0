@@ -36,17 +36,21 @@ def find_nearest_helpers(customer_lat, customer_lng, radius_km, engine_type='TAS
         helpers = cur.fetchall()
 
         if service and engine_type == 'TASK':
-            s_lower = service.lower()
+            s_lower = service.lower().replace(" ", "")
             filtered_helpers = []
             for h in helpers:
                 cat = (h.get('category') or '').upper()
-                if cat in ('BOTH', 'TASK', 'ANYWORK'):
+                if cat in ('BOTH', 'TASK', 'ALL', 'GENERAL', 'DELIVERY'):
                     filtered_helpers.append(h)
                 elif cat == 'FOOD' and 'food' in s_lower:
                     filtered_helpers.append(h)
                 elif cat == 'VEG_FRUITS' and ('veg' in s_lower or 'fruit' in s_lower):
                     filtered_helpers.append(h)
                 elif cat == 'MEDICINES' and 'medicine' in s_lower:
+                    filtered_helpers.append(h)
+                elif cat == 'ANYWORK' and ('anywork' in s_lower or 'parcel' in s_lower or 'custom' in s_lower):
+                    filtered_helpers.append(h)
+                elif cat == 'GROCERIES' and 'grocer' in s_lower:
                     filtered_helpers.append(h)
                 elif cat == 'HOME_SERVICES' and ('home' in s_lower or 'service' in s_lower) and 'food' not in s_lower:
                     filtered_helpers.append(h)
@@ -92,8 +96,9 @@ def run_auto_assigner():
             FROM orders
             WHERE (vendor_id IS NULL OR vendor_status = 'UNASSIGNED' OR vendor_status IS NULL)
               AND engine_type = 'TASK'
-              AND status IN ('CONFIRMED', 'ADMIN_APPROVED_BILL', 'PLACED', 'PACKED', 'BILL_SENT', 'PENDING', 'DRAFT')
+              AND status IN ('CONFIRMED', 'ADMIN_APPROVED_BILL', 'PLACED', 'PACKED', 'BILL_SENT', 'PENDING')
               AND status NOT IN ('CANCELLED', 'COMPLETED', 'EXPIRED')
+              AND service NOT IN ('Medicines', 'Any Work', 'Parcel', 'Support', 'Home Services')
         """)
         unassigned_vendor_orders = cur.fetchall()
 
@@ -206,20 +211,19 @@ def run_auto_assigner():
                     ])
 
         # =======================================================
-        # 2. HELPER RADIUS EXPANSION (Every minute)
+        # 2. HELPER AUTO ASSIGNMENT & RADIUS EXPANSION
         # =======================================================
         cur.execute("""
             SELECT id, order_id, engine_type, status, vendor_status, customer_lat, customer_lng, service, payload, updated_at
             FROM orders
             WHERE (
-                vendor_status = 'PACKED' 
-                OR (engine_type = 'RIDE' AND status IN ('CONFIRMED', 'PENDING')) 
-                OR (vendor_status IS NULL AND status IN ('CONFIRMED', 'ADMIN_APPROVED_BILL', 'PLACED', 'PACKED', 'BILL_SENT', 'PENDING')) 
-                OR (vendor_status = 'UNASSIGNED' AND status IN ('CONFIRMED', 'ADMIN_APPROVED_BILL', 'PLACED', 'PACKED', 'BILL_SENT', 'PENDING'))
-                OR (vendor_status = 'ACCEPTED' AND status IN ('CONFIRMED', 'ADMIN_APPROVED_BILL', 'PLACED', 'PACKED', 'BILL_SENT', 'PENDING'))
+                vendor_status IN ('PACKED', 'ACCEPTED', 'UNASSIGNED', 'NONE', '')
+                OR vendor_status IS NULL 
+                OR engine_type = 'RIDE'
+                OR service IN ('Medicines', 'Any Work', 'Parcel', 'Support', 'Home Services')
             )
             AND helper_id IS NULL
-            AND status NOT IN ('CANCELLED', 'COMPLETED', 'EXPIRED')
+            AND status NOT IN ('CANCELLED', 'COMPLETED', 'EXPIRED', 'DELIVERED', 'DRAFT')
         """)
         unassigned_orders = cur.fetchall()
 
@@ -227,14 +231,12 @@ def run_auto_assigner():
             updated_at = order['updated_at'] or now
             elapsed = (now - updated_at).total_seconds() / 60.0
             
-            radius = 2
+            radius = 10
             if elapsed >= 7:
-                radius = 10
+                radius = 50
             elif elapsed >= 4:
-                radius = 5
+                radius = 25
 
-            logger.info(f"Order {order['order_id']} unassigned for {elapsed:.1f} mins. Broadcasting to radius {radius}km")
-            
             c_lat = order.get('customer_lat')
             c_lng = order.get('customer_lng')
             pdata = {}
@@ -257,6 +259,8 @@ def run_auto_assigner():
                         pass
 
             helpers = find_nearest_helpers(c_lat, c_lng, radius, order['engine_type'], service=order.get('service'))
+            if helpers:
+                logger.info(f"🚀 HELPER AUTO-ASSIGN: Broadcasting Order {order['order_id']} ({order['service']}) to {len(helpers)} nearby helpers within {radius}km radius.")
             
             for h in helpers:
                 dist_val = h.get('distance', 0.0)
@@ -272,7 +276,7 @@ def run_auto_assigner():
                     f"📍 Distance: {dist_str}\n\n"
                     "Tap below to accept or reject (First Come, First Served)."
                 )
-                from core.order_finalizer import send_helper_auto_assign
+                from whatsapp_client import send_helper_auto_assign
                 send_helper_auto_assign(h['phone'], order['order_id'], msg)
 
 
