@@ -134,6 +134,83 @@ def handle_customer_interactive(
                         send_message(helper_phone, f"ℹ️ *Customer SKIPPED Alternative for Order #{order_code}.*\nPlease proceed with remaining available items.")
                 return True
 
+            if action == "CUST_ALT_ACCEPT":
+                order_code = parts[1]
+                from db.order_repo import update_vendor_status, get_order
+                update_vendor_status(order_code, "ACCEPTED")
+                send_message(from_number, f"✅ *Alternative Accepted!*\n\nPharmacy is packing your order. A delivery helper is being assigned for pickup.")
+                
+                order = get_order(order_code)
+                if order and order.get("vendor_id"):
+                    from db.mysql_conn import get_db
+                    vdb = get_db()
+                    vcur = vdb.cursor(buffered=True, dictionary=True)
+                    vcur.execute("SELECT phone FROM vendors WHERE id=%s", (order["vendor_id"],))
+                    vrow = vcur.fetchone()
+                    try: vcur.fetchall()
+                    except Exception: pass
+                    vcur.close()
+                    vdb.close()
+                    if vrow:
+                        send_reply_buttons(
+                            vrow["phone"],
+                            f"✅ *Customer ACCEPTED Alternative for Order #{order_code}!*\n\nPlease pack the items now. Tap below when ready for pickup:",
+                            [{"id": f"VENDOR_PACKED|{order_code}", "title": "🛍️ Mark as Packed"}]
+                        )
+                return True
+
+            if action == "CUST_ALT_SKIP":
+                order_code = parts[1]
+                from db.order_repo import update_vendor_status, get_order
+                update_vendor_status(order_code, "ACCEPTED")
+                send_message(from_number, f"▶️ *Order Updated!*\n\nProceeding with remaining available items. A delivery helper is being assigned for pickup.")
+                
+                order = get_order(order_code)
+                if order and order.get("vendor_id"):
+                    from db.mysql_conn import get_db
+                    vdb = get_db()
+                    vcur = vdb.cursor(buffered=True, dictionary=True)
+                    vcur.execute("SELECT phone FROM vendors WHERE id=%s", (order["vendor_id"],))
+                    vrow = vcur.fetchone()
+                    try: vcur.fetchall()
+                    except Exception: pass
+                    vcur.close()
+                    vdb.close()
+                    if vrow:
+                        send_reply_buttons(
+                            vrow["phone"],
+                            f"▶️ *Customer Proceeding Without Missing Item for Order #{order_code}!*\n\nPlease pack available items now. Tap below when ready for pickup:",
+                            [{"id": f"VENDOR_PACKED|{order_code}", "title": "🛍️ Mark as Packed"}]
+                        )
+                return True
+
+            if action == "CUST_ALT_CANCEL":
+                order_code = parts[1]
+                from db.order_repo import update_vendor_status, get_order
+                from db.mysql_conn import get_db
+                db = get_db()
+                cur = db.cursor()
+                cur.execute("UPDATE orders SET status='CANCELLED', vendor_status='CANCELLED', updated_at=NOW() WHERE order_id=%s", (order_code,))
+                db.commit()
+                cur.close()
+                db.close()
+                
+                send_message(from_number, f"❌ Order *{order_code}* has been cancelled as requested. ₹0 charged.")
+                
+                order = get_order(order_code)
+                if order and order.get("vendor_id"):
+                    vdb = get_db()
+                    vcur = vdb.cursor(buffered=True, dictionary=True)
+                    vcur.execute("SELECT phone FROM vendors WHERE id=%s", (order["vendor_id"],))
+                    vrow = vcur.fetchone()
+                    try: vcur.fetchall()
+                    except Exception: pass
+                    vcur.close()
+                    vdb.close()
+                    if vrow:
+                        send_message(vrow["phone"], f"❌ Customer cancelled Order *{order_code}* due to item unavailability.")
+                return True
+
             if action in ("CUST_EXT_APPROVE", "CUST_EXT_DECLINE"):
                 order_db_id = int(parts[1])
                 order = get_order_by_db_id(order_db_id)

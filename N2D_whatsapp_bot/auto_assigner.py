@@ -220,7 +220,7 @@ def run_auto_assigner():
                 vendor_status IN ('PACKED', 'ACCEPTED', 'UNASSIGNED', 'NONE', '')
                 OR vendor_status IS NULL 
                 OR engine_type = 'RIDE'
-                OR service IN ('Medicines', 'Any Work', 'Parcel', 'Support', 'Home Services')
+                OR service IN ('Any Work', 'Parcel', 'Support', 'Home Services')
             )
             AND helper_id IS NULL
             AND status NOT IN ('CANCELLED', 'COMPLETED', 'EXPIRED', 'DELIVERED', 'DRAFT')

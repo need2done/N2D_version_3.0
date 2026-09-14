@@ -164,9 +164,138 @@ def handle_vendor(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                             send_reply_buttons(h_row["phone"], "Tap below once you have picked up the items:", [
                                 {"id": f"PICKED_UP|{order['id']}", "title": "🛍️ Picked Up"}
                             ])
+            if btn_id.startswith("PHARM_ALL_STOCK|"):
+                order_code = btn_id.split("|")[1]
+                order = get_order(order_code)
+                if not order:
+                    send_message(phone, "❌ Order not found.")
+                    return
+                from db.mysql_conn import get_db
+                from db.order_repo import claim_vendor_order
+                db = get_db()
+                v_id = None
+                if db:
+                    cur = db.cursor(buffered=True, dictionary=True)
+                    clean_phone = phone.replace("+", "").strip()
+                    cur.execute("SELECT id, name FROM vendors WHERE REPLACE(phone, '+', '')=%s", (clean_phone,))
+                    v_row = cur.fetchone()
+                    try: cur.fetchall()
+                    except Exception: pass
+                    if v_row: v_id = v_row["id"]
+                    cur.close()
+                    db.close()
+                if not v_id:
+                    send_message(phone, "❌ Vendor profile not found.")
+                    return
+                claimed = claim_vendor_order(order_code, v_id)
+                if claimed:
+                    send_reply_buttons(
+                        to=phone,
+                        body=f"✅ *Stock Confirmed & Order Accepted!*\n\nPlease pack medicines for Order *{order_code}*.\nDelivery helper is being dispatched for pickup.\n\nTap below once ready:",
+                        buttons=[{"id": f"VENDOR_PACKED|{order_code}", "title": "🛍️ Mark as Packed"}]
+                    )
+                    if order.get("customer_number"):
+                        send_message(
+                            order["customer_number"],
+                            f"🏥 *Pharmacy Confirmed Stock!*\n\nOrder *{order_code}*: All medicines are confirmed in stock and being packed. A delivery helper is being assigned for pickup!"
+                        )
+                else:
+                    send_message(phone, f"⚠️ Order *{order_code}* already claimed by another pharmacy.")
                 return
 
-        if text and msg_type != "interactive":
+            if btn_id.startswith("PHARM_PARTIAL_STOCK|"):
+                order_code = btn_id.split("|")[1]
+                order = get_order(order_code)
+                if not order:
+                    send_message(phone, "❌ Order not found.")
+                    return
+                from db.mysql_conn import get_db
+                from db.order_repo import claim_vendor_order
+                db = get_db()
+                v_id = None
+                if db:
+                    cur = db.cursor(buffered=True, dictionary=True)
+                    clean_phone = phone.replace("+", "").strip()
+                    cur.execute("SELECT id, name FROM vendors WHERE REPLACE(phone, '+', '')=%s", (clean_phone,))
+                    v_row = cur.fetchone()
+                    try: cur.fetchall()
+                    except Exception: pass
+                    if v_row: v_id = v_row["id"]
+                    cur.close()
+                    db.close()
+                if not v_id:
+                    send_message(phone, "❌ Vendor profile not found.")
+                    return
+                claimed = claim_vendor_order(order_code, v_id)
+                if claimed:
+                    update_vendor_status(order_code, "WAITING_VENDOR_ALT_DETAILS")
+                    send_message(
+                        phone,
+                        f"⚠️ *Partial Stock / Alternative Selected for Order #{order_code}*\n\n"
+                        f"Please reply to this message (or send a photo) detailing:\n"
+                        f"1️⃣ Which item is missing/out of stock?\n"
+                        f"2️⃣ What alternative brand/medicine is available & price difference?\n\n"
+                        f"We will immediately send your note to the customer for approval!"
+                    )
+                else:
+                    send_message(phone, f"⚠️ Order *{order_code}* already claimed by another pharmacy.")
+                return
+
+            if btn_id.startswith("PHARM_NO_STOCK|"):
+                order_code = btn_id.split("|")[1]
+                if update_vendor_status(order_code, "REJECTED"):
+                    send_message(phone, "❌ Order marked as Out of Stock.")
+                    send_message(ADMIN_NUMBER, f"🚨 Pharmacy marked order {order_code} OUT OF STOCK.")
+                return
+
+        if msg_type != "interactive":
+            # Check if vendor has an order waiting for alternative details
+            from db.mysql_conn import get_db
+            db = get_db()
+            cur = db.cursor(buffered=True, dictionary=True)
+            clean_phone = phone.replace("+", "").strip()
+            cur.execute("SELECT id, name FROM vendors WHERE REPLACE(phone, '+', '')=%s", (clean_phone,))
+            v_row = cur.fetchone()
+            try: cur.fetchall()
+            except Exception: pass
+            
+            if v_row:
+                cur.execute(
+                    "SELECT * FROM orders WHERE vendor_id=%s AND vendor_status='WAITING_VENDOR_ALT_DETAILS'",
+                    (v_row["id"],)
+                )
+                alt_order = cur.fetchone()
+                try: cur.fetchall()
+                except Exception: pass
+                
+                if alt_order:
+                    order_code = alt_order["order_id"]
+                    cust_phone = alt_order.get("customer_number")
+                    
+                    cur.execute("UPDATE orders SET vendor_status='WAITING_CUSTOMER_CONFIRMATION' WHERE id=%s", (alt_order["id"],))
+                    db.commit()
+                    cur.close()
+                    db.close()
+                    
+                    vendor_note = text if text else "Pharmacy reported alternative medicines / partial stock available."
+                    
+                    send_message(phone, f"✅ *Update Sent to Customer!*\nWaiting for customer confirmation for Order *{order_code}*.")
+                    
+                    if cust_phone:
+                        cust_msg = (
+                            f"🏥 *Pharmacy Stock Update for Order {order_code}*\n\n"
+                            f"🏪 *Pharmacy Note:*\n\"{vendor_note}\"\n\n"
+                            f"How would you like to proceed?"
+                        )
+                        send_reply_buttons(cust_phone, cust_msg, [
+                            {"id": f"CUST_ALT_ACCEPT|{order_code}", "title": "✅ Accept Alt"},
+                            {"id": f"CUST_ALT_SKIP|{order_code}", "title": "▶️ Continue Without"},
+                            {"id": f"CUST_ALT_CANCEL|{order_code}", "title": "❌ Cancel Order"}
+                        ])
+                    return
+            cur.close()
+            db.close()
+
             if text.isdigit() or (text.replace('.', '', 1).isdigit() and text.count('.') < 2):
                 amount = float(text)
                 from db.mysql_conn import get_db

@@ -486,20 +486,36 @@ def finalize_order(session: dict) -> str | None:
                 update_vendor_status(order_code, "PENDING")
                 
                 items_text = "\n".join(data.get("items", [])) if data.get("items") else "N/A"
-                vendor_msg = (
-                    f"📦 *New Order Offer! (First Pick)*\n\n"
-                    f"🆔 Order ID : {order_code}\n"
-                    f"🛠️ Service  : {service_name(service_id)}\n\n"
-                    f"🛍️ *Items to Pack:*\n{items_text}\n\n"
-                    f"Tap Accept below to claim & confirm this order."
-                )
+                cat_name = service_name(service_id)
+                is_medicine = (cat_name.lower() in ("medicines", "medicine") or service_id == 2)
+                
                 from whatsapp_client import send_reply_buttons
                 for v in vendors:
                     if v.get("phone"):
-                        send_reply_buttons(v["phone"], vendor_msg, [
-                            {"id": f"VENDOR_ACCEPT|{order_code}", "title": "✅ Accept"},
-                            {"id": f"VENDOR_REJECT|{order_code}", "title": "❌ Reject"}
-                        ])
+                        if is_medicine:
+                            vendor_msg = (
+                                f"🏥 *Pharmacy Order Request! (Pre-Stock Check)*\n\n"
+                                f"🆔 Order ID : {order_code}\n"
+                                f"💊 *Medicines Requested:*\n{items_text}\n\n"
+                                f"Please check your stock availability and choose an option below:"
+                            )
+                            send_reply_buttons(v["phone"], vendor_msg, [
+                                {"id": f"PHARM_ALL_STOCK|{order_code}", "title": "✅ All In Stock"},
+                                {"id": f"PHARM_PARTIAL_STOCK|{order_code}", "title": "⚠️ Alt / Partial"},
+                                {"id": f"PHARM_NO_STOCK|{order_code}", "title": "❌ Out of Stock"}
+                            ])
+                        else:
+                            vendor_msg = (
+                                f"📦 *New Order Offer! (First Pick)*\n\n"
+                                f"🆔 Order ID : {order_code}\n"
+                                f"🛠️ Service  : {cat_name}\n\n"
+                                f"🛍️ *Items to Pack:*\n{items_text}\n\n"
+                                f"Tap Accept below to claim & confirm this order."
+                            )
+                            send_reply_buttons(v["phone"], vendor_msg, [
+                                {"id": f"VENDOR_ACCEPT|{order_code}", "title": "✅ Accept"},
+                                {"id": f"VENDOR_REJECT|{order_code}", "title": "❌ Reject"}
+                            ])
             else:
                 logger.info(f"🏬 AUTO-ASSIGN VENDOR: No vendor found for {service_name(service_id)}")
     except Exception:
