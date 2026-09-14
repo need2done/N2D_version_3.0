@@ -303,13 +303,14 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                 order_id = active['order_id']
                 is_ride = active.get('engine_type') == 'RIDE'
 
-                # Retroactive fast-track for catalog/vendor orders
-                if status in ("HELPER_ACCEPTED", "BILL_IMAGE_UPLOADED"):
+                # Retroactive fast-track for catalog/vendor or paid bill orders
+                if status in ("CONFIRMED", "HELPER_ACCEPTED", "BILL_IMAGE_UPLOADED", "BILL_PENDING_ONLINE_PAYMENT"):
                     has_catalog_bill = (active.get("bill_amount") is not None and float(active.get("bill_amount")) > 0)
                     has_total_amount = (active.get("total_amount") is not None and float(active.get("total_amount")) > 0)
                     has_vendor = active.get("vendor_id") is not None
+                    is_paid = active.get("payment_status") == "PAID"
 
-                    if active.get("engine_type") == "TASK" and (has_catalog_bill or has_total_amount or has_vendor):
+                    if (has_catalog_bill and is_paid) or (active.get("engine_type") == "TASK" and (has_catalog_bill or has_vendor)):
                         from db.mysql_conn import get_db
                         fast_db = get_db()
                         fast_cur = fast_db.cursor()
@@ -335,7 +336,7 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                 # Context-sensitive action buttons
                 is_anywork = active.get("service") in ("AnyWork", 3, 5) or str(active.get("order_id", "")).startswith("N2DCW_")
 
-                if status == "HELPER_ACCEPTED":
+                if status in ("CONFIRMED", "HELPER_ACCEPTED"):
                     is_home_service = active.get("service") == "Home Services" or str(active.get("service")) == "10"
                     if is_anywork:
                         info += "\n🏁 Navigate to store location. Tap *Arrived at Store* once there."

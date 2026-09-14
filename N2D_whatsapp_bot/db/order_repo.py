@@ -599,6 +599,7 @@ def get_order(order_id: str):
 # =================================================
 
 ACTIVE_STATUSES = (
+    "CONFIRMED",
     "HELPER_ACCEPTED",
     "ARRIVED_AT_STORE",
     "ARRIVED_AT_CUSTOMER",
