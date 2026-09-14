@@ -78,6 +78,61 @@ def download_whatsapp_media(media_id: str) -> Optional[bytes]:
         print(f"[WA_MEDIA_ERROR] Failed downloading media {media_id}: {e}")
     return None
 
+def send_image(to: str, media_id: str):
+    """
+    Sends an image using Meta's media_id.
+    """
+    if not to or not media_id:
+        return None
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": normalize_number(to),
+        "type": "image",
+        "image": {
+            "id": media_id
+        }
+    }
+    headers = {
+        "Authorization": f"Bearer {get_access_token()}",
+        "Content-Type": "application/json"
+    }
+    try:
+        res = _http.post(message_url(), headers=headers, json=payload, timeout=10)
+        return res.json()
+    except Exception as e:
+        print("[WA_IMAGE_ERROR] Failed sending image:", e)
+        return None
+
+
+def send_audio(to: str, media_id: str):
+    """
+    Sends/forwards an audio/voice note using Meta's media_id.
+    """
+    if not to or not media_id:
+        return None
+        
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": normalize_number(to),
+        "type": "audio",
+        "audio": {
+            "id": media_id
+        }
+    }
+    
+    headers = {
+        "Authorization": f"Bearer {get_access_token()}",
+        "Content-Type": "application/json"
+    }
+    
+    try:
+        res = _http.post(message_url(), headers=headers, json=payload, timeout=10)
+        return res.json()
+    except Exception as e:
+        print("[WA_AUDIO_ERROR] Failed sending audio:", e)
+        return None
+
+
 def normalize_number(num: str) -> str:
     if not num:
         return ""

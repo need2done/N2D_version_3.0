@@ -232,10 +232,10 @@ def handle_vendor(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                     send_message(
                         phone,
                         f"⚠️ *Partial Stock / Alternative Selected for Order #{order_code}*\n\n"
-                        f"Please reply to this message (or send a photo) detailing:\n"
+                        f"Please reply with a **Voice Note 🎙️**, text, or photo detailing:\n"
                         f"1️⃣ Which item is missing/out of stock?\n"
                         f"2️⃣ What alternative brand/medicine is available & price difference?\n\n"
-                        f"We will immediately send your note to the customer for approval!"
+                        f"🎙️ *Tip:* Tap and hold the mic icon in WhatsApp to send a voice note! We will automatically convert your voice note to text for the customer."
                     )
                 else:
                     send_message(phone, f"⚠️ Order *{order_code}* already claimed by another pharmacy.")
@@ -277,9 +277,38 @@ def handle_vendor(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                     cur.close()
                     db.close()
                     
-                    vendor_note = text if text else "Pharmacy reported alternative medicines / partial stock available."
+                    media_id = ""
+                    if text.startswith("AUDIO:"):
+                        media_id = text.split("AUDIO:")[1]
+                    elif isinstance(msg, dict):
+                        audio_obj = msg.get("audio", {}) or msg.get("voice", {})
+                        media_id = audio_obj.get("id", "")
                     
-                    send_message(phone, f"✅ *Update Sent to Customer!*\nWaiting for customer confirmation for Order *{order_code}*.")
+                    transcription = ""
+                    if media_id:
+                        try:
+                            from whatsapp_client import download_whatsapp_media, send_audio
+                            audio_bytes = download_whatsapp_media(media_id)
+                            if audio_bytes:
+                                from utils.ai_service import transcribe_audio_sarvam_or_whisper
+                                transcription = transcribe_audio_sarvam_or_whisper(audio_bytes, "voice.ogg")
+                        except Exception as e:
+                            print("Error transcribing vendor voice note:", e)
+                    
+                    if transcription:
+                        vendor_note = f"🎙️ [Voice Note Transcribed]: {transcription}"
+                        send_message(
+                            phone,
+                            f"✅ *Voice Note Converted to Text & Sent to Customer!*\n\n"
+                            f"📝 *Transcribed Text:*\n\"{transcription}\"\n\n"
+                            f"Waiting for customer decision for Order *{order_code}*..."
+                        )
+                    elif text and not text.startswith("AUDIO:"):
+                        vendor_note = text
+                        send_message(phone, f"✅ *Update Sent to Customer!*\nWaiting for customer confirmation for Order *{order_code}*.")
+                    else:
+                        vendor_note = "🎙️ [Pharmacy sent a voice note regarding alternative medicines]"
+                        send_message(phone, f"✅ *Voice Note Sent to Customer!*\nWaiting for customer confirmation for Order *{order_code}*.")
                     
                     if cust_phone:
                         cust_msg = (
@@ -292,6 +321,11 @@ def handle_vendor(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                             {"id": f"CUST_ALT_SKIP|{order_code}", "title": "▶️ Continue Without"},
                             {"id": f"CUST_ALT_CANCEL|{order_code}", "title": "❌ Cancel Order"}
                         ])
+                        if media_id:
+                            try:
+                                from whatsapp_client import send_audio
+                                send_audio(cust_phone, media_id)
+                            except Exception: pass
                     return
             cur.close()
             db.close()
