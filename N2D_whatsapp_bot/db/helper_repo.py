@@ -59,6 +59,13 @@ def _ensure_helper_status_row(cur, helper_id: int):
 # GET HELPER BY PHONE
 # =================================================
 
+import re
+
+def _clean_digits(val: str) -> str:
+    if not val:
+        return ""
+    return re.sub(r'\D', '', str(val))
+
 def get_helper_by_phone(phone: str) -> Optional[Dict]:
     db = get_db()
     if not db:
@@ -66,15 +73,20 @@ def get_helper_by_phone(phone: str) -> Optional[Dict]:
 
     cur = db.cursor(dictionary=True)
     try:
+        digits = _clean_digits(phone)
+        last10 = digits[-10:] if len(digits) >= 10 else digits
         cur.execute(
             """
             SELECT id, name, phone, helper_code, active, status, wallet_balance
             FROM helpers
-            WHERE phone=%s
-              AND active=1
+            WHERE active=1
+              AND (
+                  phone IN (%s, %s, %s, %s)
+                  OR RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '+', ''), '-', ''), 10) = %s
+              )
             LIMIT 1
             """,
-            (phone,)
+            (phone, digits, "91" + last10, "+91" + last10, last10)
         )
         return cur.fetchone()
     except Exception:
@@ -460,41 +472,34 @@ def get_available_helpers(engine_type: str = 'TASK', service: str = None) -> Lis
 # =================================================
 
 def is_helper(phone: str) -> bool:
-
     db = get_db()
-
     if not db:
         return False
 
     cur = db.cursor()
-
     try:
-        normalized_phone = phone if phone.startswith('+') else '+' + phone
+        digits = _clean_digits(phone)
+        last10 = digits[-10:] if len(digits) >= 10 else digits
         cur.execute(
             """
             SELECT 1
             FROM helpers
-            WHERE (phone=%s OR phone=%s)
-              AND active=1
+            WHERE active=1
+              AND (
+                  phone IN (%s, %s, %s, %s)
+                  OR RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '+', ''), '-', ''), 10) = %s
+              )
             LIMIT 1
             """,
-            (phone, normalized_phone)
+            (phone, digits, "91" + last10, "+91" + last10, last10)
         )
-
         row = cur.fetchone()
-
         return bool(row)
-
     except Exception:
-
         traceback.print_exc()
-
         return False
-
     finally:
-
         cur.close()
-
         db.close()
 
 # =================================================

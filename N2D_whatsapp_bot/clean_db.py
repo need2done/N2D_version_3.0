@@ -2,10 +2,20 @@ from db.mysql_conn import get_db
 
 def main():
     db = get_db()
-    cur = db.cursor()
-    cur.execute("UPDATE orders SET otp = '8662' WHERE order_id = 'N2DCW_5458'")
+    cur = db.cursor(dictionary=True)
+    cur.execute("SELECT id, phone FROM helpers")
+    rows = cur.fetchall()
+    count = 0
+    for r in rows:
+        raw = r["phone"] or ""
+        digits = re.sub(r'\D', '', raw)
+        if len(digits) == 10:
+            digits = '91' + digits
+        if digits != raw:
+            cur.execute("UPDATE helpers SET phone = %s WHERE id = %s", (digits, r["id"]))
+            count += 1
     db.commit()
-    print("✅ Updated order N2DCW_5458 otp to 8662:", cur.rowcount)
+    print(f"✅ Cleaned {count} helper phone numbers in database.")
     cur.close()
     db.close()
 

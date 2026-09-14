@@ -27,16 +27,27 @@ router.get('/', async (req, res) => {
 });
 
 // ==========================================
+function sanitizePhone(raw) {
+    if (!raw) return '';
+    let digits = String(raw).replace(/\D/g, '');
+    if (digits.length === 10) {
+        digits = '91' + digits;
+    }
+    return digits;
+}
+
+// ==========================================
 // POST /api/helpers — Register a new helper
 // Body: { name, phone, helper_code }
 // ==========================================
 router.post('/', async (req, res) => {
     try {
         const { name, phone, helper_code, category } = req.body;
+        const cleanPhone = sanitizePhone(phone);
 
         const [result] = await db.query(
             'INSERT INTO helpers (name, phone, helper_code, category, status, active) VALUES (?, ?, ?, ?, "OFFLINE", 1)',
-            [name, phone, helper_code || `N2D-${Date.now().toString().slice(-4)}`, category || 'BOTH']
+            [name, cleanPhone, helper_code || `N2D-${Date.now().toString().slice(-4)}`, category || 'BOTH']
         );
         const helperId = result.insertId;
 
@@ -94,9 +105,10 @@ router.patch('/:id/category', async (req, res) => {
 router.put('/:id', async (req, res) => {
     try {
         const { name, phone } = req.body;
+        const cleanPhone = sanitizePhone(phone);
         await db.query(
             'UPDATE helpers SET name = ?, phone = ? WHERE id = ?',
-            [name, phone, req.params.id]
+            [name, cleanPhone, req.params.id]
         );
         res.json({ success: true, message: 'Helper updated successfully' });
     } catch (err) {
