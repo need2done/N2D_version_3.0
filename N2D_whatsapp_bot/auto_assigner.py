@@ -81,7 +81,7 @@ def run_auto_assigner():
     cur = db.cursor(dictionary=True)
     
     try:
-        logger.info("Running auto-assigner cycle...")
+        logger.debug("Running auto-assigner cycle...")
         now = datetime.now()
 
         # =======================================================
