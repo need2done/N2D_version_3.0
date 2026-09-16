@@ -30,7 +30,9 @@ export default function HomeServicesPage() {
   const fetchHomeServices = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/home-services/admin/services`);
+      const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+      const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+      const res = await fetch(`${API_URL}/home-services/admin/services`, { headers });
       const data = await res.json();
       if (data.success) {
         setCategories(data.categories || []);

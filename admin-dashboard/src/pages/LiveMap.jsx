@@ -61,7 +61,9 @@ export default function LiveMap() {
 
   const fetchActiveSessions = async () => {
     try {
-      const res = await fetch(`${API_URL}/tracking/active`);
+      const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+      const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+      const res = await fetch(`${API_URL}/tracking/active`, { headers });
       const data = await res.json();
       if (data.success) {
         const now = new Date();
