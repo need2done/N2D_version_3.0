@@ -676,7 +676,16 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
 
                 service_title = order.get('service', 'General Service')
                 earnings_val = order.get('helper_charge')
-                if not earnings_val or float(earnings_val) == 0.0 or (is_anywork and float(earnings_val) == 20.0):
+                if is_home_service:
+                    tot_amt = float(order.get('total_amount') or 0.0)
+                    pf_fee = float(order.get('platform_fee') or 5.0)
+                    if earnings_val and float(earnings_val) > 0.0:
+                        earnings_val = float(earnings_val)
+                    elif tot_amt > 0:
+                        earnings_val = max(tot_amt - pf_fee, round(tot_amt * 0.85, 2))
+                    else:
+                        earnings_val = 150.0
+                elif not earnings_val or float(earnings_val) == 0.0 or (is_anywork and float(earnings_val) == 20.0):
                     payload = safe_parse_payload(order.get("payload"))
                     earnings_val = payload.get("helper_charge") or (25.0 if is_anywork else 20.0)
 
@@ -858,7 +867,7 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                         db.close()
                     start_otp = payload.get("start_otp")
                     
-                    send_message(phone, f"📍 Marked as ARRIVED.\n🔐 Please ask the customer for the *START OTP* and reply:\n*START <otp>*")
+                    send_message(phone, f"📍 Marked as ARRIVED.\n🔐 Please ask the customer for the *START OTP* and reply with the OTP (e.g. *{start_otp}* or *START {start_otp}*):")
                     send_message(
                         order["customer_number"],
                         f"📍 *Your Professional has arrived!*\n\n"
@@ -1958,9 +1967,28 @@ Share this with helper."""
         # 🔑 OTP VERIFICATION (DELIVERY, RIDE & HOME SERVICES)
         # ------------------------------------------------
         is_pure_digit_otp = upper.strip().isdigit() and len(upper.strip()) in (4, 6)
+        is_home_service = active and (active.get("service") == "Home Services" or str(active.get("service")) == "10")
 
-        # 1. TASK ENGINE DELIVERY OTP VERIFICATION (Groceries, Medicines, AnyWork, Custom Work, Food, etc.)
-        if active and active.get("engine_type") == "TASK" and (upper.startswith("OTP ") or is_pure_digit_otp):
+        # 1. START/END OTP FOR RIDES & HOME SERVICES
+        if upper.startswith("START ") or upper.startswith("END ") or (is_pure_digit_otp and active and (active.get("engine_type") == "RIDE" or is_home_service)):
+            
+            if not active or (active.get("engine_type") != "RIDE" and not is_home_service):
+                send_message(phone, "❌ Only available for Rides and Home Services.")
+                return
+                
+            if is_pure_digit_otp:
+                current_status = active.get("status", "")
+                if current_status in ("SERVICE_STARTED", "RIDE_STARTED"):
+                    otp_type = 'END'
+                else:
+                    otp_type = 'START'
+                otp = upper.strip()
+            else:
+                otp_type = 'START' if upper.startswith("START ") else 'END'
+                otp = upper.replace("START ", "").replace("END ", "").strip()
+
+        # 2. TASK ENGINE DELIVERY OTP VERIFICATION (Groceries, Medicines, AnyWork, Custom Work, Food, etc.)
+        elif active and active.get("engine_type") == "TASK" and not is_home_service and (upper.startswith("OTP ") or is_pure_digit_otp):
             otp_code = upper.replace("OTP ", "").strip()
             payload_data = safe_parse_payload(active.get("payload"))
             expected_otp = str(active.get("otp") or payload_data.get("end_otp") or payload_data.get("otp") or "").strip()
@@ -2014,26 +2042,6 @@ Share this with helper."""
             elif expected_otp:
                 send_message(phone, f"❌ Invalid Delivery OTP (*{otp_code}*). Please verify the 4-digit Delivery OTP with the customer and try again.")
                 return
-
-        # 2. START/END OTP FOR RIDES & HOME SERVICES
-        if upper.startswith("START ") or upper.startswith("END ") or (is_pure_digit_otp and active and active.get("engine_type") == "RIDE"):
-            
-            is_home_service = active and (active.get("service") == "Home Services" or str(active.get("service")) == "10")
-            
-            if not active or (active.get("engine_type") != "RIDE" and not is_home_service):
-                send_message(phone, "❌ Only available for Rides and Home Services.")
-                return
-                
-            if is_pure_digit_otp:
-                current_status = active.get("status", "")
-                if current_status in ("SERVICE_STARTED", "RIDE_STARTED"):
-                    otp_type = 'END'
-                else:
-                    otp_type = 'START'
-                otp = upper.strip()
-            else:
-                otp_type = 'START' if upper.startswith("START ") else 'END'
-                otp = upper.replace("START ", "").replace("END ", "").strip()
             
             if is_home_service:
                 payload = safe_parse_payload(active.get("payload"))

@@ -246,6 +246,28 @@ export default function Earnings() {
         />
       </div>
 
+      {/* Earnings & Pricing Configuration Banner */}
+      <div className="card" style={{ marginBottom: '1.5rem', background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <TrendingUp size={20} className="text-primary" /> Service Pricing & Helper Earnings Configuration
+            </h3>
+            <p style={{ margin: '0.3rem 0 0 0', fontSize: '0.88rem', color: 'var(--text-muted)' }}>
+              Configure helper payouts, platform fee splits, and custom rates for Home Services, Rides & Tasks
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <a href="/admin/home-services" className="btn btn-primary" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.4rem', backgroundColor: '#3b82f6', color: '#fff', padding: '0.5rem 1rem', borderRadius: '8px', fontWeight: 600 }}>
+              🏠 Manage Home Services
+            </a>
+            <a href="/admin/settings" className="btn btn-secondary" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem', borderRadius: '8px' }}>
+              ⚙️ Pricing Settings
+            </a>
+          </div>
+        </div>
+      </div>
+
       {/* Data Table Card */}
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
