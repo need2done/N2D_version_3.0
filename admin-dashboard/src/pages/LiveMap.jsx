@@ -92,12 +92,12 @@ export default function LiveMap() {
 
   const getTileUrl = () => {
     if (mapStyle === 'ola-dark') {
-      return 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png';
+      return 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
     } else if (mapStyle === 'satellite') {
-      return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+      return 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
     }
-    // Ola Light Style (Carto Voyager Clean No-Watermark Tile Server)
-    return 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png';
+    // Google Maps Roadmap Tile Server (High resolution, crisp, zero watermark)
+    return 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
   };
 
 
@@ -111,7 +111,7 @@ export default function LiveMap() {
             <span className="ola-badge-live">LIVE</span>
           </div>
           <p className="ola-map-subtitle">
-            Monitoring {sessions.length} active delivery routes (Powered by Ola Maps Engine - Bhongir Pilot)
+            Monitoring {sessions.length} active delivery routes (Powered by Google Maps Engine - Bhongir Pilot)
           </p>
         </div>
 
@@ -121,13 +121,13 @@ export default function LiveMap() {
               className={`ola-style-btn ${mapStyle === 'ola-light' ? 'active' : ''}`}
               onClick={() => setMapStyle('ola-light')}
             >
-              🗺️ Ola Standard
+              🗺️ Google Maps
             </button>
             <button 
               className={`ola-style-btn ${mapStyle === 'ola-dark' ? 'active' : ''}`}
               onClick={() => setMapStyle('ola-dark')}
             >
-              🌙 Night Mode
+              🌙 Standard
             </button>
             <button 
               className={`ola-style-btn ${mapStyle === 'satellite' ? 'active' : ''}`}
@@ -160,7 +160,8 @@ export default function LiveMap() {
           <ZoomControl position="topright" />
           
           <TileLayer
-            attribution='&copy; <a href="https://maps.olaelectric.com" target="_blank" rel="noreferrer">Ola Maps India</a> | Need2Done'
+            key={mapStyle}
+            attribution='&copy; Google Maps | Need2Done'
             url={getTileUrl()}
             maxZoom={19}
             detectRetina={false}

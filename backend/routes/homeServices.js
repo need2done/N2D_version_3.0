@@ -27,12 +27,8 @@ async function sendWhatsAppText(to, text) {
     }
 }
 
-// ==========================================
-// 1. GET ALL SERVICES (WITH CATEGORIES)
-// ==========================================
-router.get('/services', async (req, res) => {
+async function ensureHsTablesExist() {
     try {
-        // Ensure tables exist
         await db.query(`
             CREATE TABLE IF NOT EXISTS hs_service_categories (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -58,8 +54,6 @@ router.get('/services', async (req, res) => {
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         `);
-
-        // Check if categories empty, insert defaults if so
         const [cats] = await db.query('SELECT COUNT(*) as cnt FROM hs_service_categories');
         if (cats[0].cnt === 0) {
             await db.query(`
@@ -79,7 +73,17 @@ router.get('/services', async (req, res) => {
                 (4, 'Full Bathroom Cleaning', 'Tile scrubbing, stain removal & sanitization', 349.00, 300.00, 49.00, '1 Hour')
             `);
         }
+    } catch (e) {
+        console.error('Error in ensureHsTablesExist:', e);
+    }
+}
 
+// ==========================================
+// 1. GET ALL SERVICES (WITH CATEGORIES)
+// ==========================================
+router.get('/services', async (req, res) => {
+    try {
+        await ensureHsTablesExist();
         const [services] = await db.query(`
             SELECT s.*, c.name as category_name, c.icon as category_icon
             FROM hs_services s
@@ -98,6 +102,7 @@ router.get('/services', async (req, res) => {
 // ==========================================
 router.get('/admin/services', async (req, res) => {
     try {
+        await ensureHsTablesExist();
         const [categories] = await db.query('SELECT * FROM hs_service_categories ORDER BY id ASC');
         const [services] = await db.query(`
             SELECT s.*, c.name as category_name, c.icon as category_icon
