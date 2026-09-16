@@ -254,3 +254,10 @@ DEBUG_MODE = os.getenv("DEBUG_MODE", "false").lower() == "true"
 # =================================================
 
 JWT_SECRET = os.getenv("JWT_SECRET", "N2D_LOCAL_SECRET")
+
+
+# =================================================
+# GOOGLE MAPS API PLATFORM KEY
+# =================================================
+
+GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", "AIzaSyAnLydSXSdTriWv0l6gvlzB6SCk0oq6zKo")

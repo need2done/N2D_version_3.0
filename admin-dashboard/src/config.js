@@ -6,4 +6,6 @@ export const API_URL = (typeof window !== 'undefined' && window.location.hostnam
     ? '/api'
     : (import.meta.env.VITE_API_URL || '/api');
 
+export const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyAnLydSXSdTriWv0l6gvlzB6SCk0oq6zKo';
+
 export default API_URL;

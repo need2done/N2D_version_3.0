@@ -14,7 +14,7 @@ def geocode_address(address_text: str, ref_lat: float = None, ref_lng: float = N
     cleaned = str(address_text).strip()
     
     # 1. Try Google Maps Geocoding API
-    google_key = os.getenv("GOOGLE_MAPS_API_KEY")
+    google_key = os.getenv("GOOGLE_MAPS_API_KEY", "AIzaSyAnLydSXSdTriWv0l6gvlzB6SCk0oq6zKo")
     if google_key:
         try:
             url = "https://maps.googleapis.com/maps/api/geocode/json"
@@ -69,3 +69,32 @@ def geocode_address(address_text: str, ref_lat: float = None, ref_lng: float = N
             print(f"OSM Geocoding error: {e}")
 
     return None, None, cleaned
+
+
+def get_google_distance_matrix(origin_lat: float, origin_lng: float, dest_lat: float, dest_lng: float):
+    """
+    Returns (distance_km, duration_mins) between two points using Google Maps Distance Matrix API.
+    """
+    google_key = os.getenv("GOOGLE_MAPS_API_KEY", "AIzaSyAnLydSXSdTriWv0l6gvlzB6SCk0oq6zKo")
+    if not google_key or not origin_lat or not origin_lng or not dest_lat or not dest_lng:
+        return None, None
+    try:
+        url = "https://maps.googleapis.com/maps/api/distancematrix/json"
+        params = {
+            "origins": f"{origin_lat},{origin_lng}",
+            "destinations": f"{dest_lat},{dest_lng}",
+            "key": google_key
+        }
+        res = requests.get(url, params=params, timeout=5)
+        if res.status_code == 200:
+            data = res.json()
+            if data.get("status") == "OK" and data.get("rows"):
+                elements = data["rows"][0].get("elements", [])
+                if elements and elements[0].get("status") == "OK":
+                    dist_meters = elements[0]["distance"]["value"]
+                    dur_secs = elements[0]["duration"]["value"]
+                    return round(dist_meters / 1000.0, 2), round(dur_secs / 60.0, 1)
+    except Exception as e:
+        print(f"Google Distance Matrix error: {e}")
+    return None, None
+

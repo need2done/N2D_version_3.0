@@ -601,19 +601,21 @@
       });
     }
 
-    function handleAutocompleteInput(type, event) {
-      const query = event.target.value.toLowerCase();
+    const GOOGLE_MAPS_KEY = "AIzaSyAnLydSXSdTriWv0l6gvlzB6SCk0oq6zKo";
+
+    async function handleAutocompleteInput(type, event) {
+      const query = event.target.value.trim();
       const list = document.getElementById(`${type}List`);
       list.innerHTML = '';
 
-      const filtered = PRESETS.filter(p => p.name.toLowerCase().includes(query));
-      
-      if (filtered.length === 0) {
+      if (!query) {
         list.style.display = 'none';
         return;
       }
 
+      const filtered = PRESETS.filter(p => p.name.toLowerCase().includes(query.toLowerCase()));
       list.style.display = 'block';
+
       filtered.forEach(p => {
         const div = document.createElement('div');
         div.className = 'autocomplete-item';
@@ -628,6 +630,33 @@
         };
         list.appendChild(div);
       });
+
+      // Also query Google Maps Geocoding API with Demo Key
+      if (query.length >= 3) {
+        try {
+          const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query + ", Bhongir")}&key=${GOOGLE_MAPS_KEY}`);
+          const data = await res.json();
+          if (data.status === 'OK' && data.results && data.results.length > 0) {
+            data.results.slice(0, 4).forEach(item => {
+              const div = document.createElement('div');
+              div.className = 'autocomplete-item';
+              div.style.borderLeft = '3px solid #4285F4';
+              div.innerHTML = `🗺️ <strong>Google Maps:</strong> ${item.formatted_address}`;
+              div.onclick = () => {
+                const lat = item.geometry.location.lat;
+                const lng = item.geometry.location.lng;
+                if (type === 'pickup') {
+                  setPickupCoordinates(lat, lng, item.formatted_address);
+                } else {
+                  setDropCoordinates(lat, lng, item.formatted_address);
+                }
+                list.style.display = 'none';
+              };
+              list.appendChild(div);
+            });
+          }
+        } catch (err) {}
+      }
     }
 
     // Close autocomplete on click outside
