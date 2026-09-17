@@ -531,7 +531,7 @@ def send_rich_welcome(to: str, name: str = None):
         service_bullets = [
             "🏠 Home Services",
             "💊 Medicines Service",
-            "👨‍🔧 Any Work Service"
+            "👷 Any Work Service"
         ]
 
     bullets_text = "\n".join(service_bullets)
@@ -580,7 +580,7 @@ def send_rich_service_list(to: str, name: str = None):
         rows = [
             {"id": "SERVICE_10", "title": "🏠 Home Services", "description": "Book trusted home cleaning and repair services."},
             {"id": "SERVICE_2", "title": "💊 Medicines Service", "description": "Buy health supplies or medicines with prescription."},
-            {"id": "SERVICE_5", "title": "👨‍🔧 Any Work Service", "description": "Pick/Drop parcels, run errands, or custom tasks."},
+            {"id": "SERVICE_5", "title": "👷 Any Work Service", "description": "Pick/Drop parcels, run errands, or custom tasks."},
             {"id": "SERVICE_6", "title": "📞 Support", "description": "Talk to our team for any assistance or help."},
             {"id": "SERVICE_8", "title": "📦 My Orders", "description": "View your recent order history and tracking."}
         ]

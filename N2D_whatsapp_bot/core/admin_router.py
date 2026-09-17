@@ -195,7 +195,7 @@ def handle_admin_interactive(payload: Dict[str, Any]):
             send_reply_buttons(
                 to=order["customer_number"],
                 body=(
-                    "💰 *Payment Required – GramioGO*\n\n"
+                    "💰 *Payment Required – Need2Done*\n\n"
                     f"🆔 Order : {order['order_id']}\n"
                     f"💳 Total : ₹{total}\n\n"
                     "Choose payment method."
