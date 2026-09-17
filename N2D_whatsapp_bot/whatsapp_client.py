@@ -480,19 +480,22 @@ def send_admin_new_order_with_assign_refresh(
 
 def send_image(to: str, media_id: str, caption: str = ""):
     """
-    Sends an image using Meta's media_id.
+    Sends an image using Meta's media_id or public image URL.
     """
     if not to or not media_id:
         return None
         
+    image_obj = {"caption": caption[:1024]}
+    if media_id.startswith("http://") or media_id.startswith("https://"):
+        image_obj["link"] = media_id
+    else:
+        image_obj["id"] = media_id
+
     payload = {
         "messaging_product": "whatsapp",
         "to": normalize_number(to),
         "type": "image",
-        "image": {
-            "id": media_id,
-            "caption": caption[:1024]
-        }
+        "image": image_obj
     }
     return _post(payload)
 

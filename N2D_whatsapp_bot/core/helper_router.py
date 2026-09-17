@@ -63,6 +63,20 @@ def safe_parse_payload(payload_obj):
             return json.loads(payload_obj)
         except Exception:
             return {}
+
+def send_proof_images_to_customer(customer_number: str, order_db_id: int, caption_prefix: str = "🧾 Store Receipt / Bill Proof"):
+    if not customer_number or not order_db_id:
+        return
+    try:
+        from db.order_repo import get_order_images
+        images = get_order_images(order_db_id, 'BILL') or get_order_images(order_db_id, 'ITEM')
+        if images:
+            for img in images:
+                mid = img.get("media_id") or img.get("image_url")
+                if mid:
+                    send_image(customer_number, mid, f"{caption_prefix}")
+    except Exception as e:
+        print("Error sending proof images to customer:", e)
 def resolve_delivery_location(order: dict) -> str:
     if not isinstance(order, dict):
         return "Contact customer for address"
@@ -1367,6 +1381,14 @@ Share this with helper."""
                     [{"id": f"ARRIVED_DROP|{order_db_id}", "title": "📍 Arrived at Customer"}]
                 )
 
+                # Send Store Receipt Proof photos to Customer first
+                if order.get("customer_number"):
+                    send_proof_images_to_customer(
+                        order["customer_number"],
+                        order_db_id,
+                        f"🧾 *Store Receipt Proof (Bill: ₹{amount})*\nUploaded by helper {helper.get('name', 'Helper')}"
+                    )
+
                 # Notify Customer with Cash / UPI payment buttons
                 send_reply_buttons(
                     to=order["customer_number"],
@@ -1422,6 +1444,14 @@ Share this with helper."""
                 log_event(order_db_id, "BILL_UPI_REQUESTED", f"Helper requested online UPI payment for ₹{total_customer}", "HELPER")
 
                 pay_url = f"{TRACKING_BASE_URL}/payment.html?orderId={order['order_id']}&amount={total_customer}"
+
+                # Send Store Receipt Proof photos to Customer first
+                if order.get("customer_number"):
+                    send_proof_images_to_customer(
+                        order["customer_number"],
+                        order_db_id,
+                        f"🧾 *Store Receipt Proof (Bill: ₹{amount})*\nUploaded by helper {helper.get('name', 'Helper')}"
+                    )
 
                 # Send Payment Request to Customer
                 send_url_button(
@@ -1702,6 +1732,14 @@ Share this with helper."""
 
                 log_event(active["id"], "BILL_IMAGE_UPLOADED", f"Bill photo #{photo_count} uploaded", "HELPER")
 
+                # Forward receipt/bill photo to Customer as proof
+                if active.get("customer_number"):
+                    send_image(
+                        active["customer_number"],
+                        media_id,
+                        f"📸 *Store Receipt / Bill Photo #{photo_count}*\nUploaded by helper for Order #{active.get('order_id')}"
+                    )
+
                 msg = (
                     f"📸 *Store Receipt Bill Photo #{photo_count} Uploaded!*\n"
                     f"━━━━━━━━━━━━━━━━━━━━━\n"
@@ -1719,6 +1757,14 @@ Share this with helper."""
                 save_bill_image(active["order_id"], media_id)
                 log_event(active["id"], "BILL_IMAGE_UPLOADED", "Bill image uploaded", "HELPER")
                 
+                # Forward bill photo to Customer as proof
+                if active.get("customer_number"):
+                    send_image(
+                        active["customer_number"],
+                        media_id,
+                        f"📸 *Store Receipt / Bill Photo*\nUploaded by helper for Order #{active.get('order_id')}"
+                    )
+
                 # If prepaid or CART, auto-set bill amount and approve
                 pm = active.get("payment_method")
                 ps = active.get("payment_status")
@@ -1748,6 +1794,14 @@ Share this with helper."""
             if active["status"] in ("HELPER_ARRIVED", "ARRIVED_AT_STORE"):
                 save_item_photo(active["order_id"], media_id)
                 log_event(active["id"], "ITEM_PHOTO_UPLOADED", "Item photo uploaded", "HELPER")
+                
+                # Forward item photo to Customer as proof
+                if active.get("customer_number"):
+                    send_image(
+                        active["customer_number"],
+                        media_id,
+                        f"📸 *Item / Store Purchase Photo*\nUploaded by helper for Order #{active.get('order_id')}"
+                    )
                 
                 is_anywork = active.get("service") in ("AnyWork", 3, 5) or active.get("engine_type") == "TASK"
                 if is_anywork:
