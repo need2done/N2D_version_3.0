@@ -1987,62 +1987,6 @@ Share this with helper."""
                 otp_type = 'START' if upper.startswith("START ") else 'END'
                 otp = upper.replace("START ", "").replace("END ", "").strip()
 
-        # 2. TASK ENGINE DELIVERY OTP VERIFICATION (Groceries, Medicines, AnyWork, Custom Work, Food, etc.)
-        elif active and active.get("engine_type") == "TASK" and not is_home_service and (upper.startswith("OTP ") or is_pure_digit_otp):
-            otp_code = upper.replace("OTP ", "").strip()
-            payload_data = safe_parse_payload(active.get("payload"))
-            expected_otp = str(active.get("otp") or payload_data.get("end_otp") or payload_data.get("otp") or "").strip()
-
-            if expected_otp and otp_code == expected_otp:
-                from db.mysql_conn import get_db
-                db = get_db()
-                cur = db.cursor()
-                cur.execute("""
-                    UPDATE orders 
-                    SET status = 'COMPLETED', 
-                        payment_status = 'PAID', 
-                        completed_at = NOW(), 
-                        tracking_status = 'COMPLETED' 
-                    WHERE id = %s
-                """, (active["id"],))
-                if active.get("helper_id"):
-                    cur.execute("UPDATE helpers SET status = 'ONLINE' WHERE id = %s", (active["helper_id"],))
-                    cur.execute("UPDATE helper_status SET status = 'AVAILABLE' WHERE helper_id = %s", (active["helper_id"],))
-                db.commit()
-                cur.close()
-                db.close()
-
-                log_event(active["id"], "ORDER_COMPLETED_VIA_OTP", f"Order {active['order_id']} completed via Delivery OTP {otp_code}", "HELPER")
-
-                # Send completion notification to Helper
-                send_message(
-                    phone,
-                    f"🎉 *Order Completed! / ఆర్డర్ పూర్తయింది*\n"
-                    f"━━━━━━━━━━━━━━━━━━━━━\n"
-                    f"📝 Order ID: #{active['order_id']}\n"
-                    f"✅ Delivery OTP verified successfully.\n\n"
-                    f"🟢 You are now back ONLINE and available for new orders!"
-                )
-
-                # Send rating feedback buttons to Customer
-                send_reply_buttons(
-                    active["customer_number"],
-                    f"🎉 *Order Delivered & Completed!* 🎉\n"
-                    f"━━━━━━━━━━━━━━━━━━━━━\n"
-                    f"📝 Order ID: #{active['order_id']}\n"
-                    f"Thank you for choosing *Need2Done*! 🙏\n\n"
-                    f"How was your experience with your helper *{helper.get('name', 'Helper')}*?",
-                    [
-                        {"id": f"RATE_5|{active['id']}", "title": "⭐⭐⭐⭐⭐"},
-                        {"id": f"RATE_3|{active['id']}", "title": "⭐⭐⭐"},
-                        {"id": f"RATE_1|{active['id']}", "title": "⭐"}
-                    ]
-                )
-                return
-            elif expected_otp:
-                send_message(phone, f"❌ Invalid Delivery OTP (*{otp_code}*). Please verify the 4-digit Delivery OTP with the customer and try again.")
-                return
-            
             if is_home_service:
                 payload = safe_parse_payload(active.get("payload"))
                 
@@ -2230,6 +2174,62 @@ Share this with helper."""
                     f"⏳ Please wait for customer to complete payment."
                 )
             return
+
+        # 2. TASK ENGINE DELIVERY OTP VERIFICATION (Groceries, Medicines, AnyWork, Custom Work, Food, etc.)
+        elif active and active.get("engine_type") == "TASK" and not is_home_service and (upper.startswith("OTP ") or is_pure_digit_otp):
+            otp_code = upper.replace("OTP ", "").strip()
+            payload_data = safe_parse_payload(active.get("payload"))
+            expected_otp = str(active.get("otp") or payload_data.get("end_otp") or payload_data.get("otp") or "").strip()
+
+            if expected_otp and otp_code == expected_otp:
+                from db.mysql_conn import get_db
+                db = get_db()
+                cur = db.cursor()
+                cur.execute("""
+                    UPDATE orders 
+                    SET status = 'COMPLETED', 
+                        payment_status = 'PAID', 
+                        completed_at = NOW(), 
+                        tracking_status = 'COMPLETED' 
+                    WHERE id = %s
+                """, (active["id"],))
+                if active.get("helper_id"):
+                    cur.execute("UPDATE helpers SET status = 'ONLINE' WHERE id = %s", (active["helper_id"],))
+                    cur.execute("UPDATE helper_status SET status = 'AVAILABLE' WHERE helper_id = %s", (active["helper_id"],))
+                db.commit()
+                cur.close()
+                db.close()
+
+                log_event(active["id"], "ORDER_COMPLETED_VIA_OTP", f"Order {active['order_id']} completed via Delivery OTP {otp_code}", "HELPER")
+
+                # Send completion notification to Helper
+                send_message(
+                    phone,
+                    f"🎉 *Order Completed! / ఆర్డర్ పూర్తయింది*\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"📝 Order ID: #{active['order_id']}\n"
+                    f"✅ Delivery OTP verified successfully.\n\n"
+                    f"🟢 You are now back ONLINE and available for new orders!"
+                )
+
+                # Send rating feedback buttons to Customer
+                send_reply_buttons(
+                    active["customer_number"],
+                    f"🎉 *Order Delivered & Completed!* 🎉\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"📝 Order ID: #{active['order_id']}\n"
+                    f"Thank you for choosing *Need2Done*! 🙏\n\n"
+                    f"How was your experience with your helper *{helper.get('name', 'Helper')}*?",
+                    [
+                        {"id": f"RATE_5|{active['id']}", "title": "⭐⭐⭐⭐⭐"},
+                        {"id": f"RATE_3|{active['id']}", "title": "⭐⭐⭐"},
+                        {"id": f"RATE_1|{active['id']}", "title": "⭐"}
+                    ]
+                )
+                return
+            elif expected_otp:
+                send_message(phone, f"❌ Invalid Delivery OTP (*{otp_code}*). Please verify the 4-digit Delivery OTP with the customer and try again.")
+                return
 
         # ------------------------------------------------
         # 🧾 TASK OTP (GENERIC)
