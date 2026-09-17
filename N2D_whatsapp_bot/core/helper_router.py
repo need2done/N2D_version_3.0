@@ -867,7 +867,7 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                         db.close()
                     start_otp = payload.get("start_otp")
                     
-                    send_message(phone, f"📍 Marked as ARRIVED.\n🔐 Please ask the customer for the *START OTP* and reply with the OTP (e.g. *{start_otp}* or *START {start_otp}*):")
+                    send_message(phone, "📍 Marked as ARRIVED.\n🔐 Please ask the customer for the *START OTP* and reply with the OTP (e.g. *1234* or *START 1234*):")
                     send_message(
                         order["customer_number"],
                         f"📍 *Your Professional has arrived!*\n\n"

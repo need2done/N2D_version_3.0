@@ -541,7 +541,7 @@ def send_rich_welcome(to: str, name: str = None):
         "We help you get anything done locally:\n\n"
         f"{bullets_text}\n\n"
         "⚡ Fast delivery (30-60 mins)\n"
-        "💳 Pay after delivery\n"
+        "💳 Flexible payment options (UPI & Cash)\n"
         "🤝 Trusted local helpers\n\n"
         f"{call_action}"
     )
