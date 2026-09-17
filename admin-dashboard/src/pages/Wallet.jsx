@@ -72,16 +72,21 @@ export default function WalletPage() {
             const res = await axios.get(`${API_URL}/wallet/ledger-all`);
             if (res.data.success) {
                 const allLedger = res.data.ledger || [];
-                const headers = ['Transaction ID', 'Helper Name', 'Helper Code', 'Phone', 'Type', 'Amount (₹)', 'Description', 'Reference ID', 'Date & Time'];
+                const headers = ['Txn ID', 'Helper Name', 'Helper Code', 'Phone', 'Order ID', 'Service', 'Payment Method', 'Customer Paid (₹)', 'Helper Received (₹)', 'Admin Share (₹)', 'Wallet Impact (₹)', 'Type', 'Description', 'Date & Time'];
                 const rows = allLedger.map(txn => [
                     txn.id,
                     txn.helper_name,
                     txn.helper_code,
                     txn.helper_phone,
-                    txn.type,
+                    txn.display_order_id || txn.order_id || '-',
+                    txn.service || '-',
+                    txn.payment_method || 'UPI',
+                    txn.customer_paid || 0,
+                    txn.helper_received || 0,
+                    txn.platform_fee || 0,
                     txn.amount,
+                    txn.type,
                     txn.description || '-',
-                    txn.reference_id || '-',
                     new Date(txn.created_at).toLocaleString()
                 ]);
                 exportToExcel('Need2Done_All_Wallet_Transactions', headers, rows);
@@ -94,13 +99,17 @@ export default function WalletPage() {
     // Export selected helper transactions
     const handleExportSelectedLedger = () => {
         if (!selectedHelper || !ledger.length) return toast.info('No transactions to export for this helper');
-        const headers = ['Transaction ID', 'Type', 'Amount (₹)', 'Description', 'Reference ID', 'Date & Time'];
+        const headers = ['Order ID', 'Service', 'Payment', 'Customer Paid (₹)', 'Helper Received (₹)', 'Admin Share (₹)', 'Wallet Impact (₹)', 'Type', 'Description', 'Date & Time'];
         const rows = ledger.map(txn => [
-            txn.id,
-            txn.type,
+            txn.display_order_id || txn.order_id || '-',
+            txn.service || '-',
+            txn.payment_method || 'UPI',
+            txn.customer_paid || 0,
+            txn.helper_received || 0,
+            txn.platform_fee || 0,
             txn.amount,
+            txn.type,
             txn.description || '-',
-            txn.reference_id || '-',
             new Date(txn.created_at).toLocaleString()
         ]);
         exportToExcel(`Need2Done_Wallet_Ledger_${selectedHelper.name}_${selectedHelper.helper_code}`, headers, rows);
@@ -114,15 +123,18 @@ export default function WalletPage() {
         const stats = [
             { title: 'Helper Name', value: selectedHelper.name, subtitle: `Code: ${selectedHelper.helper_code}` },
             { title: 'Wallet Balance', value: `₹${parseFloat(selectedHelper.wallet_balance).toFixed(2)}`, subtitle: `Status: ${selectedHelper.status}` },
-            { title: 'Total Transactions', value: ledger.length.toString(), subtitle: 'Ledger Records' }
+            { title: 'Total Orders/Txns', value: ledger.length.toString(), subtitle: 'Ledger Records' }
         ];
-        const headers = ['Date & Time', 'Type', 'Description', 'Reference ID', 'Amount'];
+        const headers = ['Date & Time', 'Order ID', 'Service', 'Mode', 'Cust Paid', 'Helper Recv', 'Admin Share', 'Wallet Impact'];
         const rows = ledger.map(txn => [
-            new Date(txn.created_at).toLocaleString(),
-            txn.type,
-            txn.description || '-',
-            txn.reference_id || '-',
-            `₹${parseFloat(txn.amount).toFixed(2)}`
+            new Date(txn.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+            txn.display_order_id || '-',
+            txn.service || '-',
+            txn.payment_method || 'UPI',
+            `₹${parseFloat(txn.customer_paid || 0).toFixed(2)}`,
+            `₹${parseFloat(txn.helper_received || 0).toFixed(2)}`,
+            `₹${parseFloat(txn.platform_fee || 0).toFixed(2)}`,
+            `${txn.type === 'CREDIT' ? '+' : '-'}₹${parseFloat(txn.amount).toFixed(2)}`
         ]);
         exportToPDF(title, dateRange, stats, headers, rows);
     };
@@ -258,9 +270,12 @@ export default function WalletPage() {
                                         <thead>
                                             <tr>
                                                 <th>Date & Time</th>
-                                                <th>Transaction Details</th>
-                                                <th>Reference</th>
-                                                <th className="text-right">Amount</th>
+                                                <th>Order & Service</th>
+                                                <th>Payment Mode</th>
+                                                <th className="text-right">Customer Paid</th>
+                                                <th className="text-right">Helper Received</th>
+                                                <th className="text-right">Admin Share</th>
+                                                <th className="text-right">Wallet Impact</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -272,17 +287,33 @@ export default function WalletPage() {
                                                         })}
                                                     </td>
                                                     <td>
-                                                        <div className="txn-desc">{txn.description}</div>
-                                                        <div className="txn-type">{txn.type}</div>
+                                                        <div style={{ fontWeight: 600, color: 'var(--text-main, #1e293b)' }}>
+                                                            {txn.display_order_id || (txn.order_id ? `#${txn.order_id}` : '-')}
+                                                        </div>
+                                                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted, #64748b)' }}>
+                                                            {txn.service || txn.description}
+                                                        </div>
                                                     </td>
                                                     <td>
-                                                        {txn.order_id ? (
-                                                            <span className="order-badge">
-                                                                #{txn.order_id}
-                                                            </span>
-                                                        ) : (
-                                                            <span className="no-order">-</span>
-                                                        )}
+                                                        <span style={{ 
+                                                            fontSize: '0.75rem', 
+                                                            padding: '2px 8px', 
+                                                            borderRadius: '4px',
+                                                            fontWeight: 600,
+                                                            backgroundColor: txn.payment_method === 'COD' ? '#fef3c7' : '#dbeafe',
+                                                            color: txn.payment_method === 'COD' ? '#d97706' : '#2563eb'
+                                                        }}>
+                                                            {txn.payment_method || 'UPI'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="text-right" style={{ fontWeight: 600 }}>
+                                                        ₹{parseFloat(txn.customer_paid || 0).toFixed(2)}
+                                                    </td>
+                                                    <td className="text-right" style={{ fontWeight: 600, color: '#10b981' }}>
+                                                        ₹{parseFloat(txn.helper_received || 0).toFixed(2)}
+                                                    </td>
+                                                    <td className="text-right" style={{ fontWeight: 600, color: '#3b82f6' }}>
+                                                        ₹{parseFloat(txn.platform_fee || 0).toFixed(2)}
                                                     </td>
                                                     <td className="text-right">
                                                         <div className={`txn-amount ${txn.type === 'CREDIT' ? 'text-success' : 'text-danger'}`}>
@@ -293,7 +324,7 @@ export default function WalletPage() {
                                                 </tr>
                                             )) : (
                                                 <tr>
-                                                    <td colSpan="4" className="empty-ledger">
+                                                    <td colSpan="7" className="empty-ledger">
                                                         <History className="opacity-20 mb-4 mx-auto" size={48} />
                                                         <p>No transactions recorded yet.</p>
                                                     </td>

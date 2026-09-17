@@ -496,12 +496,15 @@ def complete_order(order_id: str) -> bool:
                 (order["helper_id"],)
             )
 
-            # --- WALLET DEDUCTION LOGIC FOR COD ---
-            if order.get("payment_method") == "COD":
-                # Helper collected cash. They keep their helper_charge.
-                # The rest is owed to Admin/Platform/Vendor.
-                amount_to_deduct = float(order.get("total_amount") or 0) - float(order.get("helper_charge") or 0)
-                
+            # --- WALLET & LEDGER LOGIC FOR COMPLETED ORDERS ---
+            pm = (order.get("payment_method") or "COD").upper()
+            tot_amt = float(order.get("total_amount") or order.get("bill_amount") or 0)
+            h_charge = float(order.get("helper_charge") or (tot_amt * 0.85))
+            p_fee = float(order.get("platform_fee") or (tot_amt - h_charge))
+
+            if pm == "COD":
+                # Helper collected cash. They keep their helper_charge; rest owed to Admin/Platform.
+                amount_to_deduct = max(0, tot_amt - h_charge)
                 if amount_to_deduct > 0:
                     cur.execute(
                         "UPDATE helpers SET wallet_balance = wallet_balance - %s WHERE id = %s",
@@ -510,6 +513,17 @@ def complete_order(order_id: str) -> bool:
                     cur.execute(
                         "INSERT INTO helper_ledger (helper_id, amount, type, description, order_id) VALUES (%s, %s, 'DEBIT', %s, %s)",
                         (order["helper_id"], amount_to_deduct, f"COD Collection for Order {order['order_id']}", order["id"])
+                    )
+            else:
+                # Online / UPI Order. Customer paid Need2Done online. Helper gets credited h_charge into wallet.
+                if h_charge > 0:
+                    cur.execute(
+                        "UPDATE helpers SET wallet_balance = wallet_balance + %s WHERE id = %s",
+                        (h_charge, order["helper_id"])
+                    )
+                    cur.execute(
+                        "INSERT INTO helper_ledger (helper_id, amount, type, description, order_id) VALUES (%s, %s, 'CREDIT', %s, %s)",
+                        (order["helper_id"], h_charge, f"Online Earnings for Order {order['order_id']}", order["id"])
                     )
 
         db.commit()
