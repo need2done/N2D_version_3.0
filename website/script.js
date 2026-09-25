@@ -265,7 +265,7 @@ function toggleCartDrawer(open) {
 }
 
 function proceedToCheckout() {
-  window.location.href = `/vegetables-fruits?customerId=15556349916&orderId=N2D10001`;
+  window.location.href = `/vegetables-fruits?customerId=917989862623&orderId=N2D10001`;
 }
 
 // ─── LOCATION SELECTION MODAL ───
@@ -381,7 +381,7 @@ function submitMedicineOrder(e) {
 
   const text = `Hi Need2Done, I would like to order medicines:\n\n👤 Name: ${name}\n📞 Phone: ${phone}\n💊 Medicines/Prescription: ${list}\n📍 Address: ${address}`;
   const encodedText = encodeURIComponent(text);
-  const waUrl = `https://wa.me/15556349916?text=${encodedText}`;
+  const waUrl = `https://wa.me/917989862623?text=${encodedText}`;
   
   closeMedicineModal();
   window.open(waUrl, '_blank');
@@ -407,7 +407,7 @@ function submitAnyWorkTask(e) {
 
   const text = `Hi Need2Done, I have an Any Work custom task request:\n\n👤 Name: ${name}\n📞 Phone: ${phone}\n👷 Task Details: ${task}\n📍 Locations: ${locations}`;
   const encodedText = encodeURIComponent(text);
-  const waUrl = `https://wa.me/15556349916?text=${encodedText}`;
+  const waUrl = `https://wa.me/917989862623?text=${encodedText}`;
   
   closeAnyWorkModal();
   window.open(waUrl, '_blank');
