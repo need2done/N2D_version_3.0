@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Need2Done — Powerful Hyperlocal Agent & Instant Delivery</title>
-  <meta name="description" content="Need2Done delivers groceries, fresh vegetables & fruits, food, and home services instantly in 15-30 minutes. Sourced fresh daily, delivered via WhatsApp & Web.">
-  <meta name="keywords" content="hyperlocal delivery, groceries delivery, fresh vegetables, fresh fruits, food delivery, home services, Bhongir, Hyderabad, Yadadri, Need2Done">
+  <title>Need2Done — Hyperlocal Home Services, Medicines & Custom Errands</title>
+  <meta name="description" content="Need2Done provides 3 essential hyperlocal services in Bhongir & Telangana: Home Services & Repairs, Express Medicines Delivery, and Any Work custom errands. Delivered in 15-30 mins via Web & WhatsApp.">
+  <meta name="keywords" content="Need2Done, Home Services, Medicine Delivery, Any Work, Pick and Drop, Custom Errands, Bhongir, Telangana, WhatsApp Delivery">
   <meta name="author" content="Need2Done">
   
   <!-- Open Graph -->
-  <meta property="og:title" content="Need2Done — Everything You Need, Delivered Instantly">
-  <meta property="og:description" content="Get groceries, fresh produce, food, and home services delivered in 15-30 minutes.">
+  <meta property="og:title" content="Need2Done — 3 Essential Local Services Delivered Instantly">
+  <meta property="og:description" content="Book Home Services, Order Medicines in 20 mins, or Request Any Work custom errands locally.">
   <meta property="og:type" content="website">
   
   <link rel="icon" href="/assets/logo.png">
@@ -55,11 +55,11 @@
 
       <!-- Center Nav Links -->
       <nav class="codex-nav-links">
-        <a href="#services" class="nav-item" onclick="scrollToSection('services')">Services</a>
-        <a href="#products" class="nav-item" onclick="scrollToSection('products')">Products</a>
-        <a href="#offers" class="nav-item" onclick="scrollToSection('offers')">Offers</a>
-        <a href="#trust-section" class="nav-item" onclick="scrollToSection('trust-section')">Why Us</a>
-        <a href="/admin-catalog.html" class="nav-item">Admin</a>
+        <a href="#services" class="nav-item" onclick="scrollToSection('services')">Our 3 Services</a>
+        <a href="/home-services" class="nav-item">🏠 Home Services</a>
+        <a href="javascript:void(0)" class="nav-item" onclick="openMedicineModal()">💊 Medicines</a>
+        <a href="javascript:void(0)" class="nav-item" onclick="openAnyWorkModal()">👷 Any Work</a>
+        <a href="/help.html" class="nav-item">Help & Support</a>
       </nav>
 
       <!-- Right Header Actions -->
@@ -77,17 +77,10 @@
           <svg class="moon-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
         </button>
 
-        <!-- Cart Button -->
-        <button class="nav-cart-btn" onclick="toggleCartDrawer(true)">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-          <span class="cart-count-badge" id="headerCartCount">0</span>
-        </button>
-
-        <!-- Sign In Button -->
-        <button class="btn-signin-codex" onclick="window.location.href='/admin-catalog.html'">Sign In</button>
-
-        <!-- Primary CTA Button -->
-        <button class="btn-primary-codex" onclick="scrollToSection('services')">Explore Services ↗</button>
+        <!-- Direct WhatsApp CTA -->
+        <a href="https://wa.me/15556349916?text=Hi%20Need2Done%2C%20I%20want%20to%20book%20a%20service" target="_blank" class="btn-primary-codex" style="display: flex; align-items: center; gap: 8px;">
+          <span>💬 Order on WhatsApp</span>
+        </a>
       </div>
     </div>
   </header>
@@ -104,17 +97,15 @@
         <span style="font-size: 0.65rem; opacity: 0.8;">▼</span>
       </div>
       <div class="sticky-nav">
-        <span class="sticky-nav-link" onclick="scrollToSection('services')">Services</span>
-        <span class="sticky-nav-link" onclick="scrollToSection('offers')">🉐 Offers</span>
-        <a href="#" class="sticky-nav-link sticky-cart-link" onclick="toggleCartDrawer(true); return false;">
-          🛒 Cart <span class="cart-badge" id="stickyCartCount">0</span>
-        </a>
-        <button class="btn-signin-codex sm" onclick="window.location.href='/admin-catalog.html'">Sign In</button>
+        <span class="sticky-nav-link" onclick="scrollToSection('services')">Our 3 Services</span>
+        <a href="/home-services" class="sticky-nav-link">🏠 Home Services</a>
+        <a href="javascript:void(0)" class="sticky-nav-link" onclick="openMedicineModal()">💊 Medicines</a>
+        <a href="javascript:void(0)" class="sticky-nav-link" onclick="openAnyWorkModal()">👷 Any Work</a>
       </div>
     </div>
   </div>
 
-  <!-- --- HERO SECTION (ChatGPT Codex Page Architecture) --- -->
+  <!-- --- HERO SECTION --- -->
   <section class="codex-hero-section">
     <div class="container codex-hero-container">
       
@@ -128,124 +119,145 @@
 
       <!-- Main Headline -->
       <h1 class="hero-title">Need2Done</h1>
-      <p class="hero-subtitle">The same instant hyperlocal delivery platform — now in 15 minutes.</p>
+      <p class="hero-subtitle">3 Essential Hyperlocal Services Delivered Instantly — Home Services, Medicine Delivery, & Any Work Errands.</p>
 
-      <!-- Double Split Glass Search Bar Widget -->
-      <div class="codex-search-widget">
-        <div class="swiggy-search-container">
-          <div class="search-split-left" onclick="openLocationModal()" style="cursor: pointer;">
-            <svg class="input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-            <input type="text" id="heroLocationText" readonly placeholder="Enter your delivery location..." style="cursor: pointer;">
-            <span class="location-chevron">▼</span>
+      <!-- 3 Service Quick Selector Pills -->
+      <div class="hero-service-selector-row">
+        <a href="/home-services" class="hero-service-pill">
+          <span class="pill-icon">🏠</span>
+          <div class="pill-text">
+            <strong>Home Services</strong>
+            <small>Cleaning, AC, Electrical & Plumbing</small>
           </div>
-          <div class="search-split-right">
-            <svg class="input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" id="globalSearchInput" placeholder="Search for restaurant, groceries, or service..." oninput="handleSearchInput(event)">
+          <span class="pill-arrow">↗</span>
+        </a>
+
+        <a href="javascript:void(0)" onclick="openMedicineModal()" class="hero-service-pill">
+          <span class="pill-icon">💊</span>
+          <div class="pill-text">
+            <strong>Medicines Service</strong>
+            <small>20-Min Delivery & Prescription Upload</small>
           </div>
-        </div>
+          <span class="pill-arrow">⚡</span>
+        </a>
+
+        <a href="javascript:void(0)" onclick="openAnyWorkModal()" class="hero-service-pill">
+          <span class="pill-icon">👷</span>
+          <div class="pill-text">
+            <strong>Any Work Service</strong>
+            <small>Pick & Drop, Store Purchases & Tasks</small>
+          </div>
+          <span class="pill-arrow">📦</span>
+        </a>
       </div>
 
-      <!-- Trust Ribbon ("Trusted by top teams") -->
-      <div class="hero-trust-ribbon">
-        <span class="trust-ribbon-title">Delivering across top regions</span>
+      <!-- Trust Ribbon ("Delivering across top regions") -->
+      <div class="hero-trust-ribbon" style="margin-top: 40px;">
+        <span class="trust-ribbon-title">Trusted Hyperlocal Network</span>
         <div class="trust-logos-row">
           <div class="trust-logo-chip"><span>📍 Bhongir Town</span></div>
-          <div class="trust-logo-chip"><span>🏛️ Yadadri Temple Zone</span></div>
-          <div class="trust-logo-chip"><span>🏙️ Hyderabad East</span></div>
-          <div class="trust-logo-chip"><span>⚡ 15-Min Express</span></div>
-          <div class="trust-logo-chip"><span>💬 WhatsApp Direct</span></div>
+          <div class="trust-logo-chip"><span>🏛️ Yadadri Zone</span></div>
+          <div class="trust-logo-chip"><span>⚡ 15-30 Mins Express</span></div>
+          <div class="trust-logo-chip"><span>💳 Flexible Payment (UPI & Cash)</span></div>
+          <div class="trust-logo-chip"><span>🤝 Verified Local Helpers</span></div>
         </div>
       </div>
 
     </div>
   </section>
 
-  <!-- --- SERVICES BENTO CARDS GRID --- -->
+  <!-- --- 3 ACTIVE SERVICES BENTO CARDS GRID --- -->
   <section class="service-cards-section" id="services">
     <div class="container">
       <div class="section-title-wrapper">
-        <span class="section-kicker">Instant Services</span>
-        <h2 class="section-heading">Everything You Need, Delivered Instantly</h2>
-        <p class="section-subheading">Choose a service category to start your instant 15-30 minute order.</p>
+        <span class="section-kicker">Core Offerings</span>
+        <h2 class="section-heading">Our 3 Active Local Services</h2>
+        <p class="section-subheading">Select any service below to book online, upload requirements, or dispatch a verified helper instantly.</p>
       </div>
 
-      <div class="services-grid">
+      <div class="services-grid three-active-services-grid">
         
-        <!-- 1. Instamart Groceries -->
-        <div class="service-card codex-glass-card" onclick="window.location.href='/groceries'">
-          <div class="card-glow-bg"></div>
-          <span class="sub-title">INSTAMART</span>
-          <h2>Instamart Groceries</h2>
-          <span class="promo-tag">UPTO 40% OFF</span>
-          <img src="https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&q=80" alt="Groceries Basket" class="service-card-img">
-          <div class="service-card-bottom">
-            <span class="service-card-eta">⚡ 15 Mins Express</span>
-            <div class="btn-arrow-circle">➔</div>
+        <!-- SERVICE 1: Home Services -->
+        <div class="service-card codex-glass-card active-service-card">
+          <div class="card-glow-bg" style="background: radial-gradient(circle, rgba(139, 92, 246, 0.25) 0%, transparent 70%);"></div>
+          <div class="card-header-badge-row">
+            <span class="sub-title">SERVICE #1</span>
+            <span class="promo-tag" style="background: rgba(139, 92, 246, 0.2); color: var(--primary); padding: 4px 10px; border-radius: 20px;">PRO HELPERS</span>
+          </div>
+          <h2 style="margin-top: 8px;">🏠 Home Services & Repairs</h2>
+          <p style="color: var(--text-secondary); font-size: 0.92rem; margin-bottom: 16px; line-height: 1.5;">Book background-verified technicians for cleaning, repairs, electrical, plumbing & AC services.</p>
+          
+          <ul class="service-features-list">
+            <li><span class="bullet-icon">🧹</span> <strong>Deep Home & Office Cleaning</strong></li>
+            <li><span class="bullet-icon">⚡</span> <strong>AC Service, Fan & Electrical Repairs</strong></li>
+            <li><span class="bullet-icon">🚰</span> <strong>Plumbing, Carpentry & Maintenance</strong></li>
+            <li><span class="bullet-icon">🛡️</span> <strong>100% Safe & Verified Local Experts</strong></li>
+          </ul>
+
+          <div class="card-price-row">
+            <span class="price-tag">Starting from ₹199</span>
+            <span class="eta-tag">⏱️ 30-Min Arrival</span>
+          </div>
+
+          <div class="service-card-actions">
+            <a href="/home-services" class="btn-primary-codex full-width">Book Home Services ↗</a>
+            <a href="https://wa.me/15556349916?text=Hi%20Need2Done%2C%20I%20want%20to%20book%20Home%20Services" target="_blank" class="btn-whatsapp-outline full-width">💬 Book via WhatsApp</a>
           </div>
         </div>
 
-        <!-- 2. Fresh Produce (Veggies & Fruits) -->
-        <div class="service-card codex-glass-card" onclick="window.location.href='/vegetables-fruits?customerId=15556349916&orderId=N2D10001'">
-          <div class="card-glow-bg"></div>
-          <span class="sub-title">FARM FRESH</span>
-          <h2>Fresh Fruits & Veggies</h2>
-          <span class="promo-tag">UPTO 30% OFF</span>
-          <img src="https://images.unsplash.com/photo-1619546813926-a78fa6372cd2?w=400&q=80" alt="Fruits & Veggies" class="service-card-img">
-          <div class="service-card-bottom">
-            <span class="service-card-eta">⚡ Daily Morning Pick</span>
-            <div class="btn-arrow-circle">➔</div>
+        <!-- SERVICE 2: Medicines Service -->
+        <div class="service-card codex-glass-card active-service-card">
+          <div class="card-glow-bg" style="background: radial-gradient(circle, rgba(16, 185, 129, 0.25) 0%, transparent 70%);"></div>
+          <div class="card-header-badge-row">
+            <span class="sub-title" style="color: var(--accent-green);">SERVICE #2</span>
+            <span class="promo-tag" style="background: rgba(16, 185, 129, 0.2); color: var(--accent-green); padding: 4px 10px; border-radius: 20px;">EXPRESS 20 MINS</span>
+          </div>
+          <h2 style="margin-top: 8px;">💊 Medicines & Healthcare</h2>
+          <p style="color: var(--text-secondary); font-size: 0.92rem; margin-bottom: 16px; line-height: 1.5;">Order prescription medicines, health supplies & OTC wellness items delivered in 20-30 minutes.</p>
+          
+          <ul class="service-features-list">
+            <li><span class="bullet-icon">📄</span> <strong>Upload Prescription Online or WhatsApp</strong></li>
+            <li><span class="bullet-icon">💊</span> <strong>100% Genuine Certified Pharmacies</strong></li>
+            <li><span class="bullet-icon">🚑</span> <strong>Emergency Priority Delivery</strong></li>
+            <li><span class="bullet-icon">📦</span> <strong>Discreet & Sealed Packaging</strong></li>
+          </ul>
+
+          <div class="card-price-row">
+            <span class="price-tag" style="color: var(--accent-green);">Up to 15% OFF</span>
+            <span class="eta-tag">⚡ 20-Min Delivery</span>
+          </div>
+
+          <div class="service-card-actions">
+            <button onclick="openMedicineModal()" class="btn-primary-codex full-width" style="background: linear-gradient(135deg, var(--accent-green), #047857);">Order Medicines 💊</button>
+            <a href="https://wa.me/15556349916?text=Hi%20Need2Done%2C%20I%20need%20medicines" target="_blank" class="btn-whatsapp-outline full-width">💬 Order via WhatsApp</a>
           </div>
         </div>
 
-        <!-- 3. Food Delivery -->
-        <div class="service-card codex-glass-card" onclick="window.location.href='/food'">
-          <div class="card-glow-bg"></div>
-          <span class="sub-title">RESTAURANTS</span>
-          <h2>Hot Restaurant Food</h2>
-          <span class="promo-tag">UPTO 60% OFF</span>
-          <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=80" alt="Hot Restaurant Food" class="service-card-img">
-          <div class="service-card-bottom">
-            <span class="service-card-eta">Order via WhatsApp</span>
-            <div class="btn-arrow-circle">➔</div>
+        <!-- SERVICE 3: Any Work Service -->
+        <div class="service-card codex-glass-card active-service-card">
+          <div class="card-glow-bg" style="background: radial-gradient(circle, rgba(236, 72, 153, 0.25) 0%, transparent 70%);"></div>
+          <div class="card-header-badge-row">
+            <span class="sub-title" style="color: var(--accent-pink);">SERVICE #3</span>
+            <span class="promo-tag" style="background: rgba(236, 72, 153, 0.2); color: var(--accent-pink); padding: 4px 10px; border-radius: 20px;">INSTANT AGENT</span>
           </div>
-        </div>
+          <h2 style="margin-top: 8px;">👷 Any Work & Custom Errands</h2>
+          <p style="color: var(--text-secondary); font-size: 0.92rem; margin-bottom: 16px; line-height: 1.5;">Pick & drop parcels, buy items from any store, pay local bills, or get custom tasks done effortlessly.</p>
+          
+          <ul class="service-features-list">
+            <li><span class="bullet-icon">📦</span> <strong>Pick & Drop Parcels & Documents</strong></li>
+            <li><span class="bullet-icon">🛒</span> <strong>Buy Anything from Any Local Store</strong></li>
+            <li><span class="bullet-icon">🧾</span> <strong>Bill Payments & Office Errands</strong></li>
+            <li><span class="bullet-icon">🛵</span> <strong>Dedicated Helper Assigned Instantly</strong></li>
+          </ul>
 
-        <!-- 4. Need2Done Genie -->
-        <div class="service-card codex-glass-card" onclick="window.location.href='/home-services'">
-          <div class="card-glow-bg"></div>
-          <span class="sub-title">CUSTOM TASK</span>
-          <h2>Need2Done Genie</h2>
-          <span class="promo-tag">FROM ₹20</span>
-          <img src="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400&q=80" alt="Genie Helper Services" class="service-card-img">
-          <div class="service-card-bottom">
-            <span class="service-card-eta">Instant Personal Agent</span>
-            <div class="btn-arrow-circle">➔</div>
+          <div class="card-price-row">
+            <span class="price-tag" style="color: var(--accent-pink);">Base Fare ₹30</span>
+            <span class="eta-tag">⚡ Live Helper GPS</span>
           </div>
-        </div>
 
-        <!-- 5. Ride Booking -->
-        <div class="service-card codex-glass-card" onclick="window.open('https://wa.me/15556349916?text=Hi%2C%20I%20need%20a%20ride')">
-          <div class="card-glow-bg"></div>
-          <span class="sub-title">MOBILITY</span>
-          <h2>Bike & Auto Taxi</h2>
-          <span class="promo-tag">FAST RIDE</span>
-          <img src="https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=400&q=80" alt="Ride booking taxi" class="service-card-img">
-          <div class="service-card-bottom">
-            <span class="service-card-eta">⚡ Safe & Affordable</span>
-            <div class="btn-arrow-circle">➔</div>
-          </div>
-        </div>
-
-        <!-- 6. Medicine Delivery -->
-        <div class="service-card codex-glass-card" onclick="window.open('https://wa.me/15556349916?text=Hi%2C%20I%20need%20medicines')">
-          <div class="card-glow-bg"></div>
-          <span class="sub-title">PHARMACY</span>
-          <h2>Medicine Express</h2>
-          <span class="promo-tag">15% OFF</span>
-          <img src="https://images.unsplash.com/photo-1584017911766-d451b3d0e843?w=400&q=80" alt="Medicine delivery" class="service-card-img">
-          <div class="service-card-bottom">
-            <span class="service-card-eta">⚡ 20 Mins Delivery</span>
-            <div class="btn-arrow-circle">➔</div>
+          <div class="service-card-actions">
+            <button onclick="openAnyWorkModal()" class="btn-primary-codex full-width" style="background: linear-gradient(135deg, var(--accent-pink), #BE185D);">Request Any Work 👷</button>
+            <a href="https://wa.me/15556349916?text=Hi%20Need2Done%2C%20I%20have%20an%20Any%20Work%20custom%20task" target="_blank" class="btn-whatsapp-outline full-width">💬 Request via WhatsApp</a>
           </div>
         </div>
 
@@ -253,53 +265,32 @@
     </div>
   </section>
 
-  <!-- --- FEATURED PRODUCTS CAROUSEL --- -->
-  <section class="container" id="products" style="margin-bottom: 80px;">
-    <div class="section-header">
-      <div class="section-title-group">
-        <span class="section-kicker">Store Highlights</span>
-        <h2>Featured Products</h2>
-        <p>Explore hot-selling fresh items from our store catalog.</p>
-      </div>
-    </div>
-    <div class="products-carousel-container">
-      <div class="products-track" id="featuredProductsTrack">
-        <!-- Loaded dynamically -->
-      </div>
-    </div>
-  </section>
-
-  <!-- --- TODAY'S OFFERS SECTION --- -->
-  <section id="offers" class="offers-section">
+  <!-- --- HOW IT WORKS SECTION --- -->
+  <section class="how-it-works-section" style="padding: 60px 0; position: relative;">
     <div class="container">
-      <div class="section-header">
-        <div class="section-title-group">
-          <span class="section-kicker">Exclusive Savings</span>
-          <h2>Offers & Promo Codes</h2>
-          <p>Click any coupon code below to copy it directly to your clipboard.</p>
-        </div>
+      <div class="section-title-wrapper">
+        <span class="section-kicker">Simple & Fast</span>
+        <h2 class="section-heading">How Need2Done Works</h2>
+        <p class="section-subheading">Get anything done in 3 effortless steps — no complicated app installation required.</p>
       </div>
-      <div class="offers-grid">
-        <!-- Offer 1 -->
-        <div class="offer-card codex-glass-card">
-          <span class="offer-card-badge">Flat Discount</span>
-          <h3>Flat ₹100 OFF</h3>
-          <p>Get flat ₹100 discount on fresh vegetables & fruit orders above ₹500.</p>
-          <div class="offer-card-code" onclick="copyPromoCode(this, 'N2DVEG100')">CODE: N2DVEG100</div>
+
+      <div class="steps-grid">
+        <div class="step-card codex-glass-card">
+          <div class="step-number">01</div>
+          <h3>Select Your Service</h3>
+          <p>Choose from Home Services, Medicine Delivery, or Any Work Custom Errands directly on Web or WhatsApp.</p>
         </div>
-        <!-- Offer 2 -->
-        <div class="offer-card codex-glass-card">
-          <span class="offer-card-badge" style="background: linear-gradient(135deg, #10B981, #059669);">Zero Fee</span>
-          <h3>Free Delivery</h3>
-          <p>Order groceries and daily essentials worth ₹250 or more with zero delivery fee.</p>
-          <div class="offer-card-code" onclick="copyPromoCode(this, 'FREEDEL')">CODE: FREEDEL</div>
+
+        <div class="step-card codex-glass-card">
+          <div class="step-number">02</div>
+          <h3>Provide Details or Location</h3>
+          <p>Share your task requirements, prescription, or delivery location with our automated system.</p>
         </div>
-        <!-- Offer 3 -->
-        <div class="offer-card codex-glass-card">
-          <span class="offer-card-badge" style="background: linear-gradient(135deg, #EC4899, #8B5CF6);">Exotic BOGO</span>
-          <h3>Buy 1 Get 1 Free</h3>
-          <p>Applicable on organic exotic vegetables (Broccoli, Avocado, Dragon Fruit) every Wednesday.</p>
-          <div class="offer-card-code" onclick="copyPromoCode(this, 'BOGOEXOTIC')">CODE: BOGOEXOTIC</div>
+
+        <div class="step-card codex-glass-card">
+          <div class="step-number">03</div>
+          <h3>Fast Delivery & Pay</h3>
+          <p>Our verified local helper arrives in 15-30 minutes. Pay flexibly online via UPI or Cash on delivery.</p>
         </div>
       </div>
     </div>
@@ -311,23 +302,23 @@
       <div class="trust-grid">
         <div class="trust-card codex-glass-card">
           <div class="trust-card-icon">⚡</div>
-          <h3>15-Min Delivery</h3>
-          <p>Average delivery time of 15 to 30 minutes direct to your door.</p>
+          <h3>15-30 Min Arrival</h3>
+          <p>Rapid helper dispatch direct to your location across Bhongir & Yadadri.</p>
         </div>
         <div class="trust-card codex-glass-card">
-          <div class="trust-card-icon">🥦</div>
-          <h3>Daily Farm Fresh</h3>
-          <p>100% farm-fresh produce sourced daily with transparent pricing.</p>
+          <div class="trust-card-icon">💳</div>
+          <h3>Flexible Payment</h3>
+          <p>Choose between Online UPI payment or Cash after delivery/service.</p>
         </div>
         <div class="trust-card codex-glass-card">
-          <div class="trust-card-icon">🔒</div>
-          <h3>Zero Minimum</h3>
-          <p>No order size minimums. Order single items or weekly baskets easily.</p>
+          <div class="trust-card-icon">🤝</div>
+          <h3>Verified Helpers</h3>
+          <p>All technicians and helpers are background-verified and locally trusted.</p>
         </div>
         <div class="trust-card codex-glass-card">
           <div class="trust-card-icon">💬</div>
           <h3>WhatsApp Support</h3>
-          <p>Instant human & bot help on WhatsApp whenever you need it.</p>
+          <p>24/7 instant helper updates and customer support directly on WhatsApp.</p>
         </div>
       </div>
     </div>
@@ -340,7 +331,7 @@
       <div class="footer-top-status">
         <div class="status-indicator">
           <span class="status-dot"></span>
-          <span class="status-text">All Systems Operational & Deliveries Active</span>
+          <span class="status-text">All 3 Services Active & Helpers Ready in Bhongir</span>
         </div>
       </div>
 
@@ -349,31 +340,30 @@
           <a href="/" class="codex-brand" style="margin-bottom: 16px;">
             <img src="/assets/logo.png" onerror="this.src='logo.png'" alt="Need2Done Logo" style="height: 38px; width: auto; object-fit: contain;">
           </a>
-          <p>Need2Done is a hyperlocal delivery network delivering groceries, vegetables, fruits, and food instantly via WhatsApp & Web across Bhongir, Hyderabad, and Yadadri.</p>
+          <p>Need2Done is a hyperlocal service network providing Home Services, Express Medicines, and Any Work custom errands across Bhongir, Yadadri, and Telangana.</p>
         </div>
         
         <div class="footer-col">
-          <h4>Services</h4>
+          <h4>Active Services</h4>
           <ul>
-            <li><a href="/groceries">Instamart Groceries</a></li>
-            <li><a href="/vegetables-fruits">Fresh Veggies & Fruits</a></li>
-            <li><a href="/food">Restaurant Food</a></li>
-            <li><a href="/home-services">Need2Done Genie</a></li>
+            <li><a href="/home-services">🏠 Home Services & Repairs</a></li>
+            <li><a href="javascript:void(0)" onclick="openMedicineModal()">💊 Medicines Service</a></li>
+            <li><a href="javascript:void(0)" onclick="openAnyWorkModal()">👷 Any Work Custom Errands</a></li>
           </ul>
         </div>
 
         <div class="footer-col">
-          <h4>Company</h4>
+          <h4>Quick Actions</h4>
           <ul>
-            <li><a href="/about.html">About Us</a></li>
-            <li><a href="/contact.html">Contact Us</a></li>
+            <li><a href="https://wa.me/15556349916?text=Hi%20Need2Done" target="_blank">💬 Chat on WhatsApp</a></li>
             <li><a href="/help.html">Help & FAQs</a></li>
-            <li><a href="/admin-catalog.html">Store Portal</a></li>
+            <li><a href="/contact.html">Contact Us</a></li>
+            <li><a href="/admin-catalog.html">Admin Portal</a></li>
           </ul>
         </div>
 
         <div class="footer-col">
-          <h4>Legal</h4>
+          <h4>Legal & Policy</h4>
           <ul>
             <li><a href="/privacy.html">Privacy Policy</a></li>
             <li><a href="/terms.html">Terms of Service</a></li>
@@ -390,6 +380,76 @@
     </div>
   </footer>
 
+  <!-- --- MEDICINE ORDER MODAL --- -->
+  <div class="modal-overlay" id="medicineModal">
+    <div class="modal codex-glass-card" style="max-width: 520px; text-align: left;">
+      <div class="modal-header">
+        <h3>💊 Order Medicines</h3>
+        <button class="btn-modal-close" onclick="closeMedicineModal()">×</button>
+      </div>
+      <p style="color: var(--text-secondary); font-size: 0.88rem; margin-bottom: 16px;">Describe your required medicines or prescription. Our verified helper will deliver them in 20-30 minutes.</p>
+      
+      <form id="medicineForm" onsubmit="submitMedicineOrder(event)">
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px;">YOUR NAME</label>
+          <input type="text" id="medName" required placeholder="Enter your full name" class="modal-input">
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px;">WHATSAPP PHONE NUMBER</label>
+          <input type="tel" id="medPhone" required placeholder="e.g. 9876543210" class="modal-input">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px;">MEDICINE NAMES & QUANTITIES</label>
+          <textarea id="medList" required rows="3" placeholder="e.g. Paracetamol 650mg (1 strip), Vitamin C (1 bottle)..." class="modal-input"></textarea>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 20px;">
+          <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px;">DELIVERY ADDRESS</label>
+          <input type="text" id="medAddress" required placeholder="House No, Street, Landmark, Bhongir" class="modal-input">
+        </div>
+
+        <button type="submit" class="btn-primary-codex full-width" style="background: linear-gradient(135deg, var(--accent-green), #047857); padding: 14px;">Order Medicines via WhatsApp ↗</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- --- ANY WORK REQUEST MODAL --- -->
+  <div class="modal-overlay" id="anyWorkModal">
+    <div class="modal codex-glass-card" style="max-width: 520px; text-align: left;">
+      <div class="modal-header">
+        <h3>👷 Request Any Work</h3>
+        <button class="btn-modal-close" onclick="closeAnyWorkModal()">×</button>
+      </div>
+      <p style="color: var(--text-secondary); font-size: 0.88rem; margin-bottom: 16px;">Need a parcel picked/dropped or errands run? Describe your task and a verified helper will be assigned.</p>
+      
+      <form id="anyWorkForm" onsubmit="submitAnyWorkTask(event)">
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px;">YOUR NAME</label>
+          <input type="text" id="awName" required placeholder="Enter your full name" class="modal-input">
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px;">WHATSAPP PHONE NUMBER</label>
+          <input type="tel" id="awPhone" required placeholder="e.g. 9876543210" class="modal-input">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px;">TASK DETAILS / SHOPPING INSTRUCTIONS</label>
+          <textarea id="awTask" required rows="3" placeholder="e.g. Buy 2kg rice from Laxmi Store and drop at my home, or pick parcel from X location..." class="modal-input"></textarea>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 20px;">
+          <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px;">PICKUP & DROP LOCATIONS</label>
+          <input type="text" id="awLocations" required placeholder="Pickup Location & Drop Address in Bhongir" class="modal-input">
+        </div>
+
+        <button type="submit" class="btn-primary-codex full-width" style="background: linear-gradient(135deg, var(--accent-pink), #BE185D); padding: 14px;">Dispatch Helper via WhatsApp ↗</button>
+      </form>
+    </div>
+  </div>
+
   <!-- --- LOCATION SELECTION MODAL --- -->
   <div class="modal-overlay" id="locationModal">
     <div class="modal codex-glass-card">
@@ -403,36 +463,17 @@
       
       <div class="modal-search">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" id="locationSearchInput" placeholder="Search other location..." oninput="handleLocationSearch(event)">
+        <input type="text" id="locationSearchInput" placeholder="Search location..." oninput="handleLocationSearch(event)">
       </div>
       
       <div class="modal-error" id="locationError">Service is currently unavailable in this area.</div>
       
-      <h4 style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Active Delivery Zones</h4>
+      <h4 style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Active Service Zones</h4>
       <div class="saved-locations-list" id="locationsList">
         <div class="saved-location-item" onclick="selectLocation('Bhongir, Telangana')">📍 Bhongir, Telangana</div>
         <div class="saved-location-item" onclick="selectLocation('Yadadri, Telangana')">📍 Yadadri, Telangana</div>
         <div class="saved-location-item" onclick="selectLocation('Hyderabad City')">📍 Hyderabad City, Telangana</div>
       </div>
-    </div>
-  </div>
-
-  <!-- --- CART DRAWER BAR --- -->
-  <div class="cart-drawer-overlay" id="cartOverlay" onclick="toggleCartDrawer(false)"></div>
-  <div class="cart-drawer" id="cartDrawer">
-    <div class="cart-drawer-header">
-      <h3>🛒 Shopping Cart</h3>
-      <button class="btn-modal-close" onclick="toggleCartDrawer(false)">×</button>
-    </div>
-    <div class="cart-drawer-items" id="cartDrawerItems">
-      <div style="text-align: center; color: var(--text-secondary); padding: 40px 0;">Your cart is empty.</div>
-    </div>
-    <div class="cart-drawer-footer">
-      <div class="cart-drawer-subtotal">
-        <span>Subtotal</span>
-        <span id="cartDrawerTotal">₹0.00</span>
-      </div>
-      <button class="btn-cart-checkout" onclick="proceedToCheckout()">Checkout via WhatsApp ↗</button>
     </div>
   </div>
 

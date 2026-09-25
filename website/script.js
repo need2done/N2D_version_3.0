@@ -361,15 +361,66 @@ function handleSearchInput(e) {
   });
 }
 
+// ─── MEDICINE MODAL HANDLERS ───
+function openMedicineModal() {
+  const modal = document.getElementById('medicineModal');
+  if (modal) modal.classList.add('active');
+}
+
+function closeMedicineModal() {
+  const modal = document.getElementById('medicineModal');
+  if (modal) modal.classList.remove('active');
+}
+
+function submitMedicineOrder(e) {
+  e.preventDefault();
+  const name = document.getElementById('medName').value;
+  const phone = document.getElementById('medPhone').value;
+  const list = document.getElementById('medList').value;
+  const address = document.getElementById('medAddress').value;
+
+  const text = `Hi Need2Done, I would like to order medicines:\n\n👤 Name: ${name}\n📞 Phone: ${phone}\n💊 Medicines/Prescription: ${list}\n📍 Address: ${address}`;
+  const encodedText = encodeURIComponent(text);
+  const waUrl = `https://wa.me/15556349916?text=${encodedText}`;
+  
+  closeMedicineModal();
+  window.open(waUrl, '_blank');
+}
+
+// ─── ANY WORK MODAL HANDLERS ───
+function openAnyWorkModal() {
+  const modal = document.getElementById('anyWorkModal');
+  if (modal) modal.classList.add('active');
+}
+
+function closeAnyWorkModal() {
+  const modal = document.getElementById('anyWorkModal');
+  if (modal) modal.classList.remove('active');
+}
+
+function submitAnyWorkTask(e) {
+  e.preventDefault();
+  const name = document.getElementById('awName').value;
+  const phone = document.getElementById('awPhone').value;
+  const task = document.getElementById('awTask').value;
+  const locations = document.getElementById('awLocations').value;
+
+  const text = `Hi Need2Done, I have an Any Work custom task request:\n\n👤 Name: ${name}\n📞 Phone: ${phone}\n👷 Task Details: ${task}\n📍 Locations: ${locations}`;
+  const encodedText = encodeURIComponent(text);
+  const waUrl = `https://wa.me/15556349916?text=${encodedText}`;
+  
+  closeAnyWorkModal();
+  window.open(waUrl, '_blank');
+}
+
 // ─── INITIALIZATION ───
 async function init() {
   initTheme();
   initParticlesCanvas();
-  await loadFeaturedProducts();
-  loadCartFromStorage();
   
   const cachedLocation = localStorage.getItem('selectedLocation') || 'Bhongir, Telangana';
   selectLocation(cachedLocation);
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
