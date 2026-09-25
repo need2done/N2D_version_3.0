@@ -377,7 +377,8 @@ app.get('/open-app', (req, res) => {
     if (!order_id || !helper_code) {
         return res.status(400).send("Invalid Tracking Link");
     }
-    const deepLink = `gramiogo://track?order_id=${order_id}&helper_code=${helper_code}`;
+    const deepLinkN2D = `n2d://track?order_id=${order_id}&helper_code=${helper_code}`;
+    const deepLinkGramio = `gramiogo://track?order_id=${order_id}&helper_code=${helper_code}`;
     
     // Serve a simple mobile-friendly HTML page that auto-redirects
     res.send(`
@@ -386,17 +387,26 @@ app.get('/open-app', (req, res) => {
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <meta http-equiv="refresh" content="0; url=${deepLink}" />
-            <title>Opening N2D Tracking...</title>
+            <meta http-equiv="refresh" content="0; url=${deepLinkN2D}" />
+            <title>Opening Need2Done Agent App...</title>
             <style>
-                body { font-family: sans-serif; text-align: center; padding: 2rem; background: #0f172a; color: white; }
-                a { color: #4ade80; font-weight: bold; text-decoration: none; padding: 1rem; border: 1px solid #4ade80; border-radius: 8px; display: inline-block; margin-top: 1rem; }
+                body { font-family: 'Inter', system-ui, sans-serif; text-align: center; padding: 2rem; background: #0f172a; color: white; }
+                .btn { color: white; background: #8B5CF6; font-weight: bold; text-decoration: none; padding: 0.8rem 1.5rem; border-radius: 99px; display: inline-block; margin-top: 1rem; }
+                .btn-secondary { background: #334155; }
             </style>
         </head>
         <body>
-            <h2>Opening N2D Agent App...</h2>
-            <p>If the app does not open automatically, please tap the button below.</p>
-            <a href="${deepLink}">Open N2D Agent</a>
+            <h2>🛵 Opening Need2Done Agent App...</h2>
+            <p>If the app does not open automatically, tap below:</p>
+            <br>
+            <a href="${deepLinkN2D}" class="btn">📱 Open in Helper App</a>
+            <br><br>
+            <a href="${deepLinkGramio}" class="btn btn-secondary">Open (Legacy Link)</a>
+            <script>
+                setTimeout(function() {
+                    window.location.href = "${deepLinkN2D}";
+                }, 300);
+            </script>
         </body>
         </html>
     `);

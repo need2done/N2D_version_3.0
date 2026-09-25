@@ -91,7 +91,7 @@ router.post('/start', authenticateHelperAndOrder, async (req, res) => {
         // Update order tracking status
         await db.query('UPDATE orders SET tracking_status = "STARTED", status = "HELPER_ARRIVED" WHERE id = ?', [order_id]);
 
-        const trackingLink = `${process.env.API_BASE_URL || 'http://localhost:5000'}/track/${token}`;
+        const trackingLink = `${process.env.TRACKING_BASE_URL || process.env.PUBLIC_BASE_URL || 'https://need2done.in'}/track/${token}`;
 
         res.json({ success: true, token, tracking_link: trackingLink });
     } catch (err) {
@@ -228,8 +228,8 @@ router.get('/live/:token', async (req, res) => {
         }
 
         // If not found, check if it's a direct order_id (e.g. N2DVFDFBF)
-        if (!tokenId && tokenStr.startsWith('N2D')) {
-            const [orderRows] = await db.query('SELECT id FROM orders WHERE order_id = ?', [tokenStr]);
+        if (!tokenId) {
+            const [orderRows] = await db.query('SELECT id FROM orders WHERE order_id = ? OR id = ?', [tokenStr, tokenStr]);
             if (orderRows.length > 0) {
                 tokenId = orderRows[0].id;
             }

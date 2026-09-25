@@ -87,7 +87,7 @@ DB_CONFIG = {
 # TRACKING CONFIG
 # =================================================
 
-TRACKING_BASE_URL = os.getenv("TRACKING_BASE_URL", "http://localhost:5000")
+TRACKING_BASE_URL = os.getenv("TRACKING_BASE_URL", os.getenv("PUBLIC_BASE_URL", "https://need2done.in")).rstrip("/")
 
 
 # =================================================
