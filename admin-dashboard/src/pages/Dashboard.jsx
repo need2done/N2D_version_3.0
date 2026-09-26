@@ -1,18 +1,37 @@
 import { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, MapPin, Activity, Download, FileText, Calendar, RotateCcw, Filter, RefreshCw, Search, X, Zap, Eye, Phone, MessageSquare, ExternalLink, Clock, Store, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Users, MapPin, Activity, Download, FileText, Calendar, RotateCcw, Filter, RefreshCw, Search, X, Zap, Eye, Phone, MessageSquare, ExternalLink, Clock, Store, ShieldCheck, CreditCard } from 'lucide-react';
 import { exportToExcel, exportToPDF } from '../utils/exportUtils';
 import { API_URL } from '../config';
 
 
-const StatCard = ({ title, value, Icon, color, bgColor }) => (
-  <div className="card" style={{ flex: 1, margin: '0 0.5rem 1rem 0.5rem', minWidth: '220px' }}>
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <div>
-        <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{title}</p>
-        <h2 style={{ margin: '0.4rem 0', fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-main)' }}>{value}</h2>
+const StatCard = ({ title, value, Icon, color, bgColor, trend }) => (
+  <div className="stat-card" style={{ margin: '0 0 0 0' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div style={{ flex: 1 }}>
+        <p style={{
+          margin: 0,
+          color: '#64748b',
+          fontSize: '11px',
+          fontWeight: 700,
+          textTransform: 'uppercase',
+          letterSpacing: '0.07em',
+          marginBottom: '8px'
+        }}>{title}</p>
+        <p style={{
+          margin: 0,
+          fontSize: '28px',
+          fontWeight: 800,
+          color: '#0f172a',
+          letterSpacing: '-0.03em',
+          fontVariantNumeric: 'tabular-nums',
+          lineHeight: 1.1
+        }}>{value}</p>
       </div>
-      <div className="stat-card-badge" style={{ backgroundColor: bgColor || 'rgba(59, 130, 246, 0.12)', color: color || 'var(--primary)' }}>
-        <Icon size={24} />
+      <div className="stat-card-badge" style={{
+        backgroundColor: bgColor || 'rgba(59, 130, 246, 0.10)',
+        color: color || '#2563eb'
+      }}>
+        <Icon size={20} strokeWidth={2} />
       </div>
     </div>
   </div>
@@ -319,17 +338,19 @@ export default function Dashboard() {
   };
 
   const getStatusBadgeClass = (status, locked) => {
-    if (locked) return 'danger';
+    if (locked) return 'CANCELLED';
     switch (status) {
-      case 'CONFIRMED': return 'pending';
+      case 'CONFIRMED':             return 'DRAFT';
       case 'HELPER_ACCEPTED':
       case 'HELPER_ARRIVED':
       case 'RIDE_STARTED':
-      case 'BILL_IMAGE_UPLOADED': return 'active';
+      case 'ITEM_PHOTO_UPLOADED':
+      case 'BILL_IMAGE_UPLOADED':   return 'ACTIVE';
+      case 'ADMIN_APPROVED_BILL':   return 'ASSIGNED';
       case 'COMPLETED':
-      case 'PAID': return 'ride'; 
-      case 'CANCELLED': return 'danger';
-      default: return '';
+      case 'PAID':                  return 'COMPLETED';
+      case 'CANCELLED':             return 'CANCELLED';
+      default:                      return 'DRAFT';
     }
   };
   // Dynamic order filtering (Global Search + Status Filter)
@@ -408,177 +429,129 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Stat Cards */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', margin: '0 -0.5rem 1rem -0.5rem' }}>
-        <StatCard title="Total Orders" value={orders.length} Icon={LayoutDashboard} color="#3B82F6" bgColor="rgba(59, 130, 246, 0.12)" />
-        <StatCard title="Online Helpers" value={stats.onlineHelpers} Icon={Users} color="#10B981" bgColor="rgba(16, 185, 129, 0.12)" />
-        <StatCard title="Active Trackers" value={stats.activeTrackers} Icon={MapPin} color="#F59E0B" bgColor="rgba(245, 158, 11, 0.12)" />
-        <StatCard title="Platform Status" value="ONLINE ⚡" Icon={Activity} color="#8B5CF6" bgColor="rgba(139, 92, 246, 0.12)" />
+      {/* Stat Cards — 8px grid, card blocks */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+        gap: '16px',
+        marginBottom: '20px'
+      }}>
+        <StatCard title="Total Orders"    value={orders.length}         Icon={LayoutDashboard} color="#2563eb" bgColor="rgba(37,99,235,0.09)" />
+        <StatCard title="Online Helpers"  value={stats.onlineHelpers}   Icon={Users}           color="#059669" bgColor="rgba(5,150,105,0.09)" />
+        <StatCard title="Active Trackers" value={stats.activeTrackers}  Icon={MapPin}          color="#d97706" bgColor="rgba(217,119,6,0.09)" />
+        <StatCard title="Platform Status" value="Operational"            Icon={Activity}        color="#7c3aed" bgColor="rgba(124,58,237,0.09)" />
       </div>
 
-      {/* Service Filters & Date Toolbar */}
-      <div className="card" style={{ padding: '1rem 1.25rem', marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-          
-          {/* 8 Core Service Filter Pills */}
-          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            {['ALL', 'GROCERIES', 'VEG & FRUITS', 'HOME SERVICES', 'RIDE', 'MEDICINES', 'FOOD', 'ANYWORK'].map(f => (
-              <button
-                key={f}
-                className={`btn ${filter === f ? 'btn-primary' : 'btn-outline'}`}
-                style={{ padding: '0.4rem 0.85rem', fontSize: '0.825rem', borderRadius: '20px' }}
-                onClick={() => setFilter(f)}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
-
-          {/* Date Picker & Refresh Controls */}
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <Calendar size={16} color="var(--text-muted)" />
-            <input 
-              type="date" 
-              className="input" 
-              value={draftDateFilter} 
-              onChange={(e) => setDraftDateFilter(e.target.value)} 
-              style={{ padding: '0.4rem 0.6rem' }}
-              title="Filter orders by date"
-              max={getLocalDate()}
-            />
-            <button 
-              className="btn btn-primary" 
-              onClick={() => { setActivePreset('CUSTOM'); setDateFilter(draftDateFilter); }}
-              style={{ padding: '0.45rem 0.85rem' }}
+      {/* Service Category Tabs + Date Controls */}
+      <div className="card" style={{ padding: 0, marginBottom: '16px', overflow: 'hidden' }}>
+        {/* Horizontal scrollable tab bar */}
+        <div className="category-tabs-bar">
+          {['ALL', 'GROCERIES', 'VEG & FRUITS', 'HOME SERVICES', 'RIDE', 'MEDICINES', 'FOOD', 'ANYWORK'].map(f => (
+            <button
+              key={f}
+              className={`category-tab${filter === f ? ' active' : ''}`}
+              onClick={() => setFilter(f)}
             >
-              <Filter size={15} /> Apply
+              {f}
             </button>
-            {(dateFilter || filter !== 'ALL') && (
-              <button 
-                className="btn btn-outline" 
-                onClick={() => {
-                  setFilter('ALL');
-                  setActivePreset('ALL');
-                  setDraftDateFilter('');
-                  setDateFilter('');
-                }}
-                style={{ padding: '0.45rem 0.85rem' }}
-              >
-                <RotateCcw size={15} /> Reset
-              </button>
-            )}
-            <button className="btn btn-outline" onClick={fetchData} style={{ padding: '0.45rem 0.85rem' }}>
-              <RefreshCw size={15} /> Refresh
-            </button>
-          </div>
+          ))}
+        </div>
 
+        {/* Date Picker & Refresh Controls */}
+        <div style={{
+          display: 'flex',
+          gap: '8px',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          padding: '10px 14px',
+          borderTop: '1px solid #f1f5f9'
+        }}>
+          <Calendar size={14} color="#94a3b8" />
+          <input
+            type="date"
+            className="input"
+            value={draftDateFilter}
+            onChange={(e) => setDraftDateFilter(e.target.value)}
+            style={{ padding: '5px 10px', fontSize: '13px' }}
+            title="Filter orders by date"
+            max={getLocalDate()}
+          />
+          <button className="btn btn-primary" style={{ padding: '5px 12px', fontSize: '13px' }}
+            onClick={() => { setActivePreset('CUSTOM'); setDateFilter(draftDateFilter); }}>
+            <Filter size={13} /> Apply
+          </button>
+          {(dateFilter || filter !== 'ALL') && (
+            <button className="btn btn-outline" style={{ padding: '5px 12px', fontSize: '13px' }}
+              onClick={() => { setFilter('ALL'); setActivePreset('ALL'); setDraftDateFilter(''); setDateFilter(''); }}>
+              <RotateCcw size={13} /> Reset
+            </button>
+          )}
+          <button className="btn btn-outline" style={{ padding: '5px 12px', fontSize: '13px' }} onClick={fetchData}>
+            <RefreshCw size={13} /> Refresh
+          </button>
         </div>
       </div>
 
-      {/* 🔍 GLOBAL SEARCH & STATUS FILTER TOOLBAR */}
-      <div className="card" style={{ padding: '1.25rem', marginBottom: '1.5rem', background: 'var(--surface-card, #1e293b)' }}>
-        {/* Search Input Bar */}
-        <div style={{ position: 'relative', marginBottom: '1rem' }}>
-          <Search size={20} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary, #3b82f6)' }} />
-          <input 
-            type="text"
+      {/* Global Search + Status Filter Toolbar */}
+      <div className="card" style={{ padding: '14px 16px', marginBottom: '16px' }}>
+        {/* Search Input */}
+        <div style={{ position: 'relative', marginBottom: '12px' }}>
+          <Search size={15} style={{
+            position: 'absolute', left: '12px', top: '50%',
+            transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none'
+          }} />
+          <input
+            type="search"
             className="input"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="🔍 Global Search: Type Order ID (#N2D...), Customer Name, Phone, Items, Helper, or Status..."
-            style={{
-              width: '100%',
-              padding: '0.75rem 2.75rem 0.75rem 2.8rem',
-              fontSize: '0.95rem',
-              borderRadius: '12px',
-              border: searchQuery ? '2px solid var(--primary, #3b82f6)' : '1px solid var(--border, #334155)',
-              background: 'var(--background, #0f172a)',
-              color: 'var(--text-main, #f8fafc)',
-              boxShadow: searchQuery ? '0 0 12px rgba(59, 130, 246, 0.25)' : 'none',
-              transition: 'all 0.2s'
-            }}
+            placeholder="Search by Order ID, customer name, phone, items, helper…"
+            style={{ width: '100%', paddingLeft: '36px', paddingRight: searchQuery ? '36px' : '12px' }}
           />
           {searchQuery && (
-            <button 
-              onClick={() => setSearchQuery('')}
-              style={{
-                position: 'absolute',
-                right: '12px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                background: 'none',
-                border: 'none',
-                color: 'var(--text-muted, #94a3b8)',
-                cursor: 'pointer',
-                fontSize: '16px'
-              }}
-            >
-              <X size={18} />
-            </button>
+            <button onClick={() => setSearchQuery('')} style={{
+              position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
+              background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0
+            }}><X size={15} /></button>
           )}
         </div>
 
-        {/* Status Filter Tabs & Counts */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginRight: '0.25rem' }}>
-              Status Filter:
-            </span>
-
-            <button
-              className={`btn ${statusFilter === 'ALL' ? 'btn-primary' : 'btn-outline'}`}
-              style={{ padding: '0.4rem 0.85rem', fontSize: '0.825rem', borderRadius: '20px' }}
-              onClick={() => setStatusFilter('ALL')}
-            >
-              ALL ({orders.length})
-            </button>
-
-            <button
-              className={`btn ${statusFilter === 'ACTIVE' ? 'btn-primary' : 'btn-outline'}`}
-              style={{ 
-                padding: '0.4rem 0.85rem', 
-                fontSize: '0.825rem', 
-                borderRadius: '20px',
-                background: statusFilter === 'ACTIVE' ? '#10b981' : 'transparent',
-                borderColor: '#10b981',
-                color: statusFilter === 'ACTIVE' ? '#ffffff' : '#34d399',
-                fontWeight: '700'
-              }}
-              onClick={() => setStatusFilter('ACTIVE')}
-            >
-              <Zap size={14} style={{ marginRight: '4px' }} />
-              ACTIVE ORDERS ({activeOrdersCount})
-            </button>
-
-            <button
-              className={`btn ${statusFilter === 'DRAFT' ? 'btn-primary' : 'btn-outline'}`}
-              style={{ padding: '0.4rem 0.85rem', fontSize: '0.825rem', borderRadius: '20px' }}
-              onClick={() => setStatusFilter('DRAFT')}
-            >
-              DRAFT ({draftOrdersCount})
-            </button>
-
-            <button
-              className={`btn ${statusFilter === 'COMPLETED' ? 'btn-primary' : 'btn-outline'}`}
-              style={{ padding: '0.4rem 0.85rem', fontSize: '0.825rem', borderRadius: '20px' }}
-              onClick={() => setStatusFilter('COMPLETED')}
-            >
-              COMPLETED ({completedOrdersCount})
-            </button>
-
-            <button
-              className={`btn ${statusFilter === 'CANCELLED' ? 'btn-primary' : 'btn-outline'}`}
-              style={{ padding: '0.4rem 0.85rem', fontSize: '0.825rem', borderRadius: '20px' }}
-              onClick={() => setStatusFilter('CANCELLED')}
-            >
-              CANCELLED ({cancelledOrdersCount})
-            </button>
+        {/* Status filter as tab list */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+          <div className="category-tabs-bar" style={{ border: 'none', gap: '2px' }}>
+            {[
+              { key: 'ALL',       label: `All Orders`,          count: orders.length },
+              { key: 'ACTIVE',    label: `Active`,              count: activeOrdersCount },
+              { key: 'DRAFT',     label: `Draft`,               count: draftOrdersCount },
+              { key: 'COMPLETED', label: `Completed`,           count: completedOrdersCount },
+              { key: 'CANCELLED', label: `Cancelled`,           count: cancelledOrdersCount },
+            ].map(({ key, label, count }) => (
+              <button
+                key={key}
+                className={`category-tab${statusFilter === key ? ' active' : ''}`}
+                onClick={() => setStatusFilter(key)}
+                style={{ padding: '6px 12px' }}
+              >
+                {label}
+                <span style={{
+                  marginLeft: '6px',
+                  background: statusFilter === key ? '#dbeafe' : '#f1f5f9',
+                  color: statusFilter === key ? '#1d4ed8' : '#64748b',
+                  borderRadius: '9999px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  padding: '1px 7px',
+                  display: 'inline-block',
+                  minWidth: '22px',
+                  textAlign: 'center'
+                }}>{count}</span>
+              </button>
+            ))}
           </div>
-
           {(searchQuery || statusFilter !== 'ALL') && (
-            <div style={{ fontSize: '0.85rem', color: '#38bdf8', fontWeight: 600 }}>
-              Showing {filteredOrders.length} of {orders.length} orders
-            </div>
+            <span style={{ fontSize: '12px', color: '#2563eb', fontWeight: 600 }}>
+              {filteredOrders.length} of {orders.length} orders
+            </span>
           )}
         </div>
       </div>
@@ -617,7 +590,7 @@ export default function Dashboard() {
               <th>Customer</th>
               <th>Details / Items</th>
               <th>Status</th>
-              <th>Bill</th>
+              <th style={{ textAlign: 'right' }}>Bill (₹)</th>
               <th>Rating</th>
               <th>Actions</th>
             </tr>
@@ -653,12 +626,12 @@ export default function Dashboard() {
                         <span>🚗 Vehicle: <strong>{order.vehicle_type}</strong></span>
                         {order.pickup_lat && (
                           <span style={{ fontSize: '0.75rem' }}>
-                            📍 <a href={`https://maps.google.com/?q=${order.pickup_lat},${order.pickup_lng}`} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)' }}>Pickup</a>
+                            ðŸ“ <a href={`https://maps.google.com/?q=${order.pickup_lat},${order.pickup_lng}`} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)' }}>Pickup</a>
                           </span>
                         )}
                         {order.drop_lat && (
                           <span style={{ fontSize: '0.75rem' }}>
-                            🏁 <a href={`https://maps.google.com/?q=${order.drop_lat},${order.drop_lng}`} target="_blank" rel="noreferrer" style={{ color: 'var(--secondary)' }}>Drop</a>
+                            ðŸ <a href={`https://maps.google.com/?q=${order.drop_lat},${order.drop_lng}`} target="_blank" rel="noreferrer" style={{ color: 'var(--secondary)' }}>Drop</a>
                           </span>
                         )}
                       </div>
@@ -686,8 +659,8 @@ export default function Dashboard() {
                           if (pLoc || dLoc) {
                             return (
                               <div style={{ marginTop: '4px', fontSize: '0.75rem', color: '#94a3b8' }}>
-                                {pLoc && <div style={{ color: '#38bdf8' }}>📍 <strong>Pickup:</strong> {pLoc}</div>}
-                                {dLoc && <div style={{ color: '#34d399' }}>🏁 <strong>Drop:</strong> {dLoc}</div>}
+                                {pLoc && <div style={{ color: '#38bdf8' }}>ðŸ“ <strong>Pickup:</strong> {pLoc}</div>}
+                                {dLoc && <div style={{ color: '#34d399' }}>ðŸ <strong>Drop:</strong> {dLoc}</div>}
                               </div>
                             );
                           }
@@ -710,34 +683,40 @@ export default function Dashboard() {
                   )}
                 </td>
                 <td>
-                  <span className={`badge ${getStatusBadgeClass(order.status, order.ride_locked)}`}>
-                    {order.ride_locked ? '🚨 LOCKED' : order.status}
+                  <span className={`status-badge ${getStatusBadgeClass(order.status, order.ride_locked)}`}>
+                    {order.ride_locked ? 'LOCKED' : order.status.replace(/_/g, ' ')}
                   </span>
-                  {order.helper_name && <div style={{ fontSize: '0.75rem', marginTop: '4px' }}>👤 {order.helper_name}</div>}
+                  {order.helper_name && (
+                    <div style={{ fontSize: '12px', marginTop: '5px', color: '#475569', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Users size={11} /> {order.helper_name}
+                    </div>
+                  )}
                   {order.vendor_name && (
-                    <div style={{ fontSize: '0.75rem', marginTop: '4px', color: 'var(--secondary)' }}>
-                      🏪 {order.vendor_name} ({order.vendor_status || 'PENDING'})
+                    <div style={{ fontSize: '12px', marginTop: '3px', color: '#7c3aed', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Store size={11} /> {order.vendor_name}
                     </div>
                   )}
                 </td>
-                <td>
-                  <strong>₹{(() => {
-                    if (order.total_amount && parseFloat(order.total_amount) > 0) return order.total_amount;
-                    if (order.bill_amount && parseFloat(order.bill_amount) > 0) return order.bill_amount;
-                    let pData = order.parsed_payload;
-                    if (!pData && order.payload) {
-                      try { pData = typeof order.payload === 'string' ? JSON.parse(order.payload) : order.payload; } catch(e){}
-                    }
-                    pData = pData || {};
-                    return pData.cost || pData.estimated_cost || pData.quoted_fee || 0;
-                  })()}</strong>
+                <td className="td-amount">
+                  <span style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>
+                    ₹{(() => {
+                      if (order.total_amount && parseFloat(order.total_amount) > 0) return Number(order.total_amount).toLocaleString('en-IN');
+                      if (order.bill_amount && parseFloat(order.bill_amount) > 0) return Number(order.bill_amount).toLocaleString('en-IN');
+                      let pData = order.parsed_payload;
+                      if (!pData && order.payload) {
+                        try { pData = typeof order.payload === 'string' ? JSON.parse(order.payload) : order.payload; } catch(e){}
+                      }
+                      pData = pData || {};
+                      return pData.cost || pData.estimated_cost || pData.quoted_fee || '0';
+                    })()}
+                  </span>
                   {order.bill_media_id && (
-                    <div style={{ marginTop: '0.25rem' }}>
+                    <div style={{ marginTop: '6px', display: 'flex', justifyContent: 'flex-end' }}>
                       <a href={`${API_URL.replace(/\/api$/, '')}/api/media/${order.bill_media_id}`} target="_blank" rel="noreferrer">
-                        <img 
-                          src={`${API_URL.replace(/\/api$/, '')}/api/media/${order.bill_media_id}`} 
-                          alt="Bill" 
-                          style={{ width: '35px', height: '35px', borderRadius: '4px', objectFit: 'cover', border: '1px solid var(--border)' }} 
+                        <img
+                          src={`${API_URL.replace(/\/api$/, '')}/api/media/${order.bill_media_id}`}
+                          alt="Bill"
+                          style={{ width: '32px', height: '32px', borderRadius: '6px', objectFit: 'cover', border: '1px solid #e2e8f0' }}
                         />
                       </a>
                     </div>
@@ -752,7 +731,7 @@ export default function Dashboard() {
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '4px' }}>({order.rating}/5)</span>
                     </div>
                   ) : (
-                    <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>–</span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>-</span>
                   )}
                 </td>
                 <td style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
@@ -768,22 +747,22 @@ export default function Dashboard() {
                     <button className="btn btn-primary" style={{ fontSize: '0.8rem' }} onClick={() => handleAssign(order.id)}>👤 Assign</button>
                   )}
                   {['HELPER_ACCEPTED', 'BILL_IMAGE_UPLOADED', 'ADMIN_APPROVED_BILL', 'HELPER_ARRIVED', 'ITEM_PHOTO_UPLOADED'].includes(order.status) && !order.vendor_id && order.engine_type === 'TASK' && (
-                    <button className="btn btn-primary" style={{ fontSize: '0.8rem', background: '#8b5cf6', borderColor: '#8b5cf6' }} onClick={() => { setVendorTargetOrder(order); setShowVendorModal(true); }}>🏪 Assign Vendor</button>
+                    <button className="btn btn-primary" style={{ fontSize: '0.8rem', background: '#8b5cf6', borderColor: '#8b5cf6' }} onClick={() => { setVendorTargetOrder(order); setShowVendorModal(true); }}>ðŸª Assign Vendor</button>
                   )}
                   {order.vendor_id && !['COMPLETED', 'CANCELLED'].includes(order.status) && (
                     <>
                       <button className="btn btn-primary" style={{ fontSize: '0.8rem', background: '#6366f1', borderColor: '#6366f1' }} onClick={() => handleRetriggerVendor(order.id, order.vendor_id)}>🔄 Retrigger Vendor</button>
-                      <button className="btn" style={{ fontSize: '0.8rem', background: '#f59e0b', color: 'white', borderColor: '#f59e0b' }} onClick={() => { setVendorTargetOrder(order); setShowVendorModal(true); }}>🏪 Change Vendor</button>
+                      <button className="btn" style={{ fontSize: '0.8rem', background: '#f59e0b', color: 'white', borderColor: '#f59e0b' }} onClick={() => { setVendorTargetOrder(order); setShowVendorModal(true); }}>ðŸª Change Vendor</button>
                     </>
                   )}
                   {order.status === 'BILL_IMAGE_UPLOADED' && (
                     <button className="btn btn-primary" style={{ fontSize: '0.8rem' }} onClick={() => handleApprove(order.id)}>✅ Approve</button>
                   )}
                   {order.status === 'ITEM_PHOTO_UPLOADED' && (
-                    <button className="btn btn-primary" style={{ fontSize: '0.8rem', background: 'var(--secondary)' }} onClick={() => handleVerifyItems(order.id)}>📸 Verify Items</button>
+                    <button className="btn btn-primary" style={{ fontSize: '0.8rem', background: 'var(--secondary)' }} onClick={() => handleVerifyItems(order.id)}>📷 Verify Items</button>
                   )}
                   {order.ride_locked === 1 ? (
-                    <button className="btn btn-danger" style={{ fontSize: '0.8rem' }} onClick={() => handleUnlock(order.id)}>🛠 Unlock</button>
+                    <button className="btn btn-danger" style={{ fontSize: '0.8rem' }} onClick={() => handleUnlock(order.id)}>ðŸ›  Unlock</button>
                   ) : null}
                   
                   {!['COMPLETED', 'CANCELLED'].includes(order.status) && (
@@ -793,7 +772,7 @@ export default function Dashboard() {
                       onClick={() => handleCancel(order.id)}
                       title="Force cancel and remove active status"
                     >
-                      ❌ Cancel
+                      âŒ Cancel
                     </button>
                   )}
                   
@@ -851,224 +830,256 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* 📋 ORDER DETAILS MODAL */}
+      {/* ORDER DETAILS MODAL â€” Light Mode */}
       {(selectedOrderDetail || loadingDetail) && (
-        <div className="modal-overlay" style={{ background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(6px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div className="modal-card animate-fade" style={{ maxWidth: '750px', width: '100%', maxHeight: '90vh', overflowY: 'auto', background: '#1e293b', border: '1px solid #334155', borderRadius: '16px', color: '#f8fafc', padding: '24px', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }}>
-            
+        <div style={{
+          position: 'fixed', inset: 0,
+          background: 'rgba(15,23,42,0.5)',
+          backdropFilter: 'blur(6px)',
+          zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '20px',
+          overflowY: 'auto',
+        }}>
+          <div style={{
+            background: '#fff',
+            border: '1px solid #e2e8f0',
+            borderRadius: '20px',
+            maxWidth: '780px', width: '100%',
+            maxHeight: '90vh', overflowY: 'auto',
+            boxShadow: '0 25px 60px -12px rgba(0,0,0,0.18)',
+            animation: 'slideInUp 0.3s cubic-bezier(0.16,1,0.3,1)',
+          }}>
+
             {loadingDetail ? (
-              <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
-                <RefreshCw className="spin" size={32} style={{ marginBottom: '12px' }} />
-                <div>Loading complete order details...</div>
+              <div style={{ padding: '60px', textAlign: 'center', color: '#94a3b8' }}>
+                <RefreshCw size={32} style={{ marginBottom: 12 }} />
+                <div style={{ fontSize: '14px', fontWeight: 600 }}>Loading order details…</div>
               </div>
             ) : selectedOrderDetail && (
-              <div>
-                {/* Modal Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #334155', paddingBottom: '16px', marginBottom: '20px' }}>
+              <>
+                {/* ── Modal Header ── */}
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+                  padding: '20px 24px',
+                  borderBottom: '1px solid #f1f5f9',
+                  background: '#fafbfc',
+                  borderRadius: '20px 20px 0 0',
+                }}>
                   <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <h2 style={{ margin: 0, fontSize: '22px', fontWeight: '800', color: '#38bdf8' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                      <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
                         Order #{selectedOrderDetail.order_id}
                       </h2>
-                      <span className={`badge ${getStatusBadgeClass(selectedOrderDetail.status, selectedOrderDetail.ride_locked)}`}>
-                        {selectedOrderDetail.status}
+                      <span className={`status-badge ${getStatusBadgeClass(selectedOrderDetail.status, selectedOrderDetail.ride_locked)}`}>
+                        {selectedOrderDetail.status?.replace(/_/g, ' ')}
                       </span>
                     </div>
-                    <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#94a3b8' }}>
-                      Service: <strong>{selectedOrderDetail.service || 'General'}</strong> ({selectedOrderDetail.engine_type}) | Placed: {new Date(selectedOrderDetail.created_at).toLocaleString()}
+                    <p style={{ margin: '5px 0 0', fontSize: '13px', color: '#64748b' }}>
+                      Service: <strong style={{ color: '#334155' }}>{selectedOrderDetail.service || 'General'}</strong>
+                      {' '}({selectedOrderDetail.engine_type}) &nbsp;·&nbsp; Placed: {new Date(selectedOrderDetail.created_at).toLocaleString()}
                     </p>
                   </div>
-                  <button 
-                    onClick={() => setSelectedOrderDetail(null)} 
-                    style={{ background: '#334155', border: 'none', color: '#94a3b8', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  <button
+                    onClick={() => setSelectedOrderDetail(null)}
+                    style={{
+                      background: '#f1f5f9', border: 'none', width: 34, height: 34,
+                      borderRadius: '50%', cursor: 'pointer', color: '#64748b',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
                   >
-                    ✕
+                    <X size={16} />
                   </button>
                 </div>
 
-                {/* Quick Action Links Bar */}
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '24px', background: '#0f172a', padding: '12px', borderRadius: '10px', border: '1px solid #334155' }}>
-                  {selectedOrderDetail.customer_number && (
-                    <a 
-                      href={`https://wa.me/${selectedOrderDetail.customer_number.replace(/\D/g, '')}`} 
-                      target="_blank" 
-                      rel="noreferrer"
-                      className="btn"
-                      style={{ background: '#25D366', color: '#fff', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px' }}
+                <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+                  {/* ── Quick Action Buttons ── */}
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {selectedOrderDetail.customer_number && (
+                      <a
+                        href={`https://wa.me/${selectedOrderDetail.customer_number.replace(/\D/g, '')}`}
+                        target="_blank" rel="noreferrer"
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: '6px',
+                          background: '#22c55e', color: '#fff', padding: '8px 14px',
+                          borderRadius: '10px', fontWeight: 700, fontSize: '13px',
+                          textDecoration: 'none',
+                        }}
+                      >
+                        <MessageSquare size={14} /> Chat Customer (WhatsApp)
+                      </a>
+                    )}
+                    <a
+                      href={`${API_URL.replace(/\/api$/, '')}/track/${selectedOrderDetail.order_id}`}
+                      target="_blank" rel="noreferrer"
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '6px',
+                        background: '#2563eb', color: '#fff', padding: '8px 14px',
+                        borderRadius: '10px', fontWeight: 700, fontSize: '13px',
+                        textDecoration: 'none',
+                      }}
                     >
-                      <MessageSquare size={14} /> Chat Customer (WhatsApp)
+                      <ExternalLink size={14} /> Open Live Tracking Page
                     </a>
-                  )}
-                  <a 
-                    href={`${API_URL.replace(/\/api$/, '')}/track/${selectedOrderDetail.order_id}`} 
-                    target="_blank" 
-                    rel="noreferrer"
-                    className="btn"
-                    style={{ background: '#3b82f6', color: '#fff', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px' }}
-                  >
-                    <ExternalLink size={14} /> Open Live Tracking Page
-                  </a>
-                </div>
-
-                {/* Grid Layout: Customer Info & Locations */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px', marginBottom: '20px' }}>
-                  
-                  {/* Customer Card */}
-                  <div style={{ background: '#0f172a', padding: '16px', borderRadius: '12px', border: '1px solid #334155' }}>
-                    <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#38bdf8', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Users size={16} /> Customer Details
-                    </h4>
-                    <div style={{ fontSize: '14px', lineHeight: '1.6' }}>
-                      <div>👤 <strong>Name:</strong> {selectedOrderDetail.customer_name || 'Guest'}</div>
-                      <div>📞 <strong>Phone:</strong> {selectedOrderDetail.customer_number || selectedOrderDetail.customer_phone || 'N/A'}</div>
-                      {selectedOrderDetail.address_text && (
-                        <div style={{ marginTop: '6px' }}>📍 <strong>Address:</strong> {selectedOrderDetail.address_text}</div>
-                      )}
-                    </div>
                   </div>
 
-                  {/* Locations / Engine Info */}
-                  <div style={{ background: '#0f172a', padding: '16px', borderRadius: '12px', border: '1px solid #334155' }}>
-                    <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#38bdf8', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <MapPin size={16} /> Location & Delivery
-                    </h4>
-                    <div style={{ fontSize: '14px', lineHeight: '1.6' }}>
-                      {selectedOrderDetail.engine_type === 'RIDE' ? (
-                        <>
-                          <div>🚗 <strong>Vehicle Type:</strong> {selectedOrderDetail.vehicle_type || selectedOrderDetail.ride_vehicle || 'BIKE'}</div>
-                          {selectedOrderDetail.pickup_lat && (
-                            <div style={{ marginTop: '4px' }}>
-                              📍 <strong>Pickup:</strong> <a href={`https://maps.google.com/?q=${selectedOrderDetail.pickup_lat},${selectedOrderDetail.pickup_lng}`} target="_blank" rel="noreferrer" style={{ color: '#38bdf8' }}>Google Maps</a>
-                            </div>
-                          )}
-                          {selectedOrderDetail.drop_lat && (
-                            <div style={{ marginTop: '4px' }}>
-                              🏁 <strong>Dropoff:</strong> <a href={`https://maps.google.com/?q=${selectedOrderDetail.drop_lat},${selectedOrderDetail.drop_lng}`} target="_blank" rel="noreferrer" style={{ color: '#34d399' }}>Google Maps</a>
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          {(() => {
-                            let pData = selectedOrderDetail.parsed_payload;
-                            if (!pData && selectedOrderDetail.payload) {
-                              try { pData = typeof selectedOrderDetail.payload === 'string' ? JSON.parse(selectedOrderDetail.payload) : selectedOrderDetail.payload; } catch(e){}
-                            }
-                            pData = pData || {};
-                            const pLoc = pData.pickup_location || pData.work_location || pData.location;
-                            const dLoc = pData.drop_location;
-                            return (
-                              <>
-                                {pLoc && <div>📍 <strong>Pickup / Work Site:</strong> {pLoc}</div>}
-                                {dLoc && <div>🏁 <strong>Drop-off Point:</strong> {dLoc}</div>}
-                                {!pLoc && !dLoc && <div>📍 <strong>Address / Location:</strong> {selectedOrderDetail.address_text || 'Shared via WhatsApp GPS'}</div>}
-                              </>
-                            );
-                          })()}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  {/* ── Customer & Location Grid ── */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
 
-                </div>
-
-                {/* Items & Description Section */}
-                <div style={{ background: '#0f172a', padding: '16px', borderRadius: '12px', border: '1px solid #334155', marginBottom: '20px' }}>
-                  <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#38bdf8', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    📦 Items & Task Description
-                  </h4>
-                  <div style={{ fontSize: '14px', background: '#1e293b', padding: '12px', borderRadius: '8px', border: '1px solid #334155', whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>
-                    {(() => {
-                      let pData = selectedOrderDetail.parsed_payload;
-                      if (!pData && selectedOrderDetail.payload) {
-                        try { pData = typeof selectedOrderDetail.payload === 'string' ? JSON.parse(selectedOrderDetail.payload) : selectedOrderDetail.payload; } catch(e){}
-                      }
-                      pData = pData || {};
-                      const itemsFromPayload = Array.isArray(pData.items) ? pData.items.join('\n') : pData.items;
-                      return selectedOrderDetail.items_text || itemsFromPayload || pData.task_description || 'No items description provided.';
-                    })()}
-                  </div>
-
-                  {/* Media Gallery */}
-                  {(selectedOrderDetail.item_media_ids || selectedOrderDetail.bill_media_id) && (
-                    <div style={{ marginTop: '14px' }}>
-                      <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '600', marginBottom: '6px' }}>ORDER MEDIA & BILL PHOTOS:</div>
-                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                        {selectedOrderDetail.item_media_ids && selectedOrderDetail.item_media_ids.split(',').map((mId, idx) => (
-                          <a key={idx} href={`${API_URL.replace(/\/api$/, '')}/api/media/${mId}`} target="_blank" rel="noreferrer">
-                            <img src={`${API_URL.replace(/\/api$/, '')}/api/media/${mId}`} alt={`Item ${idx+1}`} style={{ width: '80px', height: '80px', borderRadius: '8px', objectFit: 'cover', border: '1px solid #38bdf8' }} />
-                          </a>
-                        ))}
-                        {selectedOrderDetail.bill_media_id && (
-                          <a href={`${API_URL.replace(/\/api$/, '')}/api/media/${selectedOrderDetail.bill_media_id}`} target="_blank" rel="noreferrer">
-                            <img src={`${API_URL.replace(/\/api$/, '')}/api/media/${selectedOrderDetail.bill_media_id}`} alt="Bill" style={{ width: '80px', height: '80px', borderRadius: '8px', objectFit: 'cover', border: '2px solid #10b981' }} />
-                          </a>
+                    {/* Customer Details */}
+                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px' }}>
+                      <h4 style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Users size={14} color="#2563eb" /> Customer Details
+                      </h4>
+                      <div style={{ fontSize: '13.5px', lineHeight: '1.75', color: '#334155' }}>
+                        <div><strong>Name:</strong> {selectedOrderDetail.customer_name || 'Guest'}</div>
+                        <div><strong>Phone:</strong> {selectedOrderDetail.customer_number || selectedOrderDetail.customer_phone || 'N/A'}</div>
+                        {selectedOrderDetail.address_text && (
+                          <div style={{ marginTop: '4px' }}><strong>Address:</strong> {selectedOrderDetail.address_text}</div>
                         )}
                       </div>
                     </div>
-                  )}
-                </div>
 
-                {/* Assignment & Financial Breakdown */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px', marginBottom: '20px' }}>
-                  
-                  {/* Assigned Helper & Vendor */}
-                  <div style={{ background: '#0f172a', padding: '16px', borderRadius: '12px', border: '1px solid #334155' }}>
-                    <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#38bdf8', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Users size={16} /> Assignment Info
-                    </h4>
-                    <div style={{ fontSize: '14px', lineHeight: '1.6' }}>
-                      <div>👤 <strong>Assigned Helper:</strong> {selectedOrderDetail.helper_name ? `${selectedOrderDetail.helper_name} (${selectedOrderDetail.helper_phone})` : 'Unassigned'}</div>
-                      <div>🏪 <strong>Assigned Vendor:</strong> {selectedOrderDetail.vendor_name ? `${selectedOrderDetail.vendor_name} (${selectedOrderDetail.vendor_phone})` : 'None'}</div>
-                      {selectedOrderDetail.otp && <div>🔑 <strong>Delivery OTP:</strong> <span style={{ background: '#059669', padding: '2px 8px', borderRadius: '4px', color: '#fff', fontWeight: 'bold' }}>{selectedOrderDetail.otp}</span></div>}
+                    {/* Location & Delivery */}
+                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px' }}>
+                      <h4 style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <MapPin size={14} color="#2563eb" /> Location &amp; Delivery
+                      </h4>
+                      <div style={{ fontSize: '13.5px', lineHeight: '1.75', color: '#334155' }}>
+                        {selectedOrderDetail.engine_type === 'RIDE' ? (
+                          <>
+                            <div><strong>Vehicle:</strong> {selectedOrderDetail.vehicle_type || 'BIKE'}</div>
+                            {selectedOrderDetail.pickup_lat && <div><strong>Pickup:</strong> <a href={`https://maps.google.com/?q=${selectedOrderDetail.pickup_lat},${selectedOrderDetail.pickup_lng}`} target="_blank" rel="noreferrer" style={{ color: '#2563eb' }}>Google Maps</a></div>}
+                            {selectedOrderDetail.drop_lat && <div><strong>Drop:</strong> <a href={`https://maps.google.com/?q=${selectedOrderDetail.drop_lat},${selectedOrderDetail.drop_lng}`} target="_blank" rel="noreferrer" style={{ color: '#2563eb' }}>Google Maps</a></div>}
+                          </>
+                        ) : (() => {
+                          let pData = selectedOrderDetail.parsed_payload;
+                          if (!pData && selectedOrderDetail.payload) { try { pData = typeof selectedOrderDetail.payload === 'string' ? JSON.parse(selectedOrderDetail.payload) : selectedOrderDetail.payload; } catch(e){} }
+                          pData = pData || {};
+                          const pLoc = pData.pickup_location || pData.work_location || pData.location;
+                          const dLoc = pData.drop_location;
+                          return (
+                            <>
+                              {pLoc && <div><strong>Pickup / Work Site:</strong> {pLoc}</div>}
+                              {dLoc && <div><strong>Drop-off:</strong> {dLoc}</div>}
+                              {!pLoc && !dLoc && <div><strong>Address:</strong> {selectedOrderDetail.address_text || 'Shared via WhatsApp GPS'}</div>}
+                            </>
+                          );
+                        })()}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Financials */}
-                  <div style={{ background: '#0f172a', padding: '16px', borderRadius: '12px', border: '1px solid #334155' }}>
-                    <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#38bdf8', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      💳 Financial Breakdown
+                  {/* ── Items & Description ── */}
+                  <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px' }}>
+                    <h4 style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#64748b' }}>
+                      Items &amp; Task Description
                     </h4>
-                    <div style={{ fontSize: '14px', lineHeight: '1.6' }}>
+                    <div style={{ fontSize: '13.5px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px 14px', whiteSpace: 'pre-wrap', lineHeight: '1.6', color: '#334155' }}>
                       {(() => {
                         let pData = selectedOrderDetail.parsed_payload;
-                        if (!pData && selectedOrderDetail.payload) {
-                          try { pData = typeof selectedOrderDetail.payload === 'string' ? JSON.parse(selectedOrderDetail.payload) : selectedOrderDetail.payload; } catch(e){}
-                        }
+                        if (!pData && selectedOrderDetail.payload) { try { pData = typeof selectedOrderDetail.payload === 'string' ? JSON.parse(selectedOrderDetail.payload) : selectedOrderDetail.payload; } catch(e){} }
                         pData = pData || {};
-                        const val = selectedOrderDetail.total_amount || selectedOrderDetail.bill_amount || pData.cost || pData.estimated_cost || pData.quoted_fee || 0;
-                        return (
-                          <div>💰 <strong>Quoted / Total Fee:</strong> <span style={{ fontSize: '18px', fontWeight: '800', color: '#34d399' }}>₹{val}</span></div>
-                        );
+                        const itemsFromPayload = Array.isArray(pData.items) ? pData.items.join('\n') : pData.items;
+                        return selectedOrderDetail.items_text || itemsFromPayload || pData.task_description || 'No items description provided.';
                       })()}
-                      <div>💳 <strong>Payment Status:</strong> {selectedOrderDetail.status === 'COMPLETED' || selectedOrderDetail.status === 'PAID' ? 'PAID ✅' : 'PENDING ⏳'}</div>
                     </div>
-                  </div>
-
-                </div>
-
-                {/* Order Timeline Log */}
-                {selectedOrderDetail.timeline && selectedOrderDetail.timeline.length > 0 && (
-                  <div style={{ background: '#0f172a', padding: '16px', borderRadius: '12px', border: '1px solid #334155' }}>
-                    <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#38bdf8', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Clock size={16} /> Order Activity Timeline
-                    </h4>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {selectedOrderDetail.timeline.map((t, idx) => (
-                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', background: '#1e293b', padding: '8px 12px', borderRadius: '6px' }}>
-                          <span><strong>{t.event_type}:</strong> {t.event_text}</span>
-                          <span style={{ color: '#94a3b8', fontSize: '11px' }}>{new Date(t.created_at).toLocaleTimeString()}</span>
+                    {(selectedOrderDetail.item_media_ids || selectedOrderDetail.bill_media_id) && (
+                      <div style={{ marginTop: '12px' }}>
+                        <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 700, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Media &amp; Bill Photos</div>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          {selectedOrderDetail.item_media_ids && selectedOrderDetail.item_media_ids.split(',').map((mId, idx) => (
+                            <a key={idx} href={`${API_URL.replace(/\/api$/, '')}/api/media/${mId}`} target="_blank" rel="noreferrer">
+                              <img src={`${API_URL.replace(/\/api$/, '')}/api/media/${mId}`} alt={`Item ${idx+1}`} style={{ width: '72px', height: '72px', borderRadius: '8px', objectFit: 'cover', border: '2px solid #e2e8f0' }} />
+                            </a>
+                          ))}
+                          {selectedOrderDetail.bill_media_id && (
+                            <a href={`${API_URL.replace(/\/api$/, '')}/api/media/${selectedOrderDetail.bill_media_id}`} target="_blank" rel="noreferrer">
+                              <img src={`${API_URL.replace(/\/api$/, '')}/api/media/${selectedOrderDetail.bill_media_id}`} alt="Bill" style={{ width: '72px', height: '72px', borderRadius: '8px', objectFit: 'cover', border: '2px solid #10b981' }} />
+                            </a>
+                          )}
                         </div>
-                      ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Assignment & Financial ── */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
+
+                    {/* Assignment */}
+                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px' }}>
+                      <h4 style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Users size={14} color="#2563eb" /> Assignment Info
+                      </h4>
+                      <div style={{ fontSize: '13.5px', lineHeight: '1.75', color: '#334155' }}>
+                        <div><strong>Helper:</strong> {selectedOrderDetail.helper_name ? `${selectedOrderDetail.helper_name} (${selectedOrderDetail.helper_phone})` : <span style={{ color: '#94a3b8' }}>Unassigned</span>}</div>
+                        <div><strong>Vendor:</strong> {selectedOrderDetail.vendor_name ? `${selectedOrderDetail.vendor_name} (${selectedOrderDetail.vendor_phone})` : <span style={{ color: '#94a3b8' }}>None</span>}</div>
+                        {selectedOrderDetail.otp && (
+                          <div style={{ marginTop: '6px' }}>
+                            <strong>Delivery OTP:</strong>{' '}
+                            <span style={{ background: '#059669', padding: '2px 10px', borderRadius: '6px', color: '#fff', fontWeight: 800, fontSize: '14px', letterSpacing: '0.1em' }}>
+                              {selectedOrderDetail.otp}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Financial */}
+                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px' }}>
+                      <h4 style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <CreditCard size={14} color="#2563eb" /> Financial Breakdown
+                      </h4>
+                      <div style={{ fontSize: '13.5px', lineHeight: '1.75', color: '#334155' }}>
+                        {(() => {
+                          let pData = selectedOrderDetail.parsed_payload;
+                          if (!pData && selectedOrderDetail.payload) { try { pData = typeof selectedOrderDetail.payload === 'string' ? JSON.parse(selectedOrderDetail.payload) : selectedOrderDetail.payload; } catch(e){} }
+                          pData = pData || {};
+                          const val = selectedOrderDetail.total_amount || selectedOrderDetail.bill_amount || pData.cost || pData.estimated_cost || pData.quoted_fee || 0;
+                          return (
+                            <div>
+                              <strong>Quoted / Total Fee:</strong>{' '}
+                              <span style={{ fontSize: '20px', fontWeight: 800, color: '#059669', fontVariantNumeric: 'tabular-nums' }}>₹{val}</span>
+                            </div>
+                          );
+                        })()}
+                        <div>
+                          <strong>Payment Status:</strong>{' '}
+                          {selectedOrderDetail.status === 'COMPLETED' || selectedOrderDetail.status === 'PAID'
+                            ? <span style={{ color: '#059669', fontWeight: 700 }}>PAID âœ“</span>
+                            : <span style={{ color: '#d97706', fontWeight: 700 }}>PENDING</span>
+                          }
+                        </div>
+                      </div>
                     </div>
                   </div>
-                )}
 
-                {/* Footer Buttons */}
-                <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                  <button className="btn btn-outline" onClick={() => setSelectedOrderDetail(null)}>Close</button>
+                  {/* ── Timeline ── */}
+                  {selectedOrderDetail.timeline && selectedOrderDetail.timeline.length > 0 && (
+                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px' }}>
+                      <h4 style={{ margin: '0 0 12px', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Clock size={14} color="#2563eb" /> Order Activity Timeline
+                      </h4>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {selectedOrderDetail.timeline.map((t, idx) => (
+                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', background: '#fff', border: '1px solid #e2e8f0', padding: '8px 12px', borderRadius: '8px', color: '#334155' }}>
+                            <span><strong style={{ color: '#0f172a' }}>{t.event_type}:</strong> {t.event_text}</span>
+                            <span style={{ color: '#94a3b8', fontSize: '11px', whiteSpace: 'nowrap', marginLeft: '12px' }}>{new Date(t.created_at).toLocaleTimeString()}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Footer ── */}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '4px' }}>
+                    <button className="btn btn-outline" onClick={() => setSelectedOrderDetail(null)}>Close</button>
+                  </div>
+
                 </div>
-              </div>
+              </>
             )}
           </div>
         </div>

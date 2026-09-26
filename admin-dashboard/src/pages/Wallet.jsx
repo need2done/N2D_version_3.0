@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Wallet, Search, CreditCard, History, X, ArrowUpRight, ArrowDownRight, Zap, Download, FileText } from 'lucide-react';
+import {
+    Wallet, Search, CreditCard, History, X,
+    ArrowUpRight, ArrowDownRight, Zap, Download, FileText,
+    Users, TrendingUp, TrendingDown, RefreshCw
+} from 'lucide-react';
 import { toast } from 'react-toastify';
 import { exportToExcel, exportToPDF } from '../utils/exportUtils';
 import { API_URL } from '../config';
-
 
 export default function WalletPage() {
     const [helpers, setHelpers] = useState([]);
@@ -12,23 +15,20 @@ export default function WalletPage() {
     const [loading, setLoading] = useState(true);
     const [selectedHelper, setSelectedHelper] = useState(null);
     const [ledger, setLedger] = useState([]);
-    
-    // Recharge Modal State
+
     const [isRechargeModalOpen, setIsRechargeModalOpen] = useState(false);
     const [rechargeAmount, setRechargeAmount] = useState('');
     const [rechargeDesc, setRechargeDesc] = useState('Manual Recharge via UPI');
 
-    useEffect(() => {
-        fetchHelpers();
-    }, []);
+    useEffect(() => { fetchHelpers(); }, []);
 
     const fetchHelpers = async () => {
         try {
             setLoading(true);
             const res = await axios.get(`${API_URL}/wallet/helpers`);
             setHelpers(res.data.helpers || []);
-        } catch (err) {
-            toast.error("Failed to fetch helper wallets");
+        } catch {
+            toast.error('Failed to fetch helper wallets');
         } finally {
             setLoading(false);
         }
@@ -39,34 +39,30 @@ export default function WalletPage() {
         try {
             const res = await axios.get(`${API_URL}/wallet/ledger/${helper.id}`);
             setLedger(res.data.ledger || []);
-        } catch (err) {
-            toast.error("Failed to load ledger history");
+        } catch {
+            toast.error('Failed to load ledger history');
         }
     };
 
     const handleRecharge = async (e) => {
         e.preventDefault();
         if (!selectedHelper || !rechargeAmount || rechargeAmount <= 0) return;
-
         try {
             await axios.post(`${API_URL}/wallet/recharge`, {
                 helper_id: selectedHelper.id,
                 amount: parseFloat(rechargeAmount),
-                description: rechargeDesc
+                description: rechargeDesc,
             });
-            toast.success("Wallet recharged successfully! ⚡");
+            toast.success('Wallet recharged successfully!');
             setIsRechargeModalOpen(false);
             setRechargeAmount('');
-            
-            // Refresh
             fetchHelpers();
             handleViewLedger(selectedHelper);
-        } catch (err) {
-            toast.error("Failed to recharge wallet");
+        } catch {
+            toast.error('Failed to recharge wallet');
         }
     };
 
-    // Export all ledger transactions for all helpers
     const handleExportAllTransactions = async () => {
         try {
             const res = await axios.get(`${API_URL}/wallet/ledger-all`);
@@ -74,152 +70,221 @@ export default function WalletPage() {
                 const allLedger = res.data.ledger || [];
                 const headers = ['Txn ID', 'Helper Name', 'Helper Code', 'Phone', 'Order ID', 'Service', 'Payment Method', 'Customer Paid (₹)', 'Helper Received (₹)', 'Admin Share (₹)', 'Wallet Impact (₹)', 'Type', 'Description', 'Date & Time'];
                 const rows = allLedger.map(txn => [
-                    txn.id,
-                    txn.helper_name,
-                    txn.helper_code,
-                    txn.helper_phone,
+                    txn.id, txn.helper_name, txn.helper_code, txn.helper_phone,
                     txn.display_order_id || txn.order_id || '-',
-                    txn.service || '-',
-                    txn.payment_method || 'UPI',
-                    txn.customer_paid || 0,
-                    txn.helper_received || 0,
-                    txn.platform_fee || 0,
-                    txn.amount,
-                    txn.type,
+                    txn.service || '-', txn.payment_method || 'UPI',
+                    txn.customer_paid || 0, txn.helper_received || 0,
+                    txn.platform_fee || 0, txn.amount, txn.type,
                     txn.description || '-',
-                    new Date(txn.created_at).toLocaleString()
+                    new Date(txn.created_at).toLocaleString(),
                 ]);
                 exportToExcel('Need2Done_All_Wallet_Transactions', headers, rows);
             }
-        } catch (err) {
+        } catch {
             toast.error('Failed to export all transactions');
         }
     };
 
-    // Export selected helper transactions
     const handleExportSelectedLedger = () => {
-        if (!selectedHelper || !ledger.length) return toast.info('No transactions to export for this helper');
+        if (!selectedHelper || !ledger.length) return toast.info('No transactions to export');
         const headers = ['Order ID', 'Service', 'Payment', 'Customer Paid (₹)', 'Helper Received (₹)', 'Admin Share (₹)', 'Wallet Impact (₹)', 'Type', 'Description', 'Date & Time'];
         const rows = ledger.map(txn => [
             txn.display_order_id || txn.order_id || '-',
-            txn.service || '-',
-            txn.payment_method || 'UPI',
-            txn.customer_paid || 0,
-            txn.helper_received || 0,
-            txn.platform_fee || 0,
-            txn.amount,
-            txn.type,
+            txn.service || '-', txn.payment_method || 'UPI',
+            txn.customer_paid || 0, txn.helper_received || 0,
+            txn.platform_fee || 0, txn.amount, txn.type,
             txn.description || '-',
-            new Date(txn.created_at).toLocaleString()
+            new Date(txn.created_at).toLocaleString(),
         ]);
         exportToExcel(`Need2Done_Wallet_Ledger_${selectedHelper.name}_${selectedHelper.helper_code}`, headers, rows);
     };
 
-    // Export PDF report for selected helper
     const handleExportSelectedPDF = () => {
-        if (!selectedHelper || !ledger.length) return toast.info('No transactions to export for this helper');
+        if (!selectedHelper || !ledger.length) return toast.info('No transactions to export');
         const title = `Wallet Statement - ${selectedHelper.name} (${selectedHelper.helper_code})`;
         const dateRange = `Helper Phone: ${selectedHelper.phone} | Current Balance: ₹${parseFloat(selectedHelper.wallet_balance).toFixed(2)}`;
         const stats = [
             { title: 'Helper Name', value: selectedHelper.name, subtitle: `Code: ${selectedHelper.helper_code}` },
             { title: 'Wallet Balance', value: `₹${parseFloat(selectedHelper.wallet_balance).toFixed(2)}`, subtitle: `Status: ${selectedHelper.status}` },
-            { title: 'Total Orders/Txns', value: ledger.length.toString(), subtitle: 'Ledger Records' }
+            { title: 'Total Orders/Txns', value: ledger.length.toString(), subtitle: 'Ledger Records' },
         ];
         const headers = ['Date & Time', 'Order ID', 'Service', 'Mode', 'Cust Paid', 'Helper Recv', 'Admin Share', 'Wallet Impact'];
         const rows = ledger.map(txn => [
             new Date(txn.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
-            txn.display_order_id || '-',
-            txn.service || '-',
-            txn.payment_method || 'UPI',
+            txn.display_order_id || '-', txn.service || '-', txn.payment_method || 'UPI',
             `₹${parseFloat(txn.customer_paid || 0).toFixed(2)}`,
             `₹${parseFloat(txn.helper_received || 0).toFixed(2)}`,
             `₹${parseFloat(txn.platform_fee || 0).toFixed(2)}`,
-            `${txn.type === 'CREDIT' ? '+' : '-'}₹${parseFloat(txn.amount).toFixed(2)}`
+            `${txn.type === 'CREDIT' ? '+' : '-'}₹${parseFloat(txn.amount).toFixed(2)}`,
         ]);
         exportToPDF(title, dateRange, stats, headers, rows);
     };
 
-    const filteredHelpers = helpers.filter(h => 
-        h.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    const filteredHelpers = helpers.filter(h =>
+        h.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         h.phone?.includes(searchQuery) ||
         h.helper_code?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
+    // Derived stats
+    const totalBalance = helpers.reduce((s, h) => s + parseFloat(h.wallet_balance || 0), 0);
+    const onlineCount  = helpers.filter(h => h.status === 'ONLINE').length;
+    const txnTotal     = ledger.reduce((s, t) => s + parseFloat(t.customer_paid || 0), 0);
+
     return (
-        <div className="wallet-page-container">
-            <div className="wallet-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-                <div className="wallet-title-container">
-                    <Wallet className="wallet-icon" size={36} strokeWidth={2.5} />
+        <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px', minHeight: 0 }}>
+
+            {/* ── Page Header ── */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <div style={{
+                        width: 48, height: 48, borderRadius: 14,
+                        background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                        <Wallet size={24} color="#2563eb" strokeWidth={2} />
+                    </div>
                     <div>
-                        <h1 className="wallet-title">Wallets & Settlements</h1>
-                        <p className="wallet-subtitle">Manage balances and live transaction ledgers with ease.</p>
+                        <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.03em' }}>
+                            Wallets &amp; Settlements
+                        </h1>
+                        <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>
+                            Manage helper balances and live transaction ledgers
+                        </p>
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <button className="btn btn-export-excel" onClick={handleExportAllTransactions} title="Export ALL transactions across all helpers to Excel">
-                        <Download size={16} /> Excel (All Transactions)
-                    </button>
-                </div>
+                <button className="btn btn-export-excel" onClick={handleExportAllTransactions} title="Export ALL transactions">
+                    <Download size={15} /> Excel (All Transactions)
+                </button>
             </div>
 
-            <div className="wallet-grid">
-                
-                {/* LEFT COLUMN: Helper List */}
-                <div className="wallet-list-panel glass-panel">
-                    <div className="wallet-search-box" style={{ position: 'relative' }}>
-                        <Search className="search-icon" size={20} />
-                        <input
-                            type="text"
-                            placeholder="Search by Name, Phone, or Code..."
-                            className="wallet-search-input"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            style={{ paddingRight: '2rem' }}
-                        />
-                        {searchQuery && (
-                            <button 
-                                onClick={() => setSearchQuery('')}
-                                style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
-                            >
-                                <X size={16} />
-                            </button>
-                        )}
+            {/* ── Summary Stat Cards ── */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '14px' }}>
+                {[
+                    { label: 'Total Helpers',   value: helpers.length,                          icon: Users,       color: '#2563eb', bg: 'rgba(37,99,235,0.08)' },
+                    { label: 'Online Now',       value: onlineCount,                             icon: Zap,         color: '#059669', bg: 'rgba(5,150,105,0.08)' },
+                    { label: 'Combined Balance', value: `₹${totalBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, icon: TrendingUp, color: '#7c3aed', bg: 'rgba(124,58,237,0.08)' },
+                    { label: 'Txn Revenue',      value: selectedHelper ? `₹${txnTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '—', icon: CreditCard, color: '#d97706', bg: 'rgba(217,119,6,0.08)' },
+                ].map(({ label, value, icon: Icon, color, bg }) => (
+                    <div key={label} className="stat-card">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div>
+                                <p style={{ margin: 0, fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#94a3b8', marginBottom: '6px' }}>
+                                    {label}
+                                </p>
+                                <p style={{ margin: 0, fontSize: '22px', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
+                                    {value}
+                                </p>
+                            </div>
+                            <div className="stat-card-badge" style={{ backgroundColor: bg, color }}><Icon size={18} /></div>
+                        </div>
                     </div>
-                    
-                    <div className="wallet-list custom-scrollbar">
+                ))}
+            </div>
+
+            {/* ── Main Two-Column Panel ── */}
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: '300px 1fr',
+                gap: '16px',
+                flex: 1,
+                minHeight: 0,
+                height: 'calc(100vh - 310px)',
+            }}>
+
+                {/* LEFT: Helper List */}
+                <div style={{
+                    background: '#fff',
+                    borderRadius: '16px',
+                    border: '1px solid #e2e8f0',
+                    boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden',
+                    minHeight: 0,
+                }}>
+                    {/* Search */}
+                    <div style={{ padding: '14px 14px 12px', borderBottom: '1px solid #f1f5f9', position: 'relative', flexShrink: 0 }}>
+                        <Search size={14} style={{ position: 'absolute', left: '26px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
+                        <input
+                            type="search"
+                            placeholder="Search name, phone, code…"
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            style={{
+                                width: '100%',
+                                padding: '7px 10px 7px 32px',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '8px',
+                                background: '#f8fafc',
+                                fontSize: '13px',
+                                outline: 'none',
+                                boxSizing: 'border-box',
+                                fontFamily: 'inherit',
+                            }}
+                        />
+                    </div>
+
+                    {/* Helper list */}
+                    <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
                         {loading ? (
-                            <div className="empty-state">
-                                <Zap className="pulse-icon" size={28} />
-                                <span>Loading helpers...</span>
+                            <div style={{ padding: '40px 20px', textAlign: 'center', color: '#94a3b8' }}>
+                                <RefreshCw size={24} style={{ marginBottom: 8 }} />
+                                <div style={{ fontSize: '13px' }}>Loading helpers…</div>
                             </div>
                         ) : filteredHelpers.length === 0 ? (
-                            <div className="empty-state">
-                                <Search className="opacity-20 mb-3" size={40} />
-                                <span>{searchQuery ? "No matching helpers found." : "No helpers available."}</span>
+                            <div style={{ padding: '40px 20px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+                                No helpers found.
                             </div>
                         ) : filteredHelpers.map(helper => {
                             const isSelected = selectedHelper?.id === helper.id;
-                            const isNegative = helper.wallet_balance < 0;
-                            const isPositive = helper.wallet_balance > 0;
-                            
+                            const bal = parseFloat(helper.wallet_balance);
+                            const balColor = isSelected ? '#fff' : bal < 0 ? '#ef4444' : bal > 0 ? '#059669' : '#0f172a';
+
                             return (
-                                <div 
+                                <div
                                     key={helper.id}
                                     onClick={() => handleViewLedger(helper)}
-                                    className={`helper-card ${isSelected ? 'selected' : ''}`}
+                                    style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        padding: '12px 12px',
+                                        borderRadius: '10px',
+                                        marginBottom: '4px',
+                                        cursor: 'pointer',
+                                        background: isSelected ? '#2563eb' : '#fff',
+                                        border: isSelected ? '2px solid #2563eb' : '2px solid transparent',
+                                        transition: 'all 150ms ease',
+                                        boxShadow: isSelected ? '0 4px 12px rgba(37,99,235,0.25)' : 'none',
+                                    }}
+                                    onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#f8fafc'; }}
+                                    onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = '#fff'; }}
                                 >
-                                    <div className="helper-info">
-                                        <div className="helper-name-row">
-                                            <span className="helper-name">{helper.name}</span>
-                                            <span className="helper-code-badge">{helper.helper_code}</span>
+                                    <div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <span style={{ fontWeight: 700, fontSize: '14px', color: isSelected ? '#fff' : '#0f172a' }}>
+                                                {helper.name}
+                                            </span>
+                                            <span style={{
+                                                fontSize: '10px', fontWeight: 800, padding: '1px 6px',
+                                                borderRadius: '4px',
+                                                background: isSelected ? 'rgba(255,255,255,0.2)' : '#f1f5f9',
+                                                color: isSelected ? '#fff' : '#64748b',
+                                            }}>
+                                                {helper.helper_code}
+                                            </span>
                                         </div>
-                                        <div className="helper-phone">{helper.phone}</div>
+                                        <div style={{ fontSize: '12px', color: isSelected ? 'rgba(255,255,255,0.75)' : '#64748b', marginTop: '2px' }}>
+                                            {helper.phone}
+                                        </div>
                                     </div>
-                                    <div className="helper-balance-col">
-                                        <div className="balance-label">Balance</div>
-                                        <div className={`helper-balance ${isSelected ? 'text-white' : (isNegative ? 'text-danger' : isPositive ? 'text-success' : '')}`}>
-                                            ₹{parseFloat(helper.wallet_balance).toFixed(2)}
+                                    <div style={{ textAlign: 'right' }}>
+                                        <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: isSelected ? 'rgba(255,255,255,0.6)' : '#94a3b8', marginBottom: '2px' }}>
+                                            Balance
+                                        </div>
+                                        <div style={{ fontWeight: 800, fontSize: '15px', color: balColor, fontVariantNumeric: 'tabular-nums' }}>
+                                            ₹{bal.toFixed(2)}
                                         </div>
                                     </div>
                                 </div>
@@ -228,685 +293,290 @@ export default function WalletPage() {
                     </div>
                 </div>
 
-                {/* RIGHT COLUMN: Ledger & Actions */}
-                <div className="wallet-ledger-panel glass-panel">
+                {/* RIGHT: Ledger Panel */}
+                <div style={{
+                    background: '#fff',
+                    borderRadius: '16px',
+                    border: '1px solid #e2e8f0',
+                    boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden',
+                    minHeight: 0,
+                }}>
                     {selectedHelper ? (
                         <>
-                            <div className="ledger-header" style={{ flexWrap: 'wrap', gap: '0.75rem' }}>
+                            {/* Ledger Header */}
+                            <div style={{
+                                padding: '16px 20px',
+                                borderBottom: '1px solid #f1f5f9',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                flexWrap: 'wrap',
+                                gap: '10px',
+                                flexShrink: 0,
+                                background: '#fafbfc',
+                            }}>
                                 <div>
-                                    <h2 className="ledger-title">{selectedHelper.name}'s Ledger</h2>
-                                    <div className="ledger-badges">
-                                        <p className="balance-badge">
-                                            Current Balance:{' '}
-                                            <span className={`balance-amount ${selectedHelper.wallet_balance < 0 ? 'text-danger' : 'text-success'}`}>
-                                                ₹{parseFloat(selectedHelper.wallet_balance).toFixed(2)}
-                                            </span>
-                                        </p>
-                                        <span className={`status-badge ${selectedHelper.status === 'ONLINE' ? 'online' : 'offline'}`}>
+                                    <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
+                                        {selectedHelper.name}&apos;s Ledger
+                                    </h2>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
+                                        <span style={{
+                                            background: '#f0fdf4', color: '#15803d',
+                                            border: '1px solid #bbf7d0',
+                                            padding: '2px 10px', borderRadius: '9999px',
+                                            fontSize: '13px', fontWeight: 700,
+                                        }}>
+                                            Balance: ₹{parseFloat(selectedHelper.wallet_balance).toFixed(2)}
+                                        </span>
+                                        <span style={{
+                                            fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '9999px',
+                                            background: selectedHelper.status === 'ONLINE' ? '#ecfdf5' : '#f1f5f9',
+                                            color: selectedHelper.status === 'ONLINE' ? '#059669' : '#475569',
+                                            border: `1px solid ${selectedHelper.status === 'ONLINE' ? '#a7f3d0' : '#e2e8f0'}`,
+                                        }}>
                                             {selectedHelper.status}
                                         </span>
                                     </div>
                                 </div>
-                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                                    <button className="btn btn-export-excel" onClick={handleExportSelectedLedger} style={{ padding: '0.45rem 0.85rem', fontSize: '0.825rem' }} title="Export selected helper ledger to Excel">
-                                        <Download size={14} /> Excel
+
+                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                    <button className="btn btn-export-excel" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={handleExportSelectedLedger}>
+                                        <Download size={13} /> Excel
                                     </button>
-                                    <button className="btn btn-export-pdf" onClick={handleExportSelectedPDF} style={{ padding: '0.45rem 0.85rem', fontSize: '0.825rem' }} title="Export printable wallet PDF statement">
-                                        <FileText size={14} /> PDF Statement
+                                    <button className="btn btn-export-pdf" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={handleExportSelectedPDF}>
+                                        <FileText size={13} /> PDF Statement
                                     </button>
-                                    <button 
+                                    <button
                                         onClick={() => setIsRechargeModalOpen(true)}
-                                        className="recharge-btn"
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: '6px',
+                                            background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                                            color: '#fff', border: 'none',
+                                            padding: '8px 16px', borderRadius: '10px',
+                                            fontWeight: 700, fontSize: '13px', cursor: 'pointer',
+                                            boxShadow: '0 4px 12px rgba(37,99,235,0.25)',
+                                        }}
                                     >
-                                        <Zap size={18} fill="currentColor" />
-                                        Recharge
+                                        <Zap size={14} fill="currentColor" /> Recharge
                                     </button>
                                 </div>
                             </div>
-                            
-                            <div className="ledger-body custom-scrollbar">
-                                <div className="ledger-table-container">
-                                    <table className="ledger-table">
-                                        <thead>
-                                            <tr>
-                                                <th>Date & Time</th>
-                                                <th>Order & Service</th>
-                                                <th>Payment Mode</th>
-                                                <th className="text-right">Customer Paid</th>
-                                                <th className="text-right">Helper Received</th>
-                                                <th className="text-right">Admin Share</th>
-                                                <th className="text-right">Wallet Impact</th>
+
+                            {/* Ledger Table — scrollable */}
+                            <div style={{ flex: 1, overflowY: 'auto', overflowX: 'auto' }}>
+                                <table style={{
+                                    width: '100%',
+                                    borderCollapse: 'separate',
+                                    borderSpacing: 0,
+                                    display: 'table',
+                                    minWidth: '700px',
+                                }}>
+                                    <thead>
+                                        <tr>
+                                            {[
+                                                { label: 'Date & Time',      align: 'left'  },
+                                                { label: 'Order & Service',  align: 'left'  },
+                                                { label: 'Mode',             align: 'center'},
+                                                { label: 'Customer Paid',    align: 'right' },
+                                                { label: 'Helper Received',  align: 'right' },
+                                                { label: 'Admin Share',      align: 'right' },
+                                                { label: 'Wallet Impact',    align: 'right' },
+                                            ].map(col => (
+                                                <th key={col.label} style={{
+                                                    textAlign: col.align,
+                                                    padding: '10px 14px',
+                                                    fontSize: '11px', fontWeight: 700,
+                                                    textTransform: 'uppercase', letterSpacing: '0.06em',
+                                                    color: '#64748b', background: '#f8fafc',
+                                                    borderBottom: '1px solid #e2e8f0',
+                                                    whiteSpace: 'nowrap',
+                                                    position: 'sticky', top: 0,
+                                                }}>
+                                                    {col.label}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {ledger.length > 0 ? ledger.map((txn, idx) => (
+                                            <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}
+                                                onMouseEnter={e => e.currentTarget.style.background = '#fafbfc'}
+                                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                            >
+                                                {/* Date */}
+                                                <td style={{ padding: '12px 14px', fontSize: '12.5px', color: '#475569', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                                                    {new Date(txn.created_at).toLocaleString(undefined, {
+                                                        month: 'short', day: 'numeric',
+                                                        hour: '2-digit', minute: '2-digit',
+                                                    })}
+                                                </td>
+
+                                                {/* Order + Service */}
+                                                <td style={{ padding: '12px 14px' }}>
+                                                    <div style={{ fontWeight: 700, fontSize: '13px', color: '#1e293b' }}>
+                                                        {txn.display_order_id || (txn.order_id ? `#${txn.order_id}` : '—')}
+                                                    </div>
+                                                    <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '2px' }}>
+                                                        {txn.service || txn.description || '—'}
+                                                    </div>
+                                                </td>
+
+                                                {/* Payment Mode badge */}
+                                                <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                                                    <span style={{
+                                                        fontSize: '11px', fontWeight: 700, padding: '3px 9px',
+                                                        borderRadius: '9999px',
+                                                        background: txn.payment_method === 'COD' ? '#fffbeb' : '#eff6ff',
+                                                        color: txn.payment_method === 'COD' ? '#b45309' : '#2563eb',
+                                                        border: `1px solid ${txn.payment_method === 'COD' ? '#fde68a' : '#bfdbfe'}`,
+                                                    }}>
+                                                        {txn.payment_method || 'UPI'}
+                                                    </span>
+                                                </td>
+
+                                                {/* Customer Paid */}
+                                                <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 600, fontSize: '13.5px', color: '#0f172a', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                                                    ₹{parseFloat(txn.customer_paid || 0).toFixed(2)}
+                                                </td>
+
+                                                {/* Helper Received */}
+                                                <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 700, fontSize: '13.5px', color: '#059669', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                                                    ₹{parseFloat(txn.helper_received || 0).toFixed(2)}
+                                                </td>
+
+                                                {/* Admin Share */}
+                                                <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 600, fontSize: '13.5px', color: '#2563eb', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                                                    ₹{parseFloat(txn.platform_fee || 0).toFixed(2)}
+                                                </td>
+
+                                                {/* Wallet Impact */}
+                                                <td style={{ padding: '12px 14px', textAlign: 'right' }}>
+                                                    <div style={{
+                                                        display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                                        fontWeight: 800, fontSize: '14px',
+                                                        color: txn.type === 'CREDIT' ? '#059669' : '#dc2626',
+                                                        fontVariantNumeric: 'tabular-nums',
+                                                        whiteSpace: 'nowrap',
+                                                    }}>
+                                                        {txn.type === 'CREDIT'
+                                                            ? <ArrowUpRight size={15} />
+                                                            : <ArrowDownRight size={15} />
+                                                        }
+                                                        ₹{parseFloat(txn.amount).toFixed(2)}
+                                                    </div>
+                                                </td>
                                             </tr>
-                                        </thead>
-                                        <tbody>
-                                            {ledger.length > 0 ? ledger.map((txn, idx) => (
-                                                <tr key={idx} className="ledger-row">
-                                                    <td className="time-col">
-                                                        {new Date(txn.created_at).toLocaleString(undefined, {
-                                                            month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'
-                                                        })}
-                                                    </td>
-                                                    <td>
-                                                        <div style={{ fontWeight: 600, color: 'var(--text-main, #1e293b)' }}>
-                                                            {txn.display_order_id || (txn.order_id ? `#${txn.order_id}` : '-')}
-                                                        </div>
-                                                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted, #64748b)' }}>
-                                                            {txn.service || txn.description}
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <span style={{ 
-                                                            fontSize: '0.75rem', 
-                                                            padding: '2px 8px', 
-                                                            borderRadius: '4px',
-                                                            fontWeight: 600,
-                                                            backgroundColor: txn.payment_method === 'COD' ? '#fef3c7' : '#dbeafe',
-                                                            color: txn.payment_method === 'COD' ? '#d97706' : '#2563eb'
-                                                        }}>
-                                                            {txn.payment_method || 'UPI'}
-                                                        </span>
-                                                    </td>
-                                                    <td className="text-right" style={{ fontWeight: 600 }}>
-                                                        ₹{parseFloat(txn.customer_paid || 0).toFixed(2)}
-                                                    </td>
-                                                    <td className="text-right" style={{ fontWeight: 600, color: '#10b981' }}>
-                                                        ₹{parseFloat(txn.helper_received || 0).toFixed(2)}
-                                                    </td>
-                                                    <td className="text-right" style={{ fontWeight: 600, color: '#3b82f6' }}>
-                                                        ₹{parseFloat(txn.platform_fee || 0).toFixed(2)}
-                                                    </td>
-                                                    <td className="text-right">
-                                                        <div className={`txn-amount ${txn.type === 'CREDIT' ? 'text-success' : 'text-danger'}`}>
-                                                            {txn.type === 'CREDIT' ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
-                                                            ₹{parseFloat(txn.amount).toFixed(2)}
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            )) : (
-                                                <tr>
-                                                    <td colSpan="7" className="empty-ledger">
-                                                        <History className="opacity-20 mb-4 mx-auto" size={48} />
-                                                        <p>No transactions recorded yet.</p>
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                        )) : (
+                                            <tr>
+                                                <td colSpan={7} style={{ padding: '60px 20px', textAlign: 'center', color: '#94a3b8' }}>
+                                                    <History size={40} style={{ marginBottom: 12, opacity: 0.3 }} />
+                                                    <p style={{ margin: 0, fontWeight: 600, fontSize: '14px' }}>No transactions recorded yet.</p>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
                             </div>
                         </>
                     ) : (
-                        <div className="unselected-state">
-                            <div className="unselected-icon-box">
-                                <Wallet size={56} className="unselected-icon" strokeWidth={1.5} />
+                        /* Empty state */
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', textAlign: 'center', padding: '40px' }}>
+                            <div style={{ width: 80, height: 80, background: '#f8fafc', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
+                                <Wallet size={40} color="#cbd5e1" strokeWidth={1.5} />
                             </div>
-                            <h3>Select a Helper</h3>
-                            <p>Choose a helper from the list to view their detailed transaction ledger and process recharges.</p>
+                            <h3 style={{ margin: '0 0 8px', fontSize: '18px', fontWeight: 700, color: '#1e293b' }}>Select a Helper</h3>
+                            <p style={{ margin: 0, fontSize: '13px', maxWidth: '280px', lineHeight: 1.6 }}>
+                                Choose a helper from the list to view their transaction ledger and process recharges.
+                            </p>
                         </div>
                     )}
                 </div>
             </div>
 
-            {/* Recharge Modal */}
+            {/* ── Recharge Modal ── */}
             {isRechargeModalOpen && (
-                <div className="modal-overlay">
-                    <div className="modal-content glass-modal">
-                        <div className="modal-header">
+                <div style={{
+                    position: 'fixed', inset: 0,
+                    background: 'rgba(15,23,42,0.45)',
+                    backdropFilter: 'blur(4px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    zIndex: 1000, padding: '16px',
+                }}>
+                    <div style={{
+                        background: '#fff', width: '100%', maxWidth: '420px',
+                        borderRadius: '20px',
+                        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.2)',
+                        overflow: 'hidden',
+                        animation: 'modalSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                    }}>
+                        {/* Modal header */}
+                        <div style={{ padding: '20px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fafbfc' }}>
                             <div>
-                                <h2>Recharge Wallet</h2>
-                                <p>For {selectedHelper?.name}</p>
+                                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>Recharge Wallet</h2>
+                                <p style={{ margin: '3px 0 0', fontSize: '13px', color: '#64748b', fontWeight: 500 }}>For {selectedHelper?.name}</p>
                             </div>
-                            <button onClick={() => setIsRechargeModalOpen(false)} className="close-btn">
-                                <X size={20} strokeWidth={2.5} />
+                            <button onClick={() => setIsRechargeModalOpen(false)} style={{
+                                background: '#f1f5f9', border: 'none', width: 34, height: 34,
+                                borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                cursor: 'pointer', color: '#64748b',
+                            }}>
+                                <X size={17} />
                             </button>
                         </div>
-                        
-                        <form onSubmit={handleRecharge} className="modal-body">
-                            <div className="form-group">
-                                <label>Amount (₹)</label>
-                                <div className="input-with-icon">
-                                    <span className="currency-symbol">₹</span>
-                                    <input 
-                                        type="number" 
-                                        required
-                                        min="1"
-                                        className="amount-input"
+
+                        <form onSubmit={handleRecharge} style={{ padding: '24px' }}>
+                            <div style={{ marginBottom: '18px' }}>
+                                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748b', marginBottom: '8px' }}>
+                                    Amount (₹)
+                                </label>
+                                <div style={{ position: 'relative' }}>
+                                    <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', fontSize: '20px', fontWeight: 800, color: '#94a3b8' }}>₹</span>
+                                    <input
+                                        type="number" required min="1"
                                         value={rechargeAmount}
-                                        onChange={(e) => setRechargeAmount(e.target.value)}
+                                        onChange={e => setRechargeAmount(e.target.value)}
                                         placeholder="0.00"
+                                        style={{ width: '100%', padding: '14px 14px 14px 36px', fontSize: '22px', fontWeight: 800, border: '2px solid #e2e8f0', borderRadius: '12px', background: '#f8fafc', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }}
                                     />
                                 </div>
                             </div>
-                            <div className="form-group">
-                                <label>Description / Reference</label>
-                                <input 
-                                    type="text" 
-                                    required
-                                    className="desc-input"
+
+                            <div style={{ marginBottom: '24px' }}>
+                                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748b', marginBottom: '8px' }}>
+                                    Description / Reference
+                                </label>
+                                <input
+                                    type="text" required
                                     value={rechargeDesc}
-                                    onChange={(e) => setRechargeDesc(e.target.value)}
+                                    onChange={e => setRechargeDesc(e.target.value)}
+                                    style={{ width: '100%', padding: '12px 14px', fontSize: '14px', fontWeight: 600, border: '2px solid #e2e8f0', borderRadius: '12px', background: '#f8fafc', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }}
                                 />
                             </div>
-                            <div className="modal-footer">
-                                <button type="button" onClick={() => setIsRechargeModalOpen(false)} className="cancel-btn">
+
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button type="button" onClick={() => setIsRechargeModalOpen(false)} style={{ flex: 1, padding: '12px', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '12px', fontWeight: 700, fontSize: '14px', cursor: 'pointer' }}>
                                     Cancel
                                 </button>
-                                <button type="submit" className="process-btn">
-                                    <Zap size={18} fill="currentColor" />
-                                    Process
+                                <button type="submit" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '12px', background: 'linear-gradient(135deg, #3b82f6, #2563eb)', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 700, fontSize: '14px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(37,99,235,0.3)' }}>
+                                    <Zap size={16} fill="currentColor" /> Process
                                 </button>
                             </div>
                         </form>
                     </div>
                 </div>
             )}
-            
+
             <style>{`
-                .wallet-page-container {
-                    padding: 2rem;
-                    max-width: 1400px;
-                    margin: 0 auto;
-                    font-family: 'Inter', sans-serif;
-                }
-                .wallet-header {
-                    margin-bottom: 2rem;
-                }
-                .wallet-title-container {
-                    display: flex;
-                    align-items: center;
-                    gap: 1rem;
-                }
-                .wallet-icon {
-                    color: var(--primary);
-                    background: #eff6ff;
-                    padding: 0.5rem;
-                    border-radius: 12px;
-                    width: 50px;
-                    height: 50px;
-                }
-                .wallet-title {
-                    font-size: 2rem;
-                    font-weight: 800;
-                    margin: 0;
-                    color: var(--text-main);
-                    letter-spacing: -0.5px;
-                }
-                .wallet-subtitle {
-                    color: var(--text-muted);
-                    margin: 0.25rem 0 0 0;
-                    font-size: 1.05rem;
-                }
-                
-                .wallet-grid {
-                    display: grid;
-                    grid-template-columns: 1fr;
-                    gap: 1.5rem;
-                    height: calc(100vh - 160px);
-                }
-                @media (min-width: 1024px) {
-                    .wallet-grid {
-                        grid-template-columns: 350px 1fr;
-                    }
-                }
-                
-                .glass-panel {
-                    background: #ffffff;
-                    border-radius: 20px;
-                    box-shadow: 0 10px 30px -5px rgba(0,0,0,0.05);
-                    border: 1px solid var(--border);
-                    display: flex;
-                    flex-direction: column;
-                    overflow: hidden;
-                }
-                
-                .wallet-search-box {
-                    padding: 1.25rem;
-                    border-bottom: 1px solid var(--border);
-                    position: relative;
-                }
-                .search-icon {
-                    position: absolute;
-                    left: 2rem;
-                    top: 50%;
-                    transform: translateY(-50%);
-                    color: #94a3b8;
-                }
-                .wallet-search-input {
-                    width: 100%;
-                    padding: 0.75rem 1rem 0.75rem 2.5rem;
-                    border: 2px solid #e2e8f0;
-                    border-radius: 12px;
-                    background: #f8fafc;
-                    transition: all 0.2s;
-                    box-sizing: border-box;
-                    font-size: 0.95rem;
-                }
-                .wallet-search-input:focus {
-                    outline: none;
-                    border-color: var(--primary);
-                    background: #fff;
-                    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
-                }
-                
-                .wallet-list {
-                    flex: 1;
-                    overflow-y: auto;
-                    padding: 0.75rem;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 0.5rem;
-                }
-                .helper-card {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    padding: 1rem;
-                    border-radius: 14px;
-                    cursor: pointer;
-                    border: 2px solid transparent;
-                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-                    background: #fff;
-                }
-                .helper-card:hover {
-                    background: #f8fafc;
-                    border-color: #e2e8f0;
-                    transform: translateY(-1px);
-                }
-                .helper-card.selected {
-                    background: linear-gradient(135deg, var(--primary) 0%, #2563eb 100%);
-                    box-shadow: 0 10px 20px -5px rgba(59, 130, 246, 0.4);
-                    color: #fff;
-                }
-                
-                .helper-name-row {
-                    display: flex;
-                    align-items: center;
-                    gap: 0.5rem;
-                }
-                .helper-name {
-                    font-weight: 700;
-                    font-size: 1.05rem;
-                    color: var(--text-main);
-                }
-                .helper-card.selected .helper-name {
-                    color: #fff;
-                }
-                .helper-code-badge {
-                    font-size: 0.65rem;
-                    font-weight: 800;
-                    background: #f1f5f9;
-                    color: #64748b;
-                    padding: 0.1rem 0.4rem;
-                    border-radius: 4px;
-                }
-                .helper-card.selected .helper-code-badge {
-                    background: rgba(255,255,255,0.2);
-                    color: #fff;
-                }
-                .helper-phone {
-                    font-size: 0.85rem;
-                    color: var(--text-muted);
-                    margin-top: 0.25rem;
-                }
-                .helper-card.selected .helper-phone {
-                    color: rgba(255,255,255,0.8);
-                }
-                
-                .helper-balance-col {
-                    text-align: right;
-                }
-                .balance-label {
-                    font-size: 0.7rem;
-                    text-transform: uppercase;
-                    font-weight: 700;
-                    color: #94a3b8;
-                    margin-bottom: 0.1rem;
-                }
-                .helper-card.selected .balance-label {
-                    color: rgba(255,255,255,0.6);
-                }
-                .helper-balance {
-                    font-weight: 800;
-                    font-size: 1.1rem;
-                    color: var(--text-main);
-                }
-                
-                .text-danger { color: #ef4444 !important; }
-                .text-success { color: #10b981 !important; }
-                .text-white { color: #fff !important; }
-                
-                .ledger-header {
-                    padding: 1.5rem 2rem;
-                    border-bottom: 1px solid var(--border);
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    background: #fafaf9;
-                }
-                .ledger-title {
-                    margin: 0 0 0.5rem 0;
-                    font-size: 1.5rem;
-                    font-weight: 800;
-                    color: var(--text-main);
-                }
-                .ledger-badges {
-                    display: flex;
-                    align-items: center;
-                    gap: 1rem;
-                }
-                .balance-badge {
-                    margin: 0;
-                    background: #fff;
-                    border: 1px solid var(--border);
-                    padding: 0.35rem 0.75rem;
-                    border-radius: 8px;
-                    font-size: 0.9rem;
-                    font-weight: 600;
-                    color: var(--text-muted);
-                }
-                .balance-amount {
-                    font-weight: 800;
-                    font-size: 1.05rem;
-                }
-                .status-badge {
-                    font-size: 0.75rem;
-                    font-weight: 800;
-                    padding: 0.25rem 0.65rem;
-                    border-radius: 9999px;
-                }
-                .status-badge.online { background: #d1fae5; color: #047857; }
-                .status-badge.offline { background: #f1f5f9; color: #475569; }
-                
-                .recharge-btn {
-                    display: flex;
-                    align-items: center;
-                    gap: 0.5rem;
-                    background: linear-gradient(135deg, var(--primary) 0%, #2563eb 100%);
-                    color: white;
-                    border: none;
-                    padding: 0.75rem 1.5rem;
-                    border-radius: 12px;
-                    font-weight: 700;
-                    font-size: 1rem;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-                }
-                .recharge-btn:hover {
-                    transform: translateY(-2px);
-                    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
-                }
-                
-                .ledger-body {
-                    flex: 1;
-                    padding: 1.5rem;
-                    overflow-y: auto;
-                    background: #fff;
-                }
-                .ledger-table-container {
-                    border: 1px solid var(--border);
-                    border-radius: 12px;
-                    overflow: hidden;
-                }
-                .ledger-table {
-                    width: 100%;
-                    border-collapse: collapse;
-                }
-                .ledger-table th {
-                    background: #f8fafc;
-                    padding: 1rem 1.25rem;
-                    font-size: 0.75rem;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                    color: #64748b;
-                    font-weight: 800;
-                    border-bottom: 1px solid var(--border);
-                    text-align: left;
-                }
-                .ledger-table td {
-                    padding: 1rem 1.25rem;
-                    border-bottom: 1px solid #f1f5f9;
-                    vertical-align: middle;
-                }
-                .ledger-row:hover {
-                    background: #f8fafc;
-                }
-                .ledger-row:last-child td {
-                    border-bottom: none;
-                }
-                .time-col {
-                    color: #64748b;
-                    font-size: 0.9rem;
-                    font-weight: 500;
-                }
-                .txn-desc {
-                    font-weight: 700;
-                    color: var(--text-main);
-                }
-                .txn-type {
-                    font-size: 0.7rem;
-                    font-weight: 800;
-                    color: #94a3b8;
-                    margin-top: 0.25rem;
-                }
-                .order-badge {
-                    background: #eff6ff;
-                    color: var(--primary);
-                    border: 1px solid #bfdbfe;
-                    padding: 0.2rem 0.5rem;
-                    border-radius: 6px;
-                    font-size: 0.8rem;
-                    font-weight: 700;
-                }
-                .no-order {
-                    color: #cbd5e1;
-                }
-                .txn-amount {
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 0.25rem;
-                    font-weight: 900;
-                    font-size: 1.1rem;
-                }
-                .text-right {
-                    text-align: right;
-                }
-                
-                .unselected-state, .empty-state {
-                    flex: 1;
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    justify-content: center;
-                    color: #94a3b8;
-                    text-align: center;
-                    padding: 2rem;
-                }
-                .unselected-icon-box {
-                    background: #f8fafc;
-                    padding: 1.5rem;
-                    border-radius: 50%;
-                    margin-bottom: 1.5rem;
-                }
-                .unselected-icon {
-                    color: #94a3b8;
-                }
-                .unselected-state h3 {
-                    font-size: 1.5rem;
-                    color: var(--text-main);
-                    margin: 0 0 0.5rem 0;
-                }
-                
-                .empty-ledger {
-                    padding: 4rem 2rem !important;
-                    text-align: center;
-                    color: #94a3b8;
-                    font-weight: 600;
-                }
-                
-                .modal-overlay {
-                    position: fixed;
-                    top: 0; left: 0; right: 0; bottom: 0;
-                    background: rgba(15, 23, 42, 0.4);
-                    backdrop-filter: blur(4px);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    z-index: 1000;
-                    padding: 1rem;
-                }
-                .modal-content {
-                    background: #fff;
-                    width: 100%;
-                    max-width: 450px;
-                    border-radius: 24px;
-                    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-                    overflow: hidden;
-                    animation: modalSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-                }
                 @keyframes modalSlideIn {
-                    from { transform: translateY(20px) scale(0.95); opacity: 0; }
-                    to { transform: translateY(0) scale(1); opacity: 1; }
+                    from { transform: translateY(16px) scale(0.97); opacity: 0; }
+                    to   { transform: translateY(0) scale(1); opacity: 1; }
                 }
-                .modal-header {
-                    padding: 1.5rem 2rem;
-                    border-bottom: 1px solid var(--border);
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    background: #f8fafc;
+                @media (max-width: 900px) {
+                    .wallet-two-col { grid-template-columns: 1fr !important; height: auto !important; }
                 }
-                .modal-header h2 {
-                    margin: 0;
-                    font-size: 1.5rem;
-                    font-weight: 800;
-                }
-                .modal-header p {
-                    margin: 0.25rem 0 0 0;
-                    color: var(--text-muted);
-                    font-weight: 600;
-                }
-                .close-btn {
-                    background: #fff;
-                    border: 1px solid var(--border);
-                    width: 36px; height: 36px;
-                    border-radius: 50%;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    cursor: pointer;
-                    color: #94a3b8;
-                    transition: all 0.2s;
-                }
-                .close-btn:hover {
-                    background: #fee2e2;
-                    color: #ef4444;
-                    border-color: #fca5a5;
-                }
-                
-                .modal-body {
-                    padding: 2rem;
-                }
-                .form-group {
-                    margin-bottom: 1.5rem;
-                }
-                .form-group label {
-                    display: block;
-                    font-size: 0.8rem;
-                    font-weight: 800;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                    color: #64748b;
-                    margin-bottom: 0.5rem;
-                }
-                .input-with-icon {
-                    position: relative;
-                }
-                .currency-symbol {
-                    position: absolute;
-                    left: 1rem;
-                    top: 50%;
-                    transform: translateY(-50%);
-                    font-size: 1.25rem;
-                    font-weight: 800;
-                    color: #94a3b8;
-                }
-                .amount-input {
-                    width: 100%;
-                    padding: 1rem 1rem 1rem 2.5rem;
-                    font-size: 1.5rem;
-                    font-weight: 800;
-                    border: 2px solid var(--border);
-                    border-radius: 12px;
-                    background: #f8fafc;
-                    transition: all 0.2s;
-                    box-sizing: border-box;
-                }
-                .desc-input {
-                    width: 100%;
-                    padding: 1rem;
-                    font-size: 1rem;
-                    font-weight: 600;
-                    border: 2px solid var(--border);
-                    border-radius: 12px;
-                    background: #f8fafc;
-                    transition: all 0.2s;
-                    box-sizing: border-box;
-                }
-                .amount-input:focus, .desc-input:focus {
-                    outline: none;
-                    border-color: var(--primary);
-                    background: #fff;
-                    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
-                }
-                
-                .modal-footer {
-                    display: flex;
-                    gap: 1rem;
-                    margin-top: 2rem;
-                }
-                .cancel-btn {
-                    flex: 1;
-                    padding: 1rem;
-                    background: #f1f5f9;
-                    color: #475569;
-                    border: none;
-                    border-radius: 12px;
-                    font-weight: 700;
-                    font-size: 1rem;
-                    cursor: pointer;
-                    transition: background 0.2s;
-                }
-                .cancel-btn:hover { background: #e2e8f0; }
-                .process-btn {
-                    flex: 1;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 0.5rem;
-                    padding: 1rem;
-                    background: linear-gradient(135deg, var(--primary) 0%, #2563eb 100%);
-                    color: white;
-                    border: none;
-                    border-radius: 12px;
-                    font-weight: 700;
-                    font-size: 1rem;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-                }
-                .process-btn:hover {
-                    transform: translateY(-2px);
-                    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
-                }
-                
-                .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-                .custom-scrollbar::-webkit-scrollbar-thumb {
-                    background-color: #cbd5e1;
-                    border-radius: 10px;
-                }
-                .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
             `}</style>
         </div>
     );
