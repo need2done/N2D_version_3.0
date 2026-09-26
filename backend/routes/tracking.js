@@ -207,6 +207,10 @@ router.post('/stop', authenticateHelperAndOrder, async (req, res) => {
 // GET /api/tracking/live/:token — Customer live view
 // STRICT TOKEN VALIDATION ONLY
 // ==========================================
+// ==========================================
+// GET /api/tracking/live/:token — Customer live view
+// STRICT TOKEN VALIDATION ONLY
+// ==========================================
 router.get('/live/:token', async (req, res) => {
     try {
         const tokenStr = req.params.token;
@@ -227,17 +231,20 @@ router.get('/live/:token', async (req, res) => {
             }
         }
 
-        // If not found, check if it's a direct order_id (e.g. N2DVFDFBF)
-        if (!tokenId) {
-            const [orderRows] = await db.query('SELECT id FROM orders WHERE order_id = ? OR id = ?', [tokenStr, tokenStr]);
-            if (orderRows.length > 0) {
-                tokenId = orderRows[0].id;
-            }
+        // Fetch order details
+        let orderRows = [];
+        if (tokenId) {
+            [orderRows] = await db.query('SELECT * FROM orders WHERE id = ?', [tokenId]);
+        } else {
+            [orderRows] = await db.query('SELECT * FROM orders WHERE order_id = ? OR id = ?', [tokenStr, tokenStr]);
         }
 
-        if (!tokenId) {
-            return res.status(404).json({ success: false, error: 'Invalid or expired tracking token' });
+        if (orderRows.length === 0) {
+            return res.status(404).json({ success: false, status: 'EXPIRED', error: 'Invalid or expired tracking token' });
         }
+
+        const order = orderRows[0];
+        tokenId = order.id;
 
         const [locations] = await db.query(
             'SELECT lat, lng, last_seen FROM helper_live_tracking WHERE order_id = ?',
@@ -249,10 +256,31 @@ router.get('/live/:token', async (req, res) => {
             [tokenId]
         );
 
+        let helperInfo = null;
+        if (order.helper_id) {
+            const [helpers] = await db.query('SELECT name, phone FROM helpers WHERE id = ?', [order.helper_id]);
+            if (helpers.length > 0) {
+                helperInfo = helpers[0];
+            }
+        }
+
+        const hasLocation = locations.length > 0;
+        const lastSeen = hasLocation ? locations[0].last_seen : (order.updated_at || order.created_at);
+
         res.json({
             success: true,
-            location: locations.length > 0 ? locations[0] : null,
-            trail: trail.reverse()
+            status: order.status === 'COMPLETED' ? 'COMPLETED' : (hasLocation ? 'ACTIVE' : (order.status || 'STARTED')),
+            order_id: order.order_id || order.id,
+            service: order.service || 'Delivery Service',
+            helper_name: helperInfo ? helperInfo.name : null,
+            helper_phone: helperInfo ? helperInfo.phone : null,
+            pickup_lat: order.pickup_lat ? parseFloat(order.pickup_lat) : null,
+            pickup_lng: order.pickup_lng ? parseFloat(order.pickup_lng) : null,
+            drop_lat: (order.drop_lat || order.customer_lat) ? parseFloat(order.drop_lat || order.customer_lat) : null,
+            drop_lng: (order.drop_lng || order.customer_lng) ? parseFloat(order.drop_lng || order.customer_lng) : null,
+            location: hasLocation ? locations[0] : null,
+            last_ping: lastSeen,
+            trail: (trail || []).reverse()
         });
     } catch (err) {
         console.error('Error fetching live tracking:', err.message);

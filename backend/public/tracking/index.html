@@ -3,123 +3,244 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>N2D — Live Tracking</title>
+    <title>Need2Done — Live Tracking</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; }
-        #map { height: 75vh; width: 100%; border-radius: 0 0 1.5rem 1.5rem; }
-        .header { padding: 1rem 1.5rem; background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%); }
-        .header h1 { font-size: 1.2rem; font-weight: 700; }
-        .header p { font-size: 0.8rem; opacity: 0.8; }
-        .status-bar { display: flex; justify-content: space-between; padding: 1rem 1.5rem; background: #1e293b; }
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: #0f172a; color: #f8fafc; min-height: 100vh; display: flex; flexDirection: column; }
+        .header { padding: 1rem 1.25rem; background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%); color: #fff; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .header h1 { font-size: 1.15rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+        .header p { font-size: 0.8rem; opacity: 0.9; margin-top: 2px; }
+        .order-badge { background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; white-space: nowrap; }
+        
+        #map { height: 60vh; width: 100%; z-index: 1; flex-grow: 1; }
+        
+        .helper-card { background: #1e293b; padding: 1rem 1.25rem; border-top: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+        .helper-info h3 { font-size: 1rem; font-weight: 700; color: #f8fafc; }
+        .helper-info p { font-size: 0.8rem; color: #94a3b8; margin-top: 2px; }
+        .action-btns { display: flex; gap: 8px; }
+        .btn { display: inline-flex; align-items: center; justify-content: center; padding: 8px 14px; border-radius: 10px; font-size: 0.85rem; font-weight: 700; text-decoration: none; border: none; cursor: pointer; transition: transform 0.1s ease; }
+        .btn-call { background: #2563eb; color: #ffffff; }
+        .btn-whatsapp { background: #16a34a; color: #ffffff; }
+        .btn:active { transform: scale(0.96); }
+
+        .status-bar { display: flex; justify-content: space-around; padding: 0.9rem 1rem; background: #0f172a; border-top: 1px solid #1e293b; }
         .status-item { text-align: center; }
-        .status-item .label { font-size: 0.7rem; text-transform: uppercase; color: #94a3b8; }
-        .status-item .value { font-size: 1rem; font-weight: 600; margin-top: 4px; }
-        .expired-msg { text-align: center; padding: 4rem 2rem; }
-        .expired-msg h2 { font-size: 1.5rem; margin-bottom: 0.5rem; }
-        .pulse { animation: pulse 2s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .status-item .label { font-size: 0.68rem; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: 0.05em; }
+        .status-item .value { font-size: 0.95rem; font-weight: 700; margin-top: 3px; }
+
+        .expired-msg { text-align: center; padding: 4rem 2rem; max-width: 480px; margin: 0 auto; }
+        .expired-msg h2 { font-size: 1.5rem; margin-bottom: 0.5rem; color: #38bdf8; }
+        .expired-msg p { color: #94a3b8; font-size: 0.95rem; }
+
+        /* Custom Leaflet Map Pins */
+        .custom-pin { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 2px solid white; font-size: 18px; }
+        .pin-helper { background: #4F46E5; }
+        .pin-pickup { background: #16a34a; }
+        .pin-drop { background: #dc2626; }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>📍 Need2Done — Live Tracking</h1>
-        <p>Your helper is on the way!</p>
+        <div>
+            <h1>📍 Need2Done</h1>
+            <p id="subTitle">Live Delivery Tracking</p>
+        </div>
+        <div class="order-badge" id="orderBadge">--</div>
     </div>
 
     <div id="map"></div>
 
+    <div class="helper-card" id="helperCard" style="display: none;">
+        <div class="helper-info">
+            <h3 id="helperName">Assigned Helper</h3>
+            <p id="helperStatus">On the way with your order</p>
+        </div>
+        <div class="action-btns" id="helperActions"></div>
+    </div>
+
     <div class="status-bar">
         <div class="status-item">
             <div class="label">Status</div>
-            <div class="value" id="statusText" style="color: #4ade80;">Loading...</div>
+            <div class="value" id="statusText" style="color: #38bdf8;">Connecting...</div>
         </div>
         <div class="status-item">
-            <div class="label">Last Update</div>
-            <div class="value" id="lastUpdate">--</div>
+            <div class="label">Last Signal</div>
+            <div class="value" id="lastUpdate" style="color: #94a3b8;">--</div>
         </div>
     </div>
 
     <div id="expiredContainer" style="display:none;" class="expired-msg">
-        <h2>✅ Tracking ended</h2>
-        <p>Order completed. Thank you for using Need2Done!</p>
+        <h2 id="expiredTitle">✅ Order Completed</h2>
+        <p id="expiredSub">Thank you for using Need2Done!</p>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // ==========================================
-        // TODO[ENV_CHANGE]: BACKEND API URL
-        // Update this for production deployment.
-        // ==========================================
         const API_BASE = window.location.origin;
         const token = window.location.pathname.split('/track/')[1];
 
         if (!token) {
-            document.body.innerHTML = '<div class="expired-msg"><h2>❌ Invalid tracking link</h2></div>';
+            document.body.innerHTML = '<div class="expired-msg"><h2>❌ Invalid tracking link</h2><p>Please check the link provided in your message.</p></div>';
         }
 
+        // Initialize Map with OpenStreetMap Standard Tiles (No Watermarks, High Availability)
         const map = L.map('map').setView([17.5116, 78.8890], 14);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png', {
-            attribution: '© <a href="https://maps.olaelectric.com" target="_blank" style="color:#00c853;font-weight:bold;">Ola Maps Style</a> | Need2Done',
-            maxZoom: 19,
-            detectRetina: false
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Need2Done',
+            maxZoom: 19
         }).addTo(map);
 
-
-
-
-        let marker = null;
+        let helperMarker = null;
+        let pickupMarker = null;
+        let dropMarker = null;
         let polyline = null;
+        let hasCentered = false;
+
+        function createDivIcon(emoji, bgClass) {
+            return L.divIcon({
+                html: `<div class="custom-pin ${bgClass}">${emoji}</div>`,
+                className: '',
+                iconSize: [36, 36],
+                iconAnchor: [18, 18]
+            });
+        }
 
         async function fetchLocation() {
             try {
                 const res = await fetch(`${API_BASE}/api/tracking/live/${token}`);
+                if (!res.ok && res.status === 404) {
+                    showExpired('❌ Tracking Unavailable', 'Invalid or expired tracking link.');
+                    return;
+                }
                 const data = await res.json();
 
-                if (data.status === 'EXPIRED') {
-                    document.getElementById('map').style.display = 'none';
-                    document.querySelector('.status-bar').style.display = 'none';
-                    document.getElementById('expiredContainer').style.display = 'block';
+                if (!data.success || data.status === 'EXPIRED') {
+                    showExpired('✅ Order Completed', 'This tracking session has ended. Thank you for choosing Need2Done!');
                     return;
                 }
 
-                if (data.location) {
-                    const { lat, lng, timestamp } = data.location;
-                    const pos = [parseFloat(lat), parseFloat(lng)];
+                // Update Header
+                if (data.order_id) {
+                    document.getElementById('orderBadge').textContent = `#${data.order_id}`;
+                }
+                if (data.service) {
+                    document.getElementById('subTitle').textContent = `${data.service} • Live Tracking`;
+                }
 
-                    if (!marker) {
-                        marker = L.marker(pos).addTo(map);
-                    } else {
-                        marker.setLatLng(pos);
+                // Helper Card
+                if (data.helper_name) {
+                    document.getElementById('helperCard').style.display = 'flex';
+                    document.getElementById('helperName').textContent = `Helper: ${data.helper_name}`;
+                    if (data.helper_phone) {
+                        const cleanPhone = data.helper_phone.replace(/\D/g, '');
+                        document.getElementById('helperActions').innerHTML = `
+                            <a href="tel:${data.helper_phone}" class="btn btn-call">📞 Call</a>
+                            <a href="https://wa.me/${cleanPhone}" target="_blank" class="btn btn-whatsapp">💬 Chat</a>
+                        `;
                     }
-                    map.panTo(pos);
+                }
 
-                    // Draw trail as polyline (route line like Uber/Zomato)
+                // Status text updates
+                const statusElem = document.getElementById('statusText');
+                let displayStatus = data.status ? data.status.replace(/_/g, ' ') : 'ACTIVE';
+                statusElem.textContent = displayStatus;
+
+                if (data.status === 'COMPLETED') {
+                    statusElem.style.color = '#4ade80';
+                    showExpired('✅ Order Delivered & Completed', 'Your order has been completed successfully.');
+                    return;
+                } else if (data.status === 'ACTIVE' || data.status === 'HELPER_ARRIVED' || data.status === 'IN_PROGRESS') {
+                    statusElem.style.color = '#38bdf8';
+                } else {
+                    statusElem.style.color = '#fbbf24';
+                }
+
+                // Collect bounds for automatic map framing
+                const boundsCoords = [];
+
+                // Pickup Pin
+                if (data.pickup_lat && data.pickup_lng) {
+                    const pPos = [data.pickup_lat, data.pickup_lng];
+                    boundsCoords.push(pPos);
+                    if (!pickupMarker) {
+                        pickupMarker = L.marker(pPos, { icon: createDivIcon('📍', 'pin-pickup') }).addTo(map).bindPopup('Pickup Site');
+                    } else {
+                        pickupMarker.setLatLng(pPos);
+                    }
+                }
+
+                // Drop Pin
+                if (data.drop_lat && data.drop_lng) {
+                    const dPos = [data.drop_lat, data.drop_lng];
+                    boundsCoords.push(dPos);
+                    if (!dropMarker) {
+                        dropMarker = L.marker(dPos, { icon: createDivIcon('🏁', 'pin-drop') }).addTo(map).bindPopup('Drop Location');
+                    } else {
+                        dropMarker.setLatLng(dPos);
+                    }
+                }
+
+                // Live Helper Pin & Trail
+                if (data.location && data.location.lat && data.location.lng) {
+                    const hPos = [parseFloat(data.location.lat), parseFloat(data.location.lng)];
+                    boundsCoords.push(hPos);
+
+                    if (!helperMarker) {
+                        helperMarker = L.marker(hPos, { icon: createDivIcon('🛵', 'pin-helper') }).addTo(map).bindPopup('Live Helper Location');
+                    } else {
+                        helperMarker.setLatLng(hPos);
+                    }
+
                     if (data.trail && data.trail.length > 1) {
                         const trailCoords = data.trail.map(p => [parseFloat(p.lat), parseFloat(p.lng)]);
                         if (polyline) map.removeLayer(polyline);
                         polyline = L.polyline(trailCoords, {
                             color: '#4F46E5',
-                            weight: 4,
+                            weight: 5,
                             opacity: 0.8
                         }).addTo(map);
                     }
-
-                    document.getElementById('statusText').textContent = data.status;
-                    document.getElementById('statusText').style.color = data.status === 'ACTIVE' ? '#4ade80' : '#f87171';
-
-                    const ago = Math.floor((Date.now() - new Date(data.last_ping).getTime()) / 1000);
-                    document.getElementById('lastUpdate').textContent = ago < 60 ? `${ago}s ago` : `${Math.floor(ago/60)}m ago`;
                 }
+
+                // Frame map to view all relevant locations
+                if (boundsCoords.length > 0) {
+                    if (!hasCentered) {
+                        if (boundsCoords.length === 1) {
+                            map.setView(boundsCoords[0], 15);
+                        } else {
+                            map.fitBounds(L.latLngBounds(boundsCoords), { padding: [40, 40] });
+                        }
+                        hasCentered = true;
+                    }
+                }
+
+                // Last Signal Timer
+                if (data.last_ping) {
+                    const ago = Math.floor((Date.now() - new Date(data.last_ping).getTime()) / 1000);
+                    document.getElementById('lastUpdate').textContent = ago < 5 ? 'Just now' : (ago < 60 ? `${ago}s ago` : `${Math.floor(ago/60)}m ago`);
+                } else {
+                    document.getElementById('lastUpdate').textContent = 'Waiting for signal';
+                }
+
             } catch (err) {
-                console.error('Fetch error:', err);
+                console.error('Tracking fetch error:', err);
+                document.getElementById('statusText').textContent = 'Retrying...';
             }
         }
 
-        // Poll every 10 seconds
+        function showExpired(title, subtitle) {
+            document.getElementById('map').style.display = 'none';
+            document.getElementById('helperCard').style.display = 'none';
+            document.querySelector('.status-bar').style.display = 'none';
+            document.getElementById('expiredTitle').textContent = title;
+            document.getElementById('expiredSub').textContent = subtitle;
+            document.getElementById('expiredContainer').style.display = 'block';
+        }
+
+        // Initial fetch + 5 second polling
         fetchLocation();
-        setInterval(fetchLocation, 10000);
+        setInterval(fetchLocation, 5000);
     </script>
 </body>
 </html>

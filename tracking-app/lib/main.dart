@@ -640,10 +640,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                           ),
                           children: [
                             TileLayer(
-                              urlTemplate: widget.isDarkMode
-                                  ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-                                  : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-                              subdomains: const ['a', 'b', 'c', 'd'],
+                              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                               userAgentPackageName: 'in.need2done.agent',
                             ),
                             if (currentPosition != null) ...[
