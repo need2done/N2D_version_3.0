@@ -143,6 +143,20 @@ def get_active_order_details(phone: str):
         cur.close()
         db.close()
 
+def format_human_status(status: str) -> str:
+    status_map = {
+        'ADMIN_APPROVED_BILL': 'Bill Approved - Payment Pending 🧾',
+        'HELPER_PURCHASED': 'Items Purchased - Bill Uploaded 🛍️',
+        'HELPER_ARRIVED': 'Helper Arrived at Location 🛵',
+        'HELPER_ASSIGNED': 'Helper Assigned & On The Way 🛵',
+        'IN_PROGRESS': 'Order In Progress 🚴',
+        'CREATED': 'Order Placed - Assigning Helper ⏳',
+        'PENDING': 'Order Placed - Processing ⏳',
+        'COMPLETED': 'Order Completed ✅',
+        'CANCELLED': 'Order Cancelled ❌'
+    }
+    return status_map.get(status, f"{status.replace('_', ' ')} 🚴")
+
 def get_order_history(phone: str):
     db = get_db()
     if not db: return []
@@ -372,22 +386,48 @@ def route_message(
                 # 3. Else check Active Order (Confirmed/Assigned/On The Way)
                 active_order = get_active_order_details(user)
                 if active_order:
-                    helper_str = f"Helper: {active_order['helper_name']} ({active_order['helper_phone']})\nOTP to share: {active_order.get('otp', 'N/A')}\n" if active_order.get("helper_phone") else "Helper: Not Assigned Yet\n"
+                    order_id = active_order['order_id']
+                    order_db_id = active_order['id']
+                    status_text = format_human_status(active_order.get('status', ''))
+
+                    from core.helper_router import safe_parse_payload
+                    payload = safe_parse_payload(active_order.get("payload"))
+                    total_due = float(payload.get("balance_due", active_order.get("total_amount") or 0.0))
+                    if total_due <= 0:
+                        total_due = float(active_order.get("total_amount") or 0.0)
+
+                    otp_display = active_order.get('otp') or "Share upon delivery"
+                    helper_str = (
+                        f"👨‍🌾 *Helper:* {active_order['helper_name']} ({active_order['helper_phone']})\n"
+                        f"🔑 *Delivery OTP:* `{otp_display}`\n"
+                    ) if active_order.get("helper_phone") else "👨‍🌾 *Helper:* Assigning nearby helper...\n"
+
                     msg_text = (
-                        f"📦 *Active Order: #{active_order['order_id']}*\n"
-                        f"Service: {active_order['service']}\n"
-                        f"Status: {active_order['status']} 🚴\n"
-                        f"Total: ₹{active_order['total_amount']}\n"
+                        f"📦 *Active Order: #{order_id}*\n"
+                        f"🛠️ *Service:* {active_order['service']}\n"
+                        f"📌 *Status:* {status_text}\n"
+                        f"💰 *Total Amount:* ₹{total_due:.2f}\n"
                         f"{helper_str}"
                     )
                     send_message(user, msg_text)
+
+                    # 1. Send Payment Buttons if bill approved or payment pending
+                    if active_order.get('status') in ('ADMIN_APPROVED_BILL', 'HELPER_PURCHASED', 'WAITING_FOR_PAYMENT', 'HELPER_ARRIVED'):
+                        from whatsapp_client import send_reply_buttons
+                        pay_buttons = [
+                            {"id": f"CUST_PAY_UPI|{order_db_id}", "title": "💳 Pay Online UPI"},
+                            {"id": "CUST_PAY_CASH", "title": "💵 Pay Cash"}
+                        ]
+                        send_reply_buttons(to=user, body="💳 Choose your payment option below to proceed:", buttons=pay_buttons)
+
+                    # 2. Send Live Tracking URL Button
                     from config import TRACKING_BASE_URL
                     from whatsapp_client import send_url_button
                     if active_order['service'] == 'Home Services':
-                        url = f"{TRACKING_BASE_URL}/home-services/my-bookings?orderId={active_order['order_id']}"
+                        url = f"{TRACKING_BASE_URL}/home-services/my-bookings?orderId={order_id}"
                         send_url_button(to=user, text="Manage your Home Service booking:", button_text="Manage Booking", url=url)
                     else:
-                        url = f"{TRACKING_BASE_URL}/track/{active_order['order_id']}"
+                        url = f"{TRACKING_BASE_URL}/track/{order_id}"
                         send_url_button(to=user, text="Track your order status live:", button_text="Track Order", url=url)
                     return
 
@@ -719,12 +759,13 @@ def route_message(
                 from whatsapp_client import send_reply_buttons
                 
                 if active_order and not (in_memory_incomplete or db_draft):
-                    helper_str = f"Helper: {active_order['helper_name']} ({active_order['helper_phone']})\nOTP to share: {active_order.get('otp', 'N/A')}\n" if active_order.get("helper_phone") else "Helper: Not Assigned Yet\n"
+                    status_text = format_human_status(active_order.get('status', ''))
+                    helper_str = f"👨‍🌾 *Helper:* {active_order['helper_name']} ({active_order['helper_phone']})\n" if active_order.get("helper_phone") else "👨‍🌾 *Helper:* Assigning nearby helper...\n"
                     msg_body = (
                         f"📦 *Active Order: #{active_order['order_id']}*\n"
-                        f"Service: {active_order['service']}\n"
-                        f"Status: {active_order['status']} 🚴\n"
-                        f"Total: ₹{active_order['total_amount']}\n"
+                        f"🛠️ *Service:* {active_order['service']}\n"
+                        f"📌 *Status:* {status_text}\n"
+                        f"💰 *Total:* ₹{active_order['total_amount']}\n"
                         f"{helper_str}\n"
                         f"Would you like to view/track your active order, or start a new order?"
                     )
