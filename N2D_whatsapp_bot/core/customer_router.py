@@ -14,7 +14,7 @@ GramioGO – Customer Interactive Router (FastAPI Compatible)
 import traceback
 from typing import Dict, Any
 
-from whatsapp_client import send_message, send_reply_buttons, send_payment_button
+from whatsapp_client import send_message, send_reply_buttons, send_payment_button, send_url_button
 
 from db.order_repo import (
     get_order_by_db_id,
@@ -78,9 +78,13 @@ def handle_customer_interactive(
                 order_db_id = int(parts[1])
                 order = get_order_by_db_id(order_db_id)
                 if order:
-                    total = float(order.get("total_amount") or 0.0)
+                    from core.helper_router import safe_parse_payload
+                    payload = safe_parse_payload(order.get("payload"))
+                    total = float(payload.get("balance_due", order.get("total_amount") or 0.0))
+                    if total <= 0:
+                        total = float(order.get("total_amount") or 0.0)
                     pay_url = f"{TRACKING_BASE_URL}/payment.html?orderId={order['order_id']}&amount={total}"
-                    send_url_button(from_number, f"💳 Click below to complete online UPI payment for order #{order['order_id']}:", "💳 Pay Online", pay_url)
+                    send_url_button(from_number, f"💳 Click below to complete online UPI payment for order #{order['order_id']}:\n\nTotal Amount: ₹{total}", "💳 Pay Online", pay_url)
                 return True
 
             if action == "CUST_CONT_WITHOUT":
@@ -354,8 +358,6 @@ def handle_customer_interactive(
             from core.helper_router import safe_parse_payload
             payload = safe_parse_payload(order.get("payload"))
             total = float(payload.get("balance_due", order["total_amount"]))
-
-            from config import TRACKING_BASE_URL
 
             # save payment method
             mark_payment_method(order_db_id, "ONLINE")
