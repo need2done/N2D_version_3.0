@@ -176,7 +176,7 @@ router.post('/webhook', async (req, res) => {
       if (receiptId) {
         if (pool) {
           await pool.query(
-            `UPDATE orders SET payment_status = 'PAID', updated_at = NOW() WHERE id = ? OR order_id = ?`,
+            `UPDATE orders SET payment_status = 'PAID', payment_method = 'RAZORPAY', updated_at = NOW() WHERE id = ? OR order_id = ?`,
             [receiptId, receiptId]
           );
         }

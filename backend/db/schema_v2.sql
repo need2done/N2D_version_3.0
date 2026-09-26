@@ -97,7 +97,7 @@ CREATE TABLE orders (
   total_amount DECIMAL(10,2),
   approved_at DATETIME NULL,
 
-  payment_method ENUM('UPI','COD'),
+  payment_method VARCHAR(50) DEFAULT 'UPI',
   payment_status ENUM('PENDING','PAID') DEFAULT 'PENDING',
 
   delivery_otp VARCHAR(10),
