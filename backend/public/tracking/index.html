@@ -189,6 +189,7 @@
         let pickupMarker = null;
         let dropMarker = null;
         let polyline = null;
+        let routeLine = null;
         let hasCentered = false;
 
         function createDivIcon(emoji, bgClass) {
@@ -275,7 +276,7 @@
                     }
                 }
 
-                // Live Helper Pin & Trail
+                // Live Helper Pin
                 if (data.location && data.location.lat && data.location.lng) {
                     const hPos = [parseFloat(data.location.lat), parseFloat(data.location.lng)];
                     boundsCoords.push(hPos);
@@ -285,16 +286,41 @@
                     } else {
                         helperMarker.setLatLng(hPos);
                     }
+                }
 
-                    if (data.trail && data.trail.length > 1) {
-                        const trailCoords = data.trail.map(p => [parseFloat(p.lat), parseFloat(p.lng)]);
-                        if (polyline) map.removeLayer(polyline);
-                        polyline = L.polyline(trailCoords, {
-                            color: '#4F46E5',
-                            weight: 5,
-                            opacity: 0.8
-                        }).addTo(map);
-                    }
+                // Draw Blue Route Line (Source to Destination)
+                const routePoints = [];
+                if (data.location && data.location.lat && data.location.lng) {
+                    routePoints.push([parseFloat(data.location.lat), parseFloat(data.location.lng)]);
+                }
+                if (data.pickup_lat && data.pickup_lng) {
+                    routePoints.push([parseFloat(data.pickup_lat), parseFloat(data.pickup_lng)]);
+                }
+                if (data.drop_lat && data.drop_lng) {
+                    routePoints.push([parseFloat(data.drop_lat), parseFloat(data.drop_lng)]);
+                }
+
+                if (routePoints.length >= 2) {
+                    if (routeLine) map.removeLayer(routeLine);
+                    routeLine = L.polyline(routePoints, {
+                        color: '#2563eb',
+                        weight: 6,
+                        opacity: 0.9,
+                        dashArray: '10, 8',
+                        lineCap: 'round',
+                        lineJoin: 'round'
+                    }).addTo(map);
+                }
+
+                // Traveled Location Trail History
+                if (data.trail && data.trail.length > 1) {
+                    const trailCoords = data.trail.map(p => [parseFloat(p.lat), parseFloat(p.lng)]);
+                    if (polyline) map.removeLayer(polyline);
+                    polyline = L.polyline(trailCoords, {
+                        color: '#3b82f6',
+                        weight: 5,
+                        opacity: 0.8
+                    }).addTo(map);
                 }
 
                 // Frame map to view all relevant locations

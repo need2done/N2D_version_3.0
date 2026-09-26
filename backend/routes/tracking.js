@@ -246,10 +246,21 @@ router.get('/live/:token', async (req, res) => {
         const order = orderRows[0];
         tokenId = order.id;
 
-        const [locations] = await db.query(
-            'SELECT lat, lng, last_seen FROM helper_live_tracking WHERE order_id = ?',
+        let [locations] = await db.query(
+            'SELECT lat, lng, last_seen FROM helper_live_tracking WHERE order_id = ? ORDER BY last_seen DESC LIMIT 1',
             [tokenId]
         );
+
+        // Fallback: If helper has accepted order but no order-specific GPS ping sent yet, use helper's active location
+        if (locations.length === 0 && order.helper_id) {
+            const [statusLocs] = await db.query(
+                'SELECT latitude as lat, longitude as lng, last_seen FROM helper_status WHERE helper_id = ? AND latitude IS NOT NULL AND longitude IS NOT NULL',
+                [order.helper_id]
+            );
+            if (statusLocs.length > 0) {
+                locations = statusLocs;
+            }
+        }
 
         const [trail] = await db.query(
             'SELECT latitude as lat, longitude as lng FROM helper_location_history WHERE order_id = ? ORDER BY id DESC LIMIT 20',
