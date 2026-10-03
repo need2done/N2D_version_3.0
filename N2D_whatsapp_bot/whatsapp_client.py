@@ -17,11 +17,19 @@ from typing import Optional, Dict, Any
 
 from config import PHONE_NUMBER_ID, GRAPH_API_VERSION
 try:
-    from config import TRACKING_BASE_URL, WELCOME_IMAGE_URL, WELCOME_IMAGE_MEDIA_ID
+    from config import (
+        TRACKING_BASE_URL,
+        WELCOME_IMAGE_URL,
+        WELCOME_IMAGE_MEDIA_ID,
+        HOME_SERVICES_IMAGE_URL,
+        HOME_SERVICES_IMAGE_MEDIA_ID
+    )
 except Exception:
     TRACKING_BASE_URL = "https://need2done.in"
     WELCOME_IMAGE_URL = "https://need2done.in/images/welcome-banner.jpg"
     WELCOME_IMAGE_MEDIA_ID = ""
+    HOME_SERVICES_IMAGE_URL = "https://need2done.in/images/home-services-banner.jpg"
+    HOME_SERVICES_IMAGE_MEDIA_ID = ""
 
 # Import (SAFE)
 try:
@@ -278,26 +286,8 @@ def send_reply_buttons(to: str, body: str, buttons: list, header_image: str = No
 # CTA URL BUTTON
 # =================================================
 
-def send_url_button(to: str, text: str, button_text: str, url: str):
-    if not to or not text or not button_text or not url:
-        return None
-    payload = {
-        "messaging_product": "whatsapp",
-        "to": normalize_number(to),
-        "type": "interactive",
-        "interactive": {
-            "type": "cta_url",
-            "body": {"text": text[:1024]},
-            "action": {
-                "name": "cta_url",
-                "parameters": {
-                    "display_text": button_text[:20],
-                    "url": url
-                }
-            }
-        }
-    }
-    return _post(payload)
+def send_url_button(to: str, text: str, button_text: str, url: str, header_image: str = None):
+    return send_payment_button(to, text, button_text, url, header_image=header_image)
 
 # =================================================
 # INTERACTIVE LIST
@@ -719,29 +709,69 @@ def send_rich_service_list(to: str, name: str = None):
 # SECURE PAYMENT BUTTON (CTA URL)
 # =================================================
 
-def send_payment_button(to: str, body: str, button_text: str, url: str):
+def send_payment_button(to: str, body: str, button_text: str, url: str, header_image: str = None):
     """
     Sends a WhatsApp interactive message with a single CTA URL button.
     This beautifully hides the raw deep link behind a branded label.
+    Supports optional image header with automatic fallback.
     """
     if not to or not body or not url:
         return None
+        
+    interactive_obj = {
+        "type": "cta_url",
+        "body": {"text": body[:1024]},
+        "action": {
+            "name": "cta_url",
+            "parameters": {
+                "display_text": button_text[:20],
+                "url": url
+            }
+        }
+    }
+
+    if header_image:
+        h_str = str(header_image).strip()
+        if h_str.startswith("http://") or h_str.startswith("https://"):
+            interactive_obj["header"] = {
+                "type": "image",
+                "image": {"link": h_str}
+            }
+        else:
+            interactive_obj["header"] = {
+                "type": "image",
+                "image": {"id": h_str}
+            }
+
     payload = {
         "messaging_product": "whatsapp",
         "to": normalize_number(to),
         "type": "interactive",
-        "interactive": {
-            "type": "cta_url",
-            "body": {"text": body[:1024]},
-            "action": {
-                "name": "cta_url",
-                "parameters": {
-                    "display_text": button_text[:20],
-                    "url": url
+        "interactive": interactive_obj
+    }
+    res = _post(payload)
+
+    # Fallback resilience: If Meta rejects with image header, retry without header
+    if header_image and (res is None or (hasattr(res, "status_code") and res.status_code >= 400)):
+        print("[WA_WARN] CTA URL interactive with image header failed, falling back to message without header...")
+        fallback_payload = {
+            "messaging_product": "whatsapp",
+            "to": normalize_number(to),
+            "type": "interactive",
+            "interactive": {
+                "type": "cta_url",
+                "body": {"text": body[:1024]},
+                "action": {
+                    "name": "cta_url",
+                    "parameters": {
+                        "display_text": button_text[:20],
+                        "url": url
+                    }
                 }
             }
         }
-    }
-    return _post(payload)
+        res = _post(fallback_payload)
+
+    return res
 
 

@@ -1,9 +1,12 @@
 """
-Upload Welcome Banner Image to Meta WhatsApp Cloud API
-======================================================
-This script uploads the welcome banner image (`website/images/welcome-banner.jpg`)
-to Meta Cloud API Media endpoint and outputs the generated Media ID.
-It can also optionally write WELCOME_IMAGE_MEDIA_ID to your .env file.
+Upload Banner Images to Meta WhatsApp Cloud API
+===============================================
+Usage:
+    python upload_welcome_image.py [image_relative_path] [env_var_name]
+
+Examples:
+    python upload_welcome_image.py website/images/welcome-banner.jpg WELCOME_IMAGE_MEDIA_ID
+    python upload_welcome_image.py website/images/home-services-banner.jpg HOME_SERVICES_IMAGE_MEDIA_ID
 """
 
 import os
@@ -19,11 +22,10 @@ ACCESS_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN")
 PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID")
 GRAPH_API_VERSION = os.getenv("GRAPH_API_VERSION", "v19.0")
 
-IMAGE_PATH = BASE_DIR / "website" / "images" / "welcome-banner.jpg"
-
-def upload_image():
-    if not IMAGE_PATH.exists():
-        print(f"❌ Error: Image not found at {IMAGE_PATH}")
+def upload_image(rel_path="website/images/welcome-banner.jpg", env_key="WELCOME_IMAGE_MEDIA_ID"):
+    img_path = BASE_DIR / rel_path
+    if not img_path.exists():
+        print(f"❌ Error: Image not found at {img_path}")
         sys.exit(1)
 
     if not ACCESS_TOKEN or not PHONE_NUMBER_ID:
@@ -35,10 +37,10 @@ def upload_image():
         "Authorization": f"Bearer {ACCESS_TOKEN}"
     }
 
-    print(f"📤 Uploading {IMAGE_PATH.name} to Meta WhatsApp Cloud API...")
-    with open(IMAGE_PATH, "rb") as f:
+    print(f"📤 Uploading {img_path.name} to Meta WhatsApp Cloud API...")
+    with open(img_path, "rb") as f:
         files = {
-            "file": (IMAGE_PATH.name, f, "image/jpeg")
+            "file": (img_path.name, f, "image/jpeg")
         }
         data = {
             "messaging_product": "whatsapp",
@@ -54,8 +56,8 @@ def upload_image():
             media_id = body["id"]
             print(f"\n✅ Upload Successful! Media ID: {media_id}")
             env_file = BASE_DIR / ".env"
-            set_key(str(env_file), "WELCOME_IMAGE_MEDIA_ID", media_id)
-            print(f"✅ Updated WELCOME_IMAGE_MEDIA_ID={media_id} in {env_file}")
+            set_key(str(env_file), env_key, media_id)
+            print(f"✅ Updated {env_key}={media_id} in {env_file}")
             return media_id
         else:
             print(f"\n❌ Upload failed: {body.get('error', {}).get('message', res.text)}")
@@ -63,4 +65,6 @@ def upload_image():
         print(f"❌ Parse error: {e}, Response: {res.text}")
 
 if __name__ == "__main__":
-    upload_image()
+    target_path = sys.argv[1] if len(sys.argv) > 1 else "website/images/welcome-banner.jpg"
+    target_key = sys.argv[2] if len(sys.argv) > 2 else "WELCOME_IMAGE_MEDIA_ID"
+    upload_image(target_path, target_key)

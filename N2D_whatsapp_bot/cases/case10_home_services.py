@@ -1,8 +1,14 @@
 import traceback
 from typing import Optional, Dict, Any
 
+import os
 from whatsapp_client import send_payment_button
 from config import TRACKING_BASE_URL
+try:
+    from config import HOME_SERVICES_IMAGE_URL, HOME_SERVICES_IMAGE_MEDIA_ID
+except Exception:
+    HOME_SERVICES_IMAGE_URL = f"{TRACKING_BASE_URL}/images/home-services-banner.jpg"
+    HOME_SERVICES_IMAGE_MEDIA_ID = ""
 
 def handle(
     session: Dict[str, Any],
@@ -24,11 +30,14 @@ def handle(
         url = f"{TRACKING_BASE_URL}/home-services?customerId={encoded_phone}"
         welcome_msg = "Welcome to *Need2Done Home Services*! 🏠\n\nPlease click the button below to explore our services, configure your booking, and complete your payment online:"
         
+        home_img = os.getenv("HOME_SERVICES_IMAGE_URL") or HOME_SERVICES_IMAGE_URL or f"{TRACKING_BASE_URL}/images/home-services-banner.jpg"
+        
         send_payment_button(
             to=user_phone,
             body=welcome_msg,
-            button_text="Open Home Services",
-            url=url
+            button_text="Explore Services",
+            url=url,
+            header_image=home_img
         )
         
         # Clear the service case state since the rest is handled via web/webhook
