@@ -16,6 +16,12 @@ import os
 from typing import Optional, Dict, Any
 
 from config import PHONE_NUMBER_ID, GRAPH_API_VERSION
+try:
+    from config import TRACKING_BASE_URL, WELCOME_IMAGE_URL, WELCOME_IMAGE_MEDIA_ID
+except Exception:
+    TRACKING_BASE_URL = "https://need2done.in"
+    WELCOME_IMAGE_URL = "https://need2done.in/images/welcome-banner.jpg"
+    WELCOME_IMAGE_MEDIA_ID = ""
 
 # Import (SAFE)
 try:
@@ -204,7 +210,7 @@ def send_message(to: str, text: str):
 # REPLY BUTTONS
 # =================================================
 
-def send_reply_buttons(to: str, body: str, buttons: list):
+def send_reply_buttons(to: str, body: str, buttons: list, header_image: str = None, header: dict = None):
     if not to or not body or not buttons:
         return None
     safe_buttons = []
@@ -220,17 +226,52 @@ def send_reply_buttons(to: str, body: str, buttons: list):
         })
     if not safe_buttons:
         return send_message(to, body)
+
+    interactive_obj = {
+        "type": "button",
+        "body": {"text": body[:1024]},
+        "action": {"buttons": safe_buttons}
+    }
+
+    if header:
+        interactive_obj["header"] = header
+    elif header_image:
+        h_str = str(header_image).strip()
+        if h_str.startswith("http://") or h_str.startswith("https://"):
+            interactive_obj["header"] = {
+                "type": "image",
+                "image": {"link": h_str}
+            }
+        else:
+            interactive_obj["header"] = {
+                "type": "image",
+                "image": {"id": h_str}
+            }
+
     payload = {
         "messaging_product": "whatsapp",
         "to": normalize_number(to),
         "type": "interactive",
-        "interactive": {
-            "type": "button",
-            "body": {"text": body[:1024]},
-            "action": {"buttons": safe_buttons}
-        }
+        "interactive": interactive_obj
     }
-    return _post(payload)
+    res = _post(payload)
+
+    # Automatic fallback resilience: If sending with header fails, retry without header
+    if (header or header_image) and (res is None or (hasattr(res, "status_code") and res.status_code >= 400)):
+        print("[WA_WARN] Interactive button message with image header failed, falling back to message without header...")
+        fallback_payload = {
+            "messaging_product": "whatsapp",
+            "to": normalize_number(to),
+            "type": "interactive",
+            "interactive": {
+                "type": "button",
+                "body": {"text": body[:1024]},
+                "action": {"buttons": safe_buttons}
+            }
+        }
+        res = _post(fallback_payload)
+
+    return res
 
 
 # =================================================
@@ -504,16 +545,22 @@ def send_image(to: str, media_id: str, caption: str = ""):
 # RICH WELCOME MESSAGE (STEP 1)
 # =================================================
 
-def send_rich_welcome(to: str, name: str = None):
+def send_rich_welcome(to: str, name: str = None, image_url: str = None):
     """
-    Sends the rich welcome template with emojis and a button.
+    Sends the rich welcome template with an image header, emojis, and an action button.
     Matches active services dynamically.
     """
     if not to:
         return None
         
-    if name:
-        greeting = f"Welcome back, *{name}*!"
+    placeholder_names = ["live test customer", "test customer", "live test", "customer", "unknown", "user", "none", "null"]
+    if name and name.strip() and name.strip().lower() not in placeholder_names:
+        greeting = f"Welcome back, *{name.strip()}*!"
+        call_action = "Click below to select a service:"
+        btn_id = "WELCOME_SERVICE"
+        btn_title = "🛠 Select Service"
+    elif name and str(name).strip().lower() in ("back", "user", "customer"):
+        greeting = "Welcome back,"
         call_action = "Click below to select a service:"
         btn_id = "WELCOME_SERVICE"
         btn_title = "🛠 Select Service"
@@ -552,8 +599,66 @@ def send_rich_welcome(to: str, name: str = None):
     buttons = [
         {"id": btn_id, "title": btn_title}
     ]
+
+    header_img = image_url or os.getenv("WELCOME_IMAGE_MEDIA_ID") or WELCOME_IMAGE_MEDIA_ID or os.getenv("WELCOME_IMAGE_URL") or WELCOME_IMAGE_URL
     
-    return send_reply_buttons(to, body, buttons)
+    return send_reply_buttons(to, body, buttons, header_image=header_img)
+
+
+# =================================================
+# OFFICIAL META TEMPLATE SENDER (OUTBOUND / MARKETING)
+# =================================================
+
+def send_welcome_template(
+    to: str,
+    name: str = None,
+    template_name: str = None,
+    language_code: str = "en",
+    image_url: str = None
+):
+    """
+    Sends the official Meta pre-approved WhatsApp Template with an IMAGE header.
+    Matches WhatsApp Manager template with media header and body text variable.
+    """
+    if not to:
+        return None
+
+    tpl_name = template_name or os.getenv("WELCOME_TEMPLATE_NAME", "welcome_template")
+    img = image_url or os.getenv("WELCOME_IMAGE_MEDIA_ID") or WELCOME_IMAGE_MEDIA_ID or os.getenv("WELCOME_IMAGE_URL") or WELCOME_IMAGE_URL
+
+    components = []
+    if img:
+        img_str = str(img).strip()
+        img_param = {"link": img_str} if (img_str.startswith("http://") or img_str.startswith("https://")) else {"id": img_str}
+        components.append({
+            "type": "header",
+            "parameters": [
+                {
+                    "type": "image",
+                    "image": img_param
+                }
+            ]
+        })
+
+    if name:
+        components.append({
+            "type": "body",
+            "parameters": [
+                {"type": "text", "text": name.strip()}
+            ]
+        })
+
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": normalize_number(to),
+        "type": "template",
+        "template": {
+            "name": tpl_name,
+            "language": {"code": language_code},
+            "components": components
+        }
+    }
+    return _post(payload)
 
 
 # =================================================

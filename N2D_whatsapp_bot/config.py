@@ -83,11 +83,9 @@ DB_CONFIG = {
     "database": DB_NAME,
     "port": int(DB_PORT),
 }
-# =================================================
-# TRACKING CONFIG
-# =================================================
-
 TRACKING_BASE_URL = os.getenv("TRACKING_BASE_URL", os.getenv("PUBLIC_BASE_URL", "https://need2done.in")).rstrip("/")
+WELCOME_IMAGE_URL = os.getenv("WELCOME_IMAGE_URL", f"{TRACKING_BASE_URL}/images/welcome-banner.jpg")
+WELCOME_IMAGE_MEDIA_ID = os.getenv("WELCOME_IMAGE_MEDIA_ID", "")
 
 
 # =================================================
