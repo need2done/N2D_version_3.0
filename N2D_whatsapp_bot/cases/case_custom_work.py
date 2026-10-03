@@ -20,7 +20,13 @@ from utils.ai_service import classify_custom_work_intent_gemini, transcribe_audi
 from utils.location import to_map_link, get_road_distance, haversine
 from whatsapp_client import download_whatsapp_media, send_reply_buttons, send_message, send_url_button
 from core.order_finalizer import finalize_order
+import os
 from config import TRACKING_BASE_URL
+try:
+    from config import CUSTOM_WORK_IMAGE_URL, CUSTOM_WORK_IMAGE_MEDIA_ID
+except Exception:
+    CUSTOM_WORK_IMAGE_URL = "https://need2done.in/images/custom-work-banner.jpg"
+    CUSTOM_WORK_IMAGE_MEDIA_ID = ""
 
 NODE_BACKEND_URL = "http://localhost:5000/api/custom-work/quote"
 
@@ -246,8 +252,9 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                 {"id": "CW_VOICE_GUIDE", "title": "🎙️ Send Voice Note"},
                 {"id": "CW_TEXT_GUIDE", "title": "✍️ Type Task"}
             ]
+            cw_img = os.getenv("CUSTOM_WORK_IMAGE_MEDIA_ID") or CUSTOM_WORK_IMAGE_MEDIA_ID or os.getenv("CUSTOM_WORK_IMAGE_URL") or CUSTOM_WORK_IMAGE_URL
             if user:
-                send_reply_buttons(to=user, body=body, buttons=buttons)
+                send_reply_buttons(to=user, body=body, buttons=buttons, header_image=cw_img)
                 return None
             return body
 
