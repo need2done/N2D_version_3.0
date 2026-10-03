@@ -92,6 +92,8 @@ MEDICINES_IMAGE_URL = os.getenv("MEDICINES_IMAGE_URL", f"{TRACKING_BASE_URL}/ima
 MEDICINES_IMAGE_MEDIA_ID = os.getenv("MEDICINES_IMAGE_MEDIA_ID", "")
 CUSTOM_WORK_IMAGE_URL = os.getenv("CUSTOM_WORK_IMAGE_URL", f"{TRACKING_BASE_URL}/images/custom-work-banner.jpg")
 CUSTOM_WORK_IMAGE_MEDIA_ID = os.getenv("CUSTOM_WORK_IMAGE_MEDIA_ID", "")
+ORDER_DELIVERED_IMAGE_URL = os.getenv("ORDER_DELIVERED_IMAGE_URL", f"{TRACKING_BASE_URL}/images/order-delivered-banner.jpg")
+ORDER_DELIVERED_IMAGE_MEDIA_ID = os.getenv("ORDER_DELIVERED_IMAGE_MEDIA_ID", "")
 
 
 # =================================================

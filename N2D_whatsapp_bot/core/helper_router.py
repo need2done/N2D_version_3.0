@@ -140,6 +140,11 @@ def resolve_delivery_location(order: dict) -> str:
 
 
 from config import ADMIN_NUMBER, HELPER_CHARGE, PLATFORM_FEE, UPI_ID, ANYWORK_BASE_FEE, get_service_pricing, TRACKING_BASE_URL
+try:
+    from config import ORDER_DELIVERED_IMAGE_URL, ORDER_DELIVERED_IMAGE_MEDIA_ID
+except Exception:
+    ORDER_DELIVERED_IMAGE_URL = f"{TRACKING_BASE_URL}/images/order-delivered-banner.jpg"
+    ORDER_DELIVERED_IMAGE_MEDIA_ID = ""
 
 
 # =================================================
@@ -1964,14 +1969,20 @@ Share this with helper."""
                                 send_message(phone, "✅ OTP verified.\n🎉 *Order Completed!*\n\nYou are now back ONLINE and ready for new orders.")
                                 
                                 # CUSTOMER THANK YOU
+                                od_img = os.getenv("ORDER_DELIVERED_IMAGE_MEDIA_ID") or ORDER_DELIVERED_IMAGE_MEDIA_ID or os.getenv("ORDER_DELIVERED_IMAGE_URL") or ORDER_DELIVERED_IMAGE_URL
                                 send_reply_buttons(
                                     active["customer_number"],
-                                    f"🎉 *Order Completed!* 🎉\n\nThank you for choosing *Need2Done*! 🙏\nHow was your experience with {helper['name']}?",
+                                    f"🎉 *Order Delivered & Completed!* 🎉\n"
+                                    f"━━━━━━━━━━━━━━━━━━━━━\n"
+                                    f"📝 Order ID: #{active['order_id']}\n"
+                                    f"Thank you for choosing *Need2Done*! 🙏\n\n"
+                                    f"How was your experience with your helper *{helper.get('name', 'Helper')}*?",
                                     [
                                         {"id": f"RATE_5|{active['id']}", "title": "⭐⭐⭐⭐⭐"},
                                         {"id": f"RATE_3|{active['id']}", "title": "⭐⭐⭐"},
                                         {"id": f"RATE_1|{active['id']}", "title": "⭐"}
-                                    ]
+                                    ],
+                                    header_image=od_img
                                 )
                                 return
                             else:
@@ -2267,6 +2278,7 @@ Share this with helper."""
                 )
 
                 # Send rating feedback buttons to Customer
+                od_img = os.getenv("ORDER_DELIVERED_IMAGE_MEDIA_ID") or ORDER_DELIVERED_IMAGE_MEDIA_ID or os.getenv("ORDER_DELIVERED_IMAGE_URL") or ORDER_DELIVERED_IMAGE_URL
                 send_reply_buttons(
                     active["customer_number"],
                     f"🎉 *Order Delivered & Completed!* 🎉\n"
@@ -2278,7 +2290,8 @@ Share this with helper."""
                         {"id": f"RATE_5|{active['id']}", "title": "⭐⭐⭐⭐⭐"},
                         {"id": f"RATE_3|{active['id']}", "title": "⭐⭐⭐"},
                         {"id": f"RATE_1|{active['id']}", "title": "⭐"}
-                    ]
+                    ],
+                    header_image=od_img
                 )
                 return
             elif expected_otp:
@@ -2310,16 +2323,20 @@ Share this with helper."""
                 # ------------------------------------------------
                 # CUSTOMER THANK YOU & FEEDBACK
                 # ------------------------------------------------
+                od_img = os.getenv("ORDER_DELIVERED_IMAGE_MEDIA_ID") or ORDER_DELIVERED_IMAGE_MEDIA_ID or os.getenv("ORDER_DELIVERED_IMAGE_URL") or ORDER_DELIVERED_IMAGE_URL
                 send_reply_buttons(
                     active["customer_number"],
-                    f"🎉 *Order Completed!* 🎉\n\n"
-                    f"Thank you for choosing *Need2Done*! 🙏\n"
-                    f"How was your experience with {helper['name']}?",
+                    f"🎉 *Order Delivered & Completed!* 🎉\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"📝 Order ID: #{active['order_id']}\n"
+                    f"Thank you for choosing *Need2Done*! 🙏\n\n"
+                    f"How was your experience with your helper *{helper.get('name', 'Helper')}*?",
                     [
                         {"id": f"RATE_5|{active['id']}", "title": "⭐⭐⭐⭐⭐"},
                         {"id": f"RATE_3|{active['id']}", "title": "⭐⭐⭐"},
                         {"id": f"RATE_1|{active['id']}", "title": "⭐"}
-                    ]
+                    ],
+                    header_image=od_img
                 )
             else:
                 send_message(phone, "✅ OTP submitted. Waiting for finalization.")

@@ -26,7 +26,9 @@ try:
         MEDICINES_IMAGE_URL,
         MEDICINES_IMAGE_MEDIA_ID,
         CUSTOM_WORK_IMAGE_URL,
-        CUSTOM_WORK_IMAGE_MEDIA_ID
+        CUSTOM_WORK_IMAGE_MEDIA_ID,
+        ORDER_DELIVERED_IMAGE_URL,
+        ORDER_DELIVERED_IMAGE_MEDIA_ID
     )
 except Exception:
     TRACKING_BASE_URL = "https://need2done.in"
@@ -38,6 +40,8 @@ except Exception:
     MEDICINES_IMAGE_MEDIA_ID = ""
     CUSTOM_WORK_IMAGE_URL = "https://need2done.in/images/custom-work-banner.jpg"
     CUSTOM_WORK_IMAGE_MEDIA_ID = ""
+    ORDER_DELIVERED_IMAGE_URL = "https://need2done.in/images/order-delivered-banner.jpg"
+    ORDER_DELIVERED_IMAGE_MEDIA_ID = ""
 
 # Import (SAFE)
 try:
