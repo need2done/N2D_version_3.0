@@ -5,6 +5,12 @@ from utils.location import to_map_link
 from core.order_finalizer import finalize_order
 from whatsapp_client import send_reply_buttons, send_message
 from session_store import reset_session, start_confirming
+import os
+try:
+    from config import MEDICINES_IMAGE_URL, MEDICINES_IMAGE_MEDIA_ID
+except Exception:
+    MEDICINES_IMAGE_URL = "https://need2done.in/images/medicines-banner.jpg"
+    MEDICINES_IMAGE_MEDIA_ID = ""
 
 # =================================================
 # CONSTANTS & RULES
@@ -216,6 +222,7 @@ def handle(session: dict, text: str, raw: dict) -> Optional[str]:
                 "prescription_required": False,
                 "prescription_uploaded": False
             }
+            med_img = os.getenv("MEDICINES_IMAGE_MEDIA_ID") or MEDICINES_IMAGE_MEDIA_ID or os.getenv("MEDICINES_IMAGE_URL") or MEDICINES_IMAGE_URL
             send_reply_buttons(
                 to=user,
                 body=(
@@ -226,7 +233,8 @@ def handle(session: dict, text: str, raw: dict) -> Optional[str]:
                 buttons=[
                     {"id": "MED_UPLOAD", "title": "📸 Upload Rx"},
                     {"id": "MED_TYPE", "title": "✍️ Type details"}
-                ]
+                ],
+                header_image=med_img
             )
             return None
 

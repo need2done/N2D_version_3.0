@@ -88,6 +88,8 @@ WELCOME_IMAGE_URL = os.getenv("WELCOME_IMAGE_URL", f"{TRACKING_BASE_URL}/images/
 WELCOME_IMAGE_MEDIA_ID = os.getenv("WELCOME_IMAGE_MEDIA_ID", "")
 HOME_SERVICES_IMAGE_URL = os.getenv("HOME_SERVICES_IMAGE_URL", f"{TRACKING_BASE_URL}/images/home-services-banner.jpg")
 HOME_SERVICES_IMAGE_MEDIA_ID = os.getenv("HOME_SERVICES_IMAGE_MEDIA_ID", "")
+MEDICINES_IMAGE_URL = os.getenv("MEDICINES_IMAGE_URL", f"{TRACKING_BASE_URL}/images/medicines-banner.jpg")
+MEDICINES_IMAGE_MEDIA_ID = os.getenv("MEDICINES_IMAGE_MEDIA_ID", "")
 
 
 # =================================================
