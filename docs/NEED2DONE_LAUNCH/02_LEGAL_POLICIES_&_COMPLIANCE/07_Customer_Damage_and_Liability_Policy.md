@@ -1,34 +1,35 @@
-# Need2Done — Customer Damage & Liability Policy
+# Need2Done — Customer Damage and Liability Policy
 **Last Updated:** October 2026
 
 ---
 
-## 1. Purpose & Scope
-This Policy establishes the protocols, limitations, and compensation frameworks governing physical loss, package damage, or personal property incidents occurring during task execution on the **Need2Done ("N2D")** platform.
+## 1. Overview & Purpose
+This Policy sets forth the limits of responsibility, inspection procedures, and liability compensation standards for physical damage, loss, or service deficiency occurring during task execution on the **Need2Done ("N2D")** platform.
 
 ---
 
-## 2. Customer Responsibilities & Packaging Standards
-* **Proper Packaging:** The sender/customer is strictly responsible for securing fragile, liquid, or delicate items in appropriate protective packaging (bubble wrap, leak-proof containers, sturdy boxes).
-* **Disclosure of Fragile / High-Value Items:** Customers must clearly inform the Helper and indicate special handling instructions before transit begins.
-* **Prohibited High-Value Items:** Need2Done does NOT provide high-value cargo transport. Uninsured items with an individual value exceeding ₹10,000 (e.g. expensive jewelry, high-end laptops, unaccounted bullion, original deed documents) must NOT be dispatched via standard courier errands.
+## 2. Intermediary Status & Merchant Disclaimers
+* **Third-Party Goods:** Need2Done is a technology aggregator facilitating delivery and domestic assistance. We do not manufacture, inspect, warrant, or directly package merchant items (medicines, prepared food, packaged groceries, retail goods).
+* **Manufacturer Warranties:** Defects, shelf life, seal integrity, and manufacturer warranties remain the sole responsibility of the merchant/manufacturer.
 
 ---
 
-## 3. Damage Inspection & Reporting Protocol
-1. **Reporting Window:** Any damage, leakage, or loss must be reported within **12 hours** of delivery via the WhatsApp Bot (`Support` -> `Report Damage`) or email to `support@need2done.com`.
-2. **Evidence Required:**
-   - Clear high-resolution photographs/videos of the damaged item and packaging before and after delivery.
-   - Original merchant purchase invoice or proof of value.
-   - Order ID and Helper details.
+## 3. Transit Damage & Loss Coverage
+1. **Couriers & Custom Work:** If an item is lost or physically damaged during transit due to proven gross negligence of the assigned delivery partner:
+   * The customer must report the incident within **12 hours** of delivery with photographic evidence and purchase invoice.
+   * Following investigation, Need2Done may reimburse the direct repair cost or depreciated fair market value of the item, subject to a maximum liability cap of **₹2,000 per order**.
+2. **Fragile & High-Value Items:** Transport of fragile glass, jewelry, fine art, or electronics valued above ₹5,000 is undertaken at the customer's sole risk unless agreed in writing with special handling.
 
 ---
 
-## 4. Assessment & Liability Caps
-Following investigation:
-* If the loss or damage is proven to have occurred solely due to direct negligence or reckless handling by the Helper during transit:
-  - Need2Done will facilitate mediation with the Partner or provide a compensation voucher up to a maximum cap of **₹2,000 or the invoice value (whichever is lower)**.
-* **Exclusions:** Need2Done is not liable for:
-  - Inherent vice, pre-existing internal mechanical failures, or packaging inadequacy.
-  - Losses resulting from accidents caused by third-party vehicles or force majeure events (floods, landslides, civil unrest).
-  - Damage to prohibited items transported in violation of our [Prohibited Tasks Policy](./08_Prohibited_Tasks_Policy.md).
+## 4. Home Services Property Protection
+1. **Inspection Prior to Service:** Customers are advised to point out delicate surfaces, antique fixtures, or pre-existing damage prior to the start of cleaning/domestic chores.
+2. **Accidental In-Home Damage:** If a service partner accidentally causes damage to customer property during an authorized home service session:
+   * The customer must notify Need2Done support within **24 hours** before any third-party repairs are undertaken.
+   * Following verified inspection, compensation or repair facilitation is provided up to a maximum cap of **₹5,000** or 5x the service booking fee (whichever is lower).
+   * Need2Done does not cover pre-existing wear and tear, superficial staining on aged materials, or unverified claims.
+
+---
+
+## 5. Maximum Liability Cap
+Except where prohibited by mandatory Indian law, in all disputes, Need2Done’s total aggregate financial liability across all claims shall never exceed the platform convenience fee received for the specific transaction.

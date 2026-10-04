@@ -4,35 +4,35 @@
 ---
 
 ## 1. Zero-Tolerance Safety Policy
-To ensure community safety, legal compliance, and the security of our Helpers and Customers, **Need2Done ("N2D")** strictly prohibits the ordering, transport, delivery, or execution of certain tasks and goods.
+To ensure public safety, legal compliance, and the security of our community of customers and delivery runners, **Need2Done ("N2D")** strictly prohibits the ordering, transport, delivery, or execution of certain restricted goods and activities.
 
-Any attempt to request prohibited tasks will result in immediate cancellation, forfeiture of any advance fees, account suspension, and immediate reporting to law enforcement authorities where warranted.
+Any attempt to request prohibited tasks will result in immediate cancellation, forfeiture of advance fees, permanent account termination, and immediate reporting to law enforcement authorities where warranted.
 
 ---
 
-## 2. Strictly Prohibited Goods & Items
-Helpers are strictly instructed to decline orders containing or suspected of containing:
+## 2. Strictly Prohibited Goods & Substances
+Helpers and runners are strictly instructed to refuse orders containing or suspected of containing:
 
-1. **Illegal Substances & Restricted Pharmaceuticals:** Any illegal narcotics, psychotropic substances, or unregulated substances. For our **Medicine Delivery vertical**, only legitimate prescription medicines (backed by a valid doctor's prescription) and OTC health products from licensed retail pharmacies are permitted. **Schedule X drugs, banned habit-forming formulations, or unauthorized imports are strictly prohibited.**
-2. **Weapons & Explosives:** Firearms, ammunition, fireworks, knives, martial arts weapons, or explosive materials.
-3. **Hazardous & Flammable Materials:** Unsealed flammable liquids, industrial acids, corrosives, radioactive materials, or hazardous chemical waste.
-4. **Unregulated Alcohol & Tobacco:** Transporting alcoholic beverages or tobacco without valid retail permits, in violation of state excise laws, or delivery to minors under legal age.
-5. **High-Value Cash & Bullion:** Transport of loose currency, gold bullion, uncut gems, lottery tickets, or negotiable instruments.
-6. **Live Animals or Wildlife:** Live animals, livestock, reptiles, or protected flora/fauna.
-7. **Pornographic or Illicit Material:** Obscene literature, unlicensed adult material, or contraband.
+1. **Illegal Narcotics & Controlled Substances:** Any banned drugs, psychotropic substances, or unregulated chemicals. *(Note: For our Medicine Delivery vertical, only lawful medications with valid doctor prescriptions and OTC wellness items from licensed retail pharmacies are permitted. Schedule X drugs and banned formulations are strictly prohibited).*
+2. **Weapons, Ammunition & Explosives:** Firearms, ammunition, fireworks, commercial explosives, unlicensed sharp tactical weapons, or hazardous incendiary devices.
+3. **Hazardous & Corrosive Materials:** Flammable fuels, toxic chemicals, concentrated industrial acids, radioactive substances, or bio-hazardous waste.
+4. **Unregulated Alcohol & Tobacco:** Transporting alcoholic beverages or tobacco without requisite state excise permits or in violation of local laws and minor age restrictions.
+5. **High-Value Cash, Bullion & Counterfeit Goods:** Transport of unaccounted cash, gold bullion, precious gemstones, bearer instruments, lottery tickets, or counterfeit currency.
+6. **Live Animals & Protected Wildlife:** Live livestock, pets, reptiles, endangered animal parts, or protected wildlife.
+7. **Pornographic & Obscene Literature:** Banned adult material, obscene literature, or illicit contraband.
 
 ---
 
 ## 3. Strictly Prohibited Tasks & Services
 Customers must not engage Need2Done Helpers for:
-* Entering private premises or restricted properties without explicit, lawful permission.
-* Stalking, shadowing, or monitoring individuals without consent.
-* Impersonation, acting as proxies for formal government legal signatures, or fraudulent activities.
-* Tasks involving physical violence, intimidation, recovery of personal debts, or illegal protests.
-* Any activity that contravenes local, state, or national laws of India.
+* Unlawful entry into private premises, trespassing, or surveillance/stalking of individuals.
+* Acting as proxies for government legal signatures, identity fraud, or illegal document submission.
+* Debt recovery, harassment, intimidation, extortion, or physical disputes.
+* Participating in unlawful assemblies, protests, or illegal gambling activities.
+* Any act contravening the Indian Penal Code (BNS), the Information Technology Act, or municipal regulations.
 
 ---
 
-## 4. Helper Right to Inspect & Refuse
-* Helpers have the explicit right to inspect packages (in the customer's presence) before accepting pickup if there is reasonable suspicion of prohibited contents.
-* Helpers must immediately tap **"Report Dangerous / Prohibited Task"** on their app or WhatsApp, refuse the delivery, and contact emergency dispatch.
+## 4. Helper Rights & Protocol
+* Helpers have the explicit right to inspect packages in the customer’s presence prior to pickup if prohibited contents are suspected.
+* If a prohibited task is detected, the Helper must immediately refuse the task, report it via the platform safety desk, and move to a safe location.

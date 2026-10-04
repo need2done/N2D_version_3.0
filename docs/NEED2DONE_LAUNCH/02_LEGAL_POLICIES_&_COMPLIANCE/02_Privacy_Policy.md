@@ -1,68 +1,67 @@
 # Need2Done — Privacy Policy
 **Last Updated:** October 2026  
-**Applicability:** Customers, Delivery Partners (Helpers), and Website Visitors
+**Effective Date:** Immediate upon user access or service request.
 
 ---
 
-## 1. Overview
-At **Need2Done ("N2D", "We", "Us")**, we respect your privacy and are committed to protecting the personal data you share with us. This Privacy Policy outlines how we collect, process, store, and safeguard your data when using the Need2Done WhatsApp Bot, tracking web portal, and partner applications in compliance with the Digital Personal Data Protection Act (DPDPA), 2023 and Information Technology (Reasonable Security Practices and Procedures and Sensitive Personal Data or Information) Rules, 2011.
+## 1. Introduction
+**Need2Done ("N2D", "We", "Us", or "Our")** is committed to protecting your personal information and respecting your privacy. This Privacy Policy explains how we collect, process, store, disclose, and safeguard your personal data when you interact with our WhatsApp Business bot, web applications (`https://need2done.in`), customer portals, and related digital services.
+
+This Policy is formulated in compliance with the **Information Technology Act, 2000**, the **Information Technology (Reasonable Security Practices and Procedures and Sensitive Personal Data or Information) Rules, 2011**, and the **Digital Personal Data Protection (DPDP) Act, 2023**.
 
 ---
 
 ## 2. Information We Collect
+We collect only data necessary to fulfill your requested tasks, process payments, and ensure service safety:
 
-### A. Information Provided by Customers
-* **Contact Data:** Full name, WhatsApp phone number, billing/shipping address.
-* **Order & Task Details:** Pick-up notes, drop-off locations, custom task descriptions, voice notes/images sent via WhatsApp for task clarification.
-* **Payment Information:** Transaction IDs, payment mode (card/UPI details are processed securely through RBI-compliant payment aggregators like Razorpay; Need2Done does not store raw credit/debit card credentials).
-
-### B. Information Collected from Delivery Partners / Helpers
-* **Identity & Verification (KYC):** Government ID proofs (Aadhaar, PAN, Driving License), vehicle registration documents, bank account details for payouts.
-* **Real-time Location Data:** Continuous foreground and background GPS pings while on duty or fulfilling active tasks.
-
-### C. Automated Device & Usage Data
-* IP addresses, browser types, session timestamps, and tracking portal URL interactions.
+1. **User Identity & Contact Data:** Name, WhatsApp phone number, and delivery contact details.
+2. **Location & Geolocation Data:** Real-time GPS coordinates, delivery addresses, pickup landmarks, and transit routes necessary for helper dispatch and live tracking.
+3. **Task & Transaction Details:** Items ordered, service durations, store receipts, pharmacy prescriptions (uploaded voluntarily for medicine delivery), order history, and payment transaction IDs (card/banking numbers are processed directly by certified RBI-regulated payment aggregators like Razorpay).
+4. **Device & Bot Interaction Data:** WhatsApp interaction logs, browser type, IP address, device identifiers, and timestamp data.
 
 ---
 
-## 3. How We Use Your Information
-We process your personal information for the following legitimate purposes:
-1. **Task Execution & Routing:** Sharing pickup/drop coordinates and task instructions with assigned Helpers.
-2. **Real-Time Tracking:** Providing live GPS tracking links to customers for transparency during active task fulfillment.
-3. **Customer Support & Dispute Resolution:** Addressing tickets, inquiries, and complaints raised via the WhatsApp bot or web portal.
-4. **Safety & Fraud Prevention:** Verifying delivery OTPs, auditing suspicious activities, and preventing fraudulent orders.
-5. **Regulatory Compliance:** Maintaining tax invoices and statutory audit records.
+## 3. Purpose of Data Processing
+Your data is used strictly for legitimate operational purposes:
+* Dispatching independent Helpers to accurate pickup and drop locations.
+* Fulfilling medicine, food, grocery, home services, and custom work tasks.
+* Processing digital transactions and generating digital invoices.
+* Sending live order tracking links, status notifications, and OTP verification codes.
+* Fraud prevention, platform safety, dispute resolution, and legal compliance.
 
 ---
 
-## 4. Information Sharing & Disclosure
-We do **NOT** sell or rent your personal data to third parties. We share data only under strictly regulated situations:
-* **Assigned Helpers:** Limited to contact phone number, first name, and delivery location necessary for task execution.
-* **Payment Aggregators (Razorpay / Banks):** For secure authorization and settlement of payments.
-* **Cloud & Infrastructure Partners (AWS / Databases):** Encrypted hosting and computing pipelines.
-* **Legal & Law Enforcement Authorities:** When required under Indian law, court subpoenas, or statutory mandates.
+## 4. Data Sharing & Third-Party Disclosures
+Need2Done will **never sell or rent** your personal data. We disclose information only under strict operational conditions:
+1. **Assigned Helpers:** Delivery runners and service helpers receive only the required contact name, phone number, address, and task notes to execute the service.
+2. **Third-Party Service Providers:** Licensed pharmacies, mapping service providers (Google Maps / OpenStreetMap), SMS/WhatsApp API gateways (Meta Platforms), and secure payment aggregators (Razorpay).
+3. **Law Enforcement & Statutory Mandates:** Disclosed only when legally required by court orders, police investigations, or regulatory compliance under Indian law.
 
 ---
 
-## 5. Data Security & Storage
-* **Encryption:** Data in transit is protected using TLS 1.3 / HTTPS encryption.
-* **Access Control:** Role-based access control (RBAC) restricts internal staff access to sensitive customer data.
-* **Retention Policy:** Order logs and chat metadata are retained for statutory compliance periods (typically up to 5-7 years for financial records) or until a verified account deletion request is processed.
+## 5. Prescription & Sensitive Health Data (Medicine Vertical)
+Prescription uploads provided for medicine delivery are processed strictly to facilitate purchase from licensed chemists. Prescriptions are stored securely in encrypted databases and are not repurposed for advertising or commercial targeting.
 
 ---
 
-## 6. User Rights & Data Deletion
-Under applicable data privacy regulations, you have the right to:
-* Request confirmation on data processed.
-* Correct or update inaccurate data.
-* Request erasure/deletion of your personal profile (subject to statutory record retention rules).
-
-To exercise these rights, submit a ticket via our WhatsApp bot or email: `privacy@need2done.com`.
+## 6. Data Security & Storage
+We employ industry-standard technical and organizational security measures:
+* 256-bit SSL/TLS encryption for all data in transit.
+* Secure, role-based access control and encrypted database storage on AWS cloud infrastructure located in India.
+* Regular security audits and vulnerability monitoring.
 
 ---
 
-## 7. Grievance Officer
-In accordance with the Information Technology Act, 2000:
-* **Grievance Officer:** Grievance Officer, Need2Done
-* **Email:** `support@need2done.com`
-* **Response Timeline:** Within 24-48 business hours.
+## 7. Data Retention & User Rights
+1. **Retention:** Data is retained only as long as necessary for business fulfillment, tax auditing, and legal recordkeeping.
+2. **User Rights:** You have the right to review, update, or request the deletion of your personal account data by writing to our Grievance Officer.
+
+---
+
+## 8. Grievance Officer Contact
+Pursuant to the Information Technology Act, 2000 and the DPDP Act, 2023, the contact details of our Grievance Officer are:
+* **Grievance Officer:** Legal & Compliance Desk
+* **Company:** Need2Done Technologies
+* **Email:** support@need2done.in / grievance@need2done.in
+* **Support Helpline:** +91 7989862623
+* **Official Website:** `https://need2done.in`

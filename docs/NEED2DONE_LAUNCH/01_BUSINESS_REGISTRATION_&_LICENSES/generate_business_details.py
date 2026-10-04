@@ -26,7 +26,6 @@ ORANGE_COLOR = colors.HexColor("#FF7D00")
 DARK_TEXT = colors.HexColor("#1E293B")
 LIGHT_BG = colors.HexColor("#F8FAFC")
 BORDER_COLOR = colors.HexColor("#CBD5E1")
-EMERALD_COLOR = colors.HexColor("#059669")
 
 class NumberedCanvas(canvas.Canvas):
     def __init__(self, *args, **kwargs):
@@ -50,13 +49,13 @@ class NumberedCanvas(canvas.Canvas):
         self.setFont("Helvetica-Bold", 8)
         self.setFillColor(colors.HexColor("#64748B"))
         
-        # Top Header line
+        # Header
         self.drawString(54, letter[1] - 36, "Need2Done (N2D) — Official Statutory & Registration Profile")
         self.setStrokeColor(colors.HexColor("#E2E8F0"))
         self.setLineWidth(0.5)
         self.line(54, letter[1] - 42, letter[0] - 54, letter[1] - 42)
 
-        # Footer line
+        # Footer
         self.setFont("Helvetica", 8)
         self.drawString(54, 36, "Confidential • Statutory Filing & Payment Gateway KYC Reference")
         page_str = f"Page {self._pageNumber} of {page_count}"
@@ -127,7 +126,7 @@ def build_pdf():
         'Body',
         fontName='Helvetica',
         fontSize=9,
-        leading=13,
+        leading=13.5,
         textColor=DARK_TEXT,
         spaceAfter=5
     )
@@ -143,18 +142,6 @@ def build_pdf():
         spaceAfter=3
     )
 
-    note_box_style = ParagraphStyle(
-        'NoteBox',
-        fontName='Helvetica',
-        fontSize=8.5,
-        leading=12,
-        textColor=colors.HexColor('#1E293B'),
-        backColor=colors.HexColor('#FEF3C7'),
-        borderPadding=7,
-        spaceBefore=5,
-        spaceAfter=7
-    )
-
     story = []
 
     # Title Banner
@@ -168,14 +155,14 @@ def build_pdf():
     table_data = [
         [Paragraph("Field Name", field_label_style), Paragraph("Official Registration Details", field_label_style)],
         [Paragraph("<b>Proprietor / Applicant Name</b>", field_label_style), Paragraph("[Your Full Name as per PAN / Aadhaar Card]", field_val_style)],
-        [Paragraph("<b>Aadhaar Number</b>", field_label_style), Paragraph("<i>[NA — To be entered by Applicant during submission]</i>", field_val_style)],
-        [Paragraph("<b>Trade Name (Business Name)</b>", field_label_style), Paragraph("<b>Need2Done</b> <i>(Alternative: Need2Done Services)</i>", field_val_style)],
-        [Paragraph("<b>Business Entity Type</b>", field_label_style), Paragraph("<b>Sole Proprietorship</b> <i>(or Partnership / Pvt Ltd as applicable)</i>", field_val_style)],
-        [Paragraph("<b>Nature of Business</b>", field_label_style), Paragraph("<b>Services / Technology Platform / E-Commerce Intermediary</b>", field_val_style)],
-        [Paragraph("<b>Primary NIC Code (MSME / GST)</b>", field_label_style), Paragraph("<b>63112 / 63999</b> (Web portals & IT enabled information service activities)<br/><b>96099</b> (Other personal service activities n.e.c.)", field_val_style)],
-        [Paragraph("<b>Official Website URL</b>", field_label_style), Paragraph("<b>https://need2done.in/home-services/</b>", field_val_style)],
-        [Paragraph("<b>Customer Support Phone</b>", field_label_style), Paragraph("+91 7989862623", field_val_style)],
-        [Paragraph("<b>Platform Access Channels</b>", field_label_style), Paragraph("WhatsApp Business Bot & Web Intermediary Portal", field_val_style)]
+        [Paragraph("<b>Aadhaar Number</b>", field_label_style), Paragraph("<i>[NA — To be entered by Applicant during form submission]</i>", field_val_style)],
+        [Paragraph("<b>Trade Name (Business Name)</b>", field_label_style), Paragraph("<b>Need2Done</b> <i>(Alternative: Need2Done Technologies / Need2Done Services)</i>", field_val_style)],
+        [Paragraph("<b>Business Entity Type</b>", field_label_style), Paragraph("<b>Sole Proprietorship</b> <i>(or Partnership / LLP / Pvt Ltd as applicable)</i>", field_val_style)],
+        [Paragraph("<b>Nature of Business</b>", field_label_style), Paragraph("<b>Services / Technology Platform / Hyperlocal E-Commerce Intermediary</b>", field_val_style)],
+        [Paragraph("<b>Primary NIC Codes (MSME / GST)</b>", field_label_style), Paragraph("<b>63112 / 63999</b> (Web portals, data processing & IT enabled services)<br/><b>96099</b> (Other personal service activities n.e.c.)<br/><b>53200</b> (Other postal & courier / delivery activities)", field_val_style)],
+        [Paragraph("<b>Operating Website URL</b>", field_label_style), Paragraph("<b>https://need2done.in/home-services/</b>", field_val_style)],
+        [Paragraph("<b>Official Contact Helpline</b>", field_label_style), Paragraph("+91 7989862623", field_val_style)],
+        [Paragraph("<b>Official Support Channels</b>", field_label_style), Paragraph("WhatsApp Business Bot & Web Intermediary Portal", field_val_style)]
     ]
 
     t = Table(table_data, colWidths=[165, 339])
@@ -196,34 +183,49 @@ def build_pdf():
     # SECTION 2: Business Activity
     story.append(Paragraph("2. Official Business Activity", section_heading))
     story.append(Paragraph(
-        "<b>Information Technology Enabled Services (ITeS) & Online Hyperlocal Marketplace Intermediary</b> connecting local residential customers with verified independent delivery runners and domestic service helpers across three foundational verticals: <b>Home Services</b>, <b>Medicine Delivery</b>, and <b>Custom Work</b>.",
+        "<b>Information Technology Enabled Services (ITeS) & Multi-Category Hyperlocal Marketplace Intermediary</b> connecting local residential customers with verified independent delivery partners, runners, and domestic service providers across Home Services, Medicine Delivery, Custom Work & Errands, Food & Grocery fulfillment, and Fresh Produce logistics via automated digital channels (WhatsApp Bot & Web Portals).",
         body_style
     ))
 
     # SECTION 3: Business Description
     story.append(Paragraph("3. Detailed Business Description (For Bank / Payment Gateway / Govt Portals)", section_heading))
     story.append(Paragraph(
-        "<b>Need2Done</b> is a technology-driven hyperlocal convenience platform providing on-demand household chores, deep cleaning, personal domestic assistance, urgent medicine collection, and custom errand services through automated digital channels (WhatsApp Business Bot & Web Platform). "
-        "The platform acts strictly as a digital intermediary facilitating instant booking, dispatching, live order updates, and secure digital payment settlements between customers and verified local service partners.",
+        "<b>Need2Done</b> is a technology-driven multi-service hyperlocal convenience platform facilitating on-demand domestic support, residential deep cleaning, prescription pharmacy pickup, custom errand execution, food delivery, and daily essential procurement. Operating strictly as a digital intermediary under Section 79 of the Information Technology Act, 2000, Need2Done provides real-time GPS dispatching, automated order lifecycle tracking, and secure digital payment processing connecting consumers with local merchants and independent service partners.",
         body_style
     ))
 
-    # SECTION 4: Active Core Service Verticals
-    story.append(Paragraph("4. Core Active Service Verticals (3 Pillars)", section_heading))
+    # SECTION 4: Comprehensive Multi-Service Scope
+    story.append(Paragraph("4. Comprehensive Multi-Service Verticals", section_heading))
     
     verticals_data = [
-        [Paragraph("Service Vertical", field_label_style), Paragraph("Scope & Operational Description", field_label_style)],
+        [Paragraph("Service Vertical", field_label_style), Paragraph("Operational Scope & Service Description", field_label_style)],
         [
-            Paragraph("<b>1. Home Services</b><br/><i>(Live Portal)</i>", field_label_style),
-            Paragraph("Professional on-demand residential assistance including <b>Home Deep Cleaning</b>, <b>Kitchen Deep Cleaning</b>, <b>Bathroom Scrubbing & Sanitization</b>, <b>Dishwashing Assistance</b>, <b>Laundry & Ironing Help</b>, and <b>Fan/Window Cleaning</b> by background-verified helpers.", field_val_style)
+            Paragraph("<b>1. Home Services (HS)</b>", field_label_style),
+            Paragraph("On-demand domestic assistance including <b>Home Deep Cleaning</b>, <b>Kitchen Cleaning</b>, <b>Bathroom Scrubbing & Sanitization</b>, <b>Dishwashing Assistance</b>, <b>Laundry & Ironing Help</b>, and <b>Fan/Window Cleaning</b> by verified helpers.", field_val_style)
         ],
         [
-            Paragraph("<b>2. Medicine Delivery</b><br/><i>(Pharmacy Assistance)</i>", field_label_style),
-            Paragraph("Doorstep collection and delivery of prescription medicines and OTC health/wellness products directly from licensed local retail pharmacies against valid customer prescription uploads. <i>(Need2Done acts solely as courier intermediary; does not sell or dispense drugs)</i>.", field_val_style)
+            Paragraph("<b>2. Medicine Delivery (Medi)</b>", field_label_style),
+            Paragraph("Doorstep collection and delivery of prescription medications and OTC wellness products from licensed local retail pharmacies against valid customer prescription uploads.", field_val_style)
         ],
         [
-            Paragraph("<b>3. Custom Work</b><br/><i>(Personalized Tasks)</i>", field_label_style),
-            Paragraph("Tailor-made local errands, custom task execution, item/document pick-and-drop, queue standing, and personalized domestic assistance booked on customer demand.", field_val_style)
+            Paragraph("<b>3. Custom Work & Errands</b>", field_label_style),
+            Paragraph("On-demand personalized errands, custom tasks, item/document pick-and-drop, queue standing, and tailored domestic assistance requested by customers.", field_val_style)
+        ],
+        [
+            Paragraph("<b>4. Food Delivery</b>", field_label_style),
+            Paragraph("Ordering and doorstep delivery of prepared meals and beverages from local restaurants and food vendors.", field_val_style)
+        ],
+        [
+            Paragraph("<b>5. Grocery Delivery</b>", field_label_style),
+            Paragraph("Procurement and delivery of daily household groceries and packaged goods from neighborhood supermarkets.", field_val_style)
+        ],
+        [
+            Paragraph("<b>6. Fruits & Vegetables</b>", field_label_style),
+            Paragraph("Collection and delivery of fresh farm produce and greens from local retail mandis and fresh produce vendors.", field_val_style)
+        ],
+        [
+            Paragraph("<b>7. Mobility & Rides</b>", field_label_style),
+            Paragraph("Point-to-point urban mobility and commuter transport services (where locally permitted and licensed).", field_val_style)
         ]
     ]
 
@@ -233,33 +235,26 @@ def build_pdf():
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('TOPPADDING', (0, 0), (-1, -1), 5),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
         ('LEFTPADDING', (0, 0), (-1, -1), 6),
         ('RIGHTPADDING', (0, 0), (-1, -1), 6),
         ('GRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
         ('BACKGROUND', (0, 1), (-1, 1), LIGHT_BG),
         ('BACKGROUND', (0, 3), (-1, 3), LIGHT_BG),
+        ('BACKGROUND', (0, 5), (-1, 5), LIGHT_BG),
+        ('BACKGROUND', (0, 7), (-1, 7), LIGHT_BG),
     ]))
     story.append(t_v)
     story.append(Spacer(1, 6))
 
-    # SECTION 5: Explicit Exclusions & Upcoming Services Notice
-    story.append(Paragraph("5. Operational Scope & Upcoming Services Notice", section_heading))
-    story.append(Paragraph(
-        "<b>Notice Regarding Handyman & Upcoming Services:</b><br/>"
-        "• <b>General Handyman & Heavy Structural Trades:</b> Heavy electrical rewiring, pipe plumbing overhauls, and carpentry construction are <u>NOT</u> standard catalog listings. Minor assistance is undertaken strictly under <i>Custom Work / Special Requirement</i> upon customer request.<br/>"
-        "• <b>Upcoming Service Rollouts:</b> Full-scale General Handyman & Appliance Repair, Grocery Fulfilment, and Specialized Trade Maintenance are currently under development and will be officially launched in upcoming expansion phases.",
-        note_box_style
-    ))
-
-    # SECTION 6: Payment Gateway Mapping (Razorpay / PayU)
-    story.append(Paragraph("6. Razorpay / Payment Gateway Category Classification", section_heading))
+    # SECTION 5: Payment Gateway Mapping (Razorpay / PayU)
+    story.append(Paragraph("5. Payment Gateway (Razorpay) Category Mapping", section_heading))
     pg_data = [
         [Paragraph("<b>Merchant Category:</b>", field_label_style), Paragraph("Services", field_val_style)],
         [Paragraph("<b>Merchant Sub-Category:</b>", field_label_style), Paragraph("Facility Services / Cleaning & Home Maintenance Services (or Internet & Information Services)", field_val_style)],
-        [Paragraph("<b>Website URL:</b>", field_label_style), Paragraph("https://need2done.in/home-services/", field_val_style)],
-        [Paragraph("<b>Customer Support Phone:</b>", field_label_style), Paragraph("+91 7989862623", field_val_style)],
+        [Paragraph("<b>Operating Website URL:</b>", field_label_style), Paragraph("https://need2done.in/home-services/", field_val_style)],
+        [Paragraph("<b>Customer Support Helpline:</b>", field_label_style), Paragraph("+91 7989862623", field_val_style)],
         [Paragraph("<b>Billing Descriptor:</b>", field_label_style), Paragraph("NEED2DONE", field_val_style)]
     ]
     t_pg = Table(pg_data, colWidths=[165, 339])
@@ -325,14 +320,14 @@ def build_docx():
     add_h("1. Primary Business Identification & Attributes")
     items = [
         ("Proprietor / Applicant Name", "[Your Full Name as per PAN / Aadhaar Card]"),
-        ("Aadhaar Number", "[NA — To be entered by Applicant during submission]"),
-        ("Trade Name (Business Name)", "Need2Done (Alternative: Need2Done Services)"),
-        ("Business Entity Type", "Sole Proprietorship (or Partnership / Pvt Ltd as applicable)"),
-        ("Nature of Business", "Services / Technology Platform / E-Commerce Intermediary"),
-        ("Primary NIC Code (MSME / GST)", "63112 / 63999 (Web portals & ITeS) & 96099 (Other personal services)"),
+        ("Aadhaar Number", "[NA — To be entered by Applicant during form submission]"),
+        ("Trade Name (Business Name)", "Need2Done (Alternative: Need2Done Technologies / Need2Done Services)"),
+        ("Business Entity Type", "Sole Proprietorship (or Partnership / LLP / Pvt Ltd as applicable)"),
+        ("Nature of Business", "Services / Technology Platform / Hyperlocal E-Commerce Intermediary"),
+        ("Primary NIC Codes (MSME / GST)", "63112 / 63999 (Web portals & ITeS), 96099 (Other personal services), 53200 (Courier / delivery)"),
         ("Operating Website URL", "https://need2done.in/home-services/"),
-        ("Official Contact Number", "+91 7989862623"),
-        ("Platform Access Channels", "WhatsApp Business Bot & Web Intermediary Portal")
+        ("Official Contact Helpline", "+91 7989862623"),
+        ("Official Support Channels", "WhatsApp Business Bot & Web Intermediary Portal")
     ]
 
     t = doc.add_table(rows=len(items) + 1, cols=2)
@@ -354,20 +349,24 @@ def build_docx():
     add_h("2. Official Business Activity")
     p = doc.add_paragraph()
     p.paragraph_format.line_spacing = 1.15
-    p.add_run("Information Technology Enabled Services (ITeS) & Online Hyperlocal Marketplace Intermediary connecting local residential customers with verified independent delivery runners and domestic service helpers across three foundational verticals: Home Services, Medicine Delivery, and Custom Work.")
+    p.add_run("Information Technology Enabled Services (ITeS) & Multi-Category Hyperlocal Marketplace Intermediary connecting local residential customers with verified independent delivery partners, runners, and domestic service providers across Home Services, Medicine Delivery, Custom Work & Errands, Food & Grocery fulfillment, and Fresh Produce logistics via automated digital channels (WhatsApp Bot & Web Portals).")
 
     # Section 3
     add_h("3. Detailed Business Description")
     p = doc.add_paragraph()
     p.paragraph_format.line_spacing = 1.15
-    p.add_run("Need2Done is a technology-driven hyperlocal convenience platform providing on-demand household chores, deep cleaning, personal domestic assistance, urgent medicine collection, and custom errand services through automated digital channels (WhatsApp Business Bot & Web Platform). The platform acts strictly as a digital intermediary facilitating instant booking, dispatching, live order updates, and secure digital payment settlements between customers and verified local service partners.")
+    p.add_run("Need2Done is a technology-driven multi-service hyperlocal convenience platform facilitating on-demand domestic support, residential deep cleaning, prescription pharmacy pickup, custom errand execution, food delivery, and daily essential procurement. Operating strictly as a digital intermediary under Section 79 of the Information Technology Act, 2000, Need2Done provides real-time GPS dispatching, automated order lifecycle tracking, and secure digital payment processing connecting consumers with local merchants and independent service partners.")
 
     # Section 4
-    add_h("4. Core Active Service Verticals (3 Pillars)")
+    add_h("4. Comprehensive Multi-Service Verticals")
     verticals = [
-        ("1. Home Services:", "Professional on-demand residential assistance including Home Deep Cleaning, Kitchen Cleaning, Bathroom Cleaning & Sanitization, Dishwashing, Laundry & Ironing, and Fan/Window Cleaning by verified helpers."),
-        ("2. Medicine Delivery:", "Doorstep delivery of prescription medicines and OTC wellness products collected from licensed local retail pharmacies against valid prescription uploads. (Delivery intermediary only)."),
-        ("3. Custom Work:", "Tailor-made local errands, custom task execution, document/item pickup and delivery, queue standing, and personalized domestic assistance on customer demand.")
+        ("1. Home Services (HS):", "On-demand domestic assistance including Home Deep Cleaning, Kitchen Cleaning, Bathroom Cleaning & Sanitization, Dishwashing, Laundry & Ironing, and Fan/Window Cleaning by verified helpers."),
+        ("2. Medicine Delivery (Medi):", "Doorstep collection and delivery of prescription medications and OTC wellness products from licensed local retail pharmacies against valid customer prescription uploads."),
+        ("3. Custom Work & Errands:", "On-demand personalized errands, custom tasks, item/document pick-and-drop, queue standing, and tailored domestic assistance requested by customers."),
+        ("4. Food Delivery:", "Ordering and doorstep delivery of prepared meals and beverages from local restaurants and food vendors."),
+        ("5. Grocery Delivery:", "Procurement and delivery of daily household groceries and packaged goods from neighborhood supermarkets."),
+        ("6. Fruits & Vegetables:", "Collection and delivery of fresh farm produce and greens from local retail mandis and fresh produce vendors."),
+        ("7. Mobility & Rides:", "Point-to-point urban mobility and commuter transport services (where locally permitted and licensed).")
     ]
     for v_title, v_desc in verticals:
         bp = doc.add_paragraph(style='List Bullet')
@@ -375,13 +374,6 @@ def build_docx():
         r1 = bp.add_run(f"{v_title} ")
         r1.bold = True
         bp.add_run(v_desc)
-
-    # Section 5
-    add_h("5. Operational Scope & Upcoming Services Notice", color=(255, 125, 0))
-    p = doc.add_paragraph()
-    p.paragraph_format.left_indent = Inches(0.2)
-    p.add_run("• Handyman & Repair Scope: General Handyman & Heavy Structural Trades (electrical rewiring, pipe plumbing overhauls, carpentry) are NOT standard catalog listings. Minor assistance is undertaken strictly under Custom Work / Special Requirement.\n"
-              "• Upcoming Services Rollouts: Full-scale General Handyman, Appliance Repair, Grocery Fulfilment, and Specialized Trade Maintenance will be launched in upcoming expansion phases.")
 
     doc.save(str(DOCX_PATH))
     print(f"[DOCX OK] {DOCX_PATH.name}")

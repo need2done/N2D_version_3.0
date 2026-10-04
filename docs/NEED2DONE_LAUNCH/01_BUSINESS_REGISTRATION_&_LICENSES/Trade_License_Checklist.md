@@ -1,26 +1,36 @@
-# Trade License & Business Registration Checklist
-**Need2Done Commercial Pre-Launch Protocol**
+# Need2Done — Trade License & Municipal Compliance Checklist
+**Jurisdiction:** Municipal Corporation / Urban Local Body (ULB)  
+**Industry Classification:** Technology Enabled Services (ITeS) / Hyperlocal Intermediary Office
 
 ---
 
-## 1. Trade License Requirements (Municipal Corporation)
-A Trade License is mandatory to commercially operate a local delivery & aggregator service office.
-
-### Required Documentation:
-* [ ] **Lease / Rental Agreement** or Ownership Deed for office premises.
-* [ ] **Electricity / Utility Bill** of the commercial premises (not older than 2 months).
-* [ ] **NOC (No Objection Certificate)** from the premises owner / building association.
-* [ ] **Premises Layout Plan / Floor Map**.
-* [ ] **Fire Safety NOC** (if office / storage facility exceeds local municipal size threshold).
-* [ ] **PAN Card of Company / Entity** and ID/Address proofs of all Directors / Partners.
+## 1. Trade License Application Overview
+Need2Done operates as an online technology intermediary providing automated task routing and domestic service scheduling. The physical business location operates as an **Administrative / Software Operating Office** coordinating digital orders.
 
 ---
 
-## 2. Accompanying Legal & Tax Registrations
+## 2. Mandatory Statutory Documentation Checklist
 
-| Registration | Governing Authority | Purpose / Threshold | Status |
-|---|---|---|---|
-| **GST Registration** | Central Board of Indirect Taxes and Customs (CBIC) | Intermediary commission charging, input tax credit, Razorpay gateway compliance. | Pending / In-Progress |
-| **MSME / Udyam** | Ministry of MSME | Government subsidy, MSME dispute fast-track protection, startup recognition. | Recommended |
-| **Shop & Establishment** | State Labor Department | Commercial establishment registration, working hours & employee rules. | Mandatory |
-| **Current Bank Account** | Authorized Commercial Bank | Integration with Payment Gateway settlement escrow. | Active |
+### A. Applicant & Identity Proofs
+- [ ] **PAN Card of Applicant / Proprietor**
+- [ ] **Aadhaar Card of Applicant / Proprietor**
+- [ ] **Passport Size Photographs (2 Copies)**
+
+### B. Registered Office & Premises Proof
+- [ ] **Property Ownership Proof:** Electricity Bill / Property Tax Receipt (if owned).
+- [ ] **Rental / Lease Agreement:** Valid registered lease deed (if rented).
+- [ ] **Owner No-Objection Certificate (NOC):** Formally authorizing commercial administrative operations at the premises.
+
+### C. Business Registrations & Tax Certifications
+- [ ] **MSME (Udyam) Registration Certificate** (Under NIC 63112 / 63999 / 96099).
+- [ ] **GST Registration Certificate** (For Intermediary Service Fees).
+- [ ] **Shop & Establishment Act Registration** (State Labor Department).
+- [ ] **Bank Account Statement / Cancelled Cheque** in the legal business trade name.
+
+---
+
+## 3. Statutory Classification Details for Application Form
+* **Nature of Business:** Software Administrative Office / Online Marketplace Intermediary.
+* **Trade Category:** Non-hazardous Commercial Office / Information Technology Enabled Services (ITeS).
+* **Power Connected / Machinery:** Commercial computers, server terminals, Wi-Fi routers (No industrial manufacturing or pollutant machinery).
+* **Working Hours:** 24/7 Digital Operations; Office Operating Hours: 09:00 AM – 08:00 PM.
