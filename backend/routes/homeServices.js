@@ -54,6 +54,13 @@ async function ensureHsTablesExist() {
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         `);
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS hs_settings (
+                setting_key VARCHAR(100) PRIMARY KEY,
+                setting_value JSON,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )
+        `);
         const [cats] = await db.query('SELECT COUNT(*) as cnt FROM hs_service_categories');
         if (cats[0].cnt === 0) {
             await db.query(`
@@ -434,6 +441,81 @@ router.post('/reschedule', async (req, res) => {
     } catch (err) {
         console.error('Error rescheduling booking:', err);
         res.status(500).json({ success: false, error: 'Database error' });
+    }
+});
+
+// ==========================================
+// 6. GET BANNER & COUPON CONFIGURATION
+// ==========================================
+router.get('/banner-config', async (req, res) => {
+    try {
+        await ensureHsTablesExist();
+        const [rows] = await db.query('SELECT setting_key, setting_value FROM hs_settings WHERE setting_key IN (?, ?)', ['banner_config', 'coupon_config']);
+        
+        let bannerConfig = {
+            isActive: true,
+            badgeText: '🪔 FESTIVE SPECIAL • DUSSEHRA DHAMAKA 🏹',
+            title: 'Celebrate Dussehra with a Sparkling Clean Home',
+            subtitle: 'Get FLAT 20% OFF on all professional cleaning, repairs, and kitchen deep-clean services. Code DUSSEHRA is automatically applied at checkout!',
+            discountBadge: '20% OFF',
+            couponCode: 'DUSSEHRA',
+            discountPercent: 20,
+            ctaText: 'Book Service with 20% OFF',
+            theme: 'amber'
+        };
+
+        let couponConfig = {
+            autoApply: true,
+            defaultCoupon: 'DUSSEHRA',
+            coupons: [
+                { code: 'DUSSEHRA', discountPercent: 20, description: 'Festive 20% Discount' },
+                { code: 'DASARA', discountPercent: 20, description: 'Festive 20% Discount' },
+                { code: 'FESTIVE20', discountPercent: 20, description: 'Festive 20% Discount' },
+                { code: 'WELCOME10', discountPercent: 10, description: 'New User 10% Discount' }
+            ]
+        };
+
+        rows.forEach(r => {
+            let val = r.setting_value;
+            if (typeof val === 'string') {
+                try { val = JSON.parse(val); } catch (e) {}
+            }
+            if (r.setting_key === 'banner_config' && val) bannerConfig = { ...bannerConfig, ...val };
+            if (r.setting_key === 'coupon_config' && val) couponConfig = { ...couponConfig, ...val };
+        });
+
+        res.json({ success: true, banner: bannerConfig, coupons: couponConfig });
+    } catch (err) {
+        console.error('Error fetching banner-config:', err);
+        res.status(500).json({ success: false, error: 'Failed to fetch banner config' });
+    }
+});
+
+// ==========================================
+// 7. ADMIN: UPDATE BANNER & COUPON CONFIG
+// ==========================================
+router.post('/admin/banner-config', async (req, res) => {
+    const { banner, coupons } = req.body;
+    try {
+        await ensureHsTablesExist();
+        if (banner) {
+            await db.query(`
+                INSERT INTO hs_settings (setting_key, setting_value)
+                VALUES ('banner_config', ?)
+                ON DUPLICATE KEY UPDATE setting_value = ?
+            `, [JSON.stringify(banner), JSON.stringify(banner)]);
+        }
+        if (coupons) {
+            await db.query(`
+                INSERT INTO hs_settings (setting_key, setting_value)
+                VALUES ('coupon_config', ?)
+                ON DUPLICATE KEY UPDATE setting_value = ?
+            `, [JSON.stringify(coupons), JSON.stringify(coupons)]);
+        }
+        res.json({ success: true, message: 'Banner & coupon configuration updated successfully' });
+    } catch (err) {
+        console.error('Error updating banner-config:', err);
+        res.status(500).json({ success: false, error: 'Database update failed' });
     }
 });
 

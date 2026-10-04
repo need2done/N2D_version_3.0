@@ -25,7 +25,7 @@ const Home = () => {
     navigate(`/book/${serviceId}`);
   };
 
-  const { services: allServices } = useContext(DataContext);
+  const { services: allServices, bannerConfig } = useContext(DataContext);
 
   const popularServices = [
     { id: 1, name: 'Home Cleaning', rating: 4.7, reviews: '1.2K', duration: '1 Hour', price: 99, img: 'https://placehold.co/400x300/ff7d00/ffffff?text=Home+Cleaning' },
@@ -154,55 +154,65 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 3. Dussehra Festive Offer Banner */}
-      <section className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 mt-14">
-        <div className="relative rounded-[32px] overflow-hidden shadow-2xl bg-gradient-to-br from-[#78350f] via-[#b45309] to-[#d97706] border-2 border-amber-300/40 p-8 md:p-12 text-white flex flex-col lg:flex-row items-center justify-between gap-8">
-          {/* Decorative Festive Background Glows */}
-          <div className="absolute -top-24 -right-24 w-80 h-80 bg-yellow-400/20 rounded-full blur-3xl pointer-events-none"></div>
-          <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-orange-600/30 rounded-full blur-3xl pointer-events-none"></div>
+      {/* 3. Promotional / Festive Offer Banner (Dynamic from Admin) */}
+      {bannerConfig && bannerConfig.isActive !== false && (
+        <section className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 mt-14">
+          <div className={`relative rounded-[32px] overflow-hidden shadow-2xl p-8 md:p-12 text-white flex flex-col lg:flex-row items-center justify-between gap-8 border-2 ${
+            bannerConfig.theme === 'blue' ? 'bg-gradient-to-br from-[#0f172a] via-[#1e3a8a] to-[#2563eb] border-blue-300/40' :
+            bannerConfig.theme === 'purple' ? 'bg-gradient-to-br from-[#3b0764] via-[#6b21a8] to-[#9333ea] border-purple-300/40' :
+            bannerConfig.theme === 'emerald' ? 'bg-gradient-to-br from-[#022c22] via-[#065f46] to-[#059669] border-emerald-300/40' :
+            bannerConfig.theme === 'rose' ? 'bg-gradient-to-br from-[#4c0519] via-[#9f1239] to-[#e11d48] border-rose-300/40' :
+            'bg-gradient-to-br from-[#78350f] via-[#b45309] to-[#d97706] border-amber-300/40'
+          }`}>
+            {/* Decorative Festive Background Glows */}
+            <div className="absolute -top-24 -right-24 w-80 h-80 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-black/20 rounded-full blur-3xl pointer-events-none"></div>
 
-          {/* Left Content */}
-          <div className="relative z-10 max-w-2xl text-center lg:text-left">
-            <div className="inline-flex items-center gap-2 bg-amber-400/20 backdrop-blur-md text-amber-200 text-xs md:text-sm font-black px-4 py-1.5 rounded-full uppercase tracking-wider mb-4 border border-amber-300/30 shadow-sm">
-              <span>🪔</span> FESTIVE SPECIAL • DUSSEHRA DHAMAKA <span>🏹</span>
+            {/* Left Content */}
+            <div className="relative z-10 max-w-2xl text-center lg:text-left">
+              {bannerConfig.badgeText && (
+                <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md text-white text-xs md:text-sm font-black px-4 py-1.5 rounded-full uppercase tracking-wider mb-4 border border-white/30 shadow-sm">
+                  {bannerConfig.badgeText}
+                </div>
+              )}
+              <h2 className="text-3xl md:text-5xl font-black text-white leading-tight mb-3 tracking-tight">
+                {bannerConfig.title || 'Special Festive Offer'}
+              </h2>
+              <p className="text-white/90 text-sm md:text-lg mb-6 leading-relaxed">
+                {bannerConfig.subtitle || 'Book now and enjoy exclusive discounts on all home services!'}
+              </p>
+              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4">
+                <button 
+                  onClick={() => {
+                    const el = document.getElementById('all-services');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="bg-white hover:bg-gray-100 text-gray-900 font-black py-4 px-8 rounded-2xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 text-base md:text-lg flex items-center gap-2 cursor-pointer border border-white/80"
+                >
+                  <span>{bannerConfig.ctaText || 'Book Service Now'}</span>
+                  <FaArrowRight className="text-gray-700" />
+                </button>
+                <div className="text-xs md:text-sm text-white/90 font-bold flex items-center gap-2 bg-black/20 px-4 py-3 rounded-2xl backdrop-blur-sm border border-white/10">
+                  <FaCheckCircle className="text-emerald-400 text-base" /> Auto-applied on all services
+                </div>
+              </div>
             </div>
-            <h2 className="text-3xl md:text-5xl font-black text-white leading-tight mb-3 tracking-tight">
-              Celebrate Dussehra with a <span className="text-amber-200 underline decoration-amber-400 underline-offset-4">Sparkling Clean Home</span>
-            </h2>
-            <p className="text-amber-100/90 text-sm md:text-lg mb-6 leading-relaxed">
-              Get <strong className="text-white font-black">FLAT 20% OFF</strong> on all professional cleaning, repairs, and kitchen deep-clean services. Code <span className="bg-black/30 text-amber-300 font-mono font-black px-2.5 py-1 rounded-lg border border-amber-400/40">DUSSEHRA</span> is automatically applied at checkout!
-            </p>
-            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4">
-              <button 
-                onClick={() => {
-                  const el = document.getElementById('all-services');
-                  if (el) el.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className="bg-white hover:bg-amber-50 text-amber-900 font-black py-4 px-8 rounded-2xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 text-base md:text-lg flex items-center gap-2 cursor-pointer border border-amber-200"
-              >
-                <span>Book Service with 20% OFF</span>
-                <FaArrowRight className="text-amber-700" />
-              </button>
-              <div className="text-xs md:text-sm text-amber-100 font-bold flex items-center gap-2 bg-black/20 px-4 py-3 rounded-2xl backdrop-blur-sm border border-white/10">
-                <FaCheckCircle className="text-emerald-400 text-base" /> Auto-applied on all services
+
+            {/* Right Festive Emblem / Promo Badge */}
+            <div className="relative z-10 flex-shrink-0 flex flex-col items-center justify-center bg-black/25 backdrop-blur-md rounded-[28px] p-6 md:p-8 border border-white/20 text-center min-w-[240px]">
+              <div className="text-5xl md:text-6xl mb-2">🪔</div>
+              <span className="text-white/80 text-xs font-bold tracking-widest uppercase">Special Discount</span>
+              <div className="text-4xl md:text-5xl font-black text-white my-1">
+                {bannerConfig.discountBadge || `${bannerConfig.discountPercent || 20}% OFF`}
+              </div>
+              <span className="text-xs text-white/70 font-medium">Coupon Code</span>
+              <div className="mt-2 bg-amber-400 text-amber-950 font-mono font-black px-4 py-1.5 rounded-xl text-sm tracking-wider shadow-inner">
+                {bannerConfig.couponCode || 'DUSSEHRA'}
               </div>
             </div>
           </div>
-
-          {/* Right Festive Emblem / Promo Badge */}
-          <div className="relative z-10 flex-shrink-0 flex flex-col items-center justify-center bg-black/25 backdrop-blur-md rounded-[28px] p-6 md:p-8 border border-white/20 text-center min-w-[240px]">
-            <div className="text-5xl md:text-6xl mb-2">🪔</div>
-            <span className="text-amber-300 text-xs font-bold tracking-widest uppercase">Special Discount</span>
-            <div className="text-4xl md:text-5xl font-black text-white my-1">
-              20% <span className="text-2xl text-amber-300">OFF</span>
-            </div>
-            <span className="text-xs text-amber-200/80 font-medium">Coupon Code</span>
-            <div className="mt-2 bg-amber-400 text-amber-950 font-mono font-black px-4 py-1.5 rounded-xl text-sm tracking-wider shadow-inner">
-              DUSSEHRA
-            </div>
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* 6. Trust Section */}
       <section className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 mt-16 pt-8 border-t border-gray-200">

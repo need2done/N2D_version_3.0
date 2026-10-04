@@ -38,13 +38,24 @@ const BookingConfiguration = () => {
     pincode: ''
   });
 
-  const { services, platformFee } = useContext(DataContext);
+  const { services, platformFee, couponConfig } = useContext(DataContext);
 
-  // Coupon State (Default: DUSSEHRA applied)
-  const [couponCode, setCouponCode] = useState('DUSSEHRA');
-  const [isCouponApplied, setIsCouponApplied] = useState(true);
+  const defaultPromo = (couponConfig && couponConfig.defaultCoupon) || 'DUSSEHRA';
+  const shouldAutoApply = couponConfig ? couponConfig.autoApply !== false : true;
+
+  // Coupon State
+  const [couponCode, setCouponCode] = useState(shouldAutoApply ? defaultPromo : '');
+  const [isCouponApplied, setIsCouponApplied] = useState(shouldAutoApply);
   const [couponInput, setCouponInput] = useState('');
-  const [couponStatus, setCouponStatus] = useState({ type: 'success', msg: 'DUSSEHRA (20% OFF) applied!' });
+  const [couponStatus, setCouponStatus] = useState(shouldAutoApply ? { type: 'success', msg: `${defaultPromo} applied!` } : { type: '', msg: '' });
+
+  useEffect(() => {
+    if (couponConfig && couponConfig.autoApply && !couponCode) {
+      setCouponCode(couponConfig.defaultCoupon || 'DUSSEHRA');
+      setIsCouponApplied(true);
+      setCouponStatus({ type: 'success', msg: `${couponConfig.defaultCoupon || 'DUSSEHRA'} applied!` });
+    }
+  }, [couponConfig]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
@@ -71,10 +82,23 @@ const BookingConfiguration = () => {
     return base * multiplier;
   };
 
+  const getActiveDiscountPercent = () => {
+    if (!isCouponApplied || !couponCode) return 0;
+    const couponsList = (couponConfig && couponConfig.coupons) || [
+      { code: 'DUSSEHRA', discountPercent: 20 },
+      { code: 'DASARA', discountPercent: 20 },
+      { code: 'FESTIVE20', discountPercent: 20 },
+      { code: 'WELCOME10', discountPercent: 10 }
+    ];
+    const match = couponsList.find(c => c.code.toUpperCase() === couponCode.toUpperCase());
+    return match ? (match.discountPercent || 20) : 20;
+  };
+
   const getDiscount = () => {
     if (!isCouponApplied) return 0;
     const subtotal = getSubtotal();
-    return Math.round(subtotal * 0.20);
+    const percent = getActiveDiscountPercent();
+    return Math.round(subtotal * (percent / 100));
   };
 
   const calculatePrice = () => {
@@ -89,12 +113,18 @@ const BookingConfiguration = () => {
       setCouponStatus({ type: 'error', msg: 'Please enter a coupon code' });
       return;
     }
-    const validCodes = ['DUSSEHRA', 'DASARA', 'FESTIVE20'];
-    if (validCodes.includes(code)) {
+    const couponsList = (couponConfig && couponConfig.coupons) || [
+      { code: 'DUSSEHRA', discountPercent: 20 },
+      { code: 'DASARA', discountPercent: 20 },
+      { code: 'FESTIVE20', discountPercent: 20 },
+      { code: 'WELCOME10', discountPercent: 10 }
+    ];
+    const match = couponsList.find(c => c.code.toUpperCase() === code);
+    if (match) {
       setCouponCode(code);
       setIsCouponApplied(true);
       setCouponInput('');
-      setCouponStatus({ type: 'success', msg: `${code} applied: 20% discount!` });
+      setCouponStatus({ type: 'success', msg: `${code} applied: ${match.discountPercent || 20}% discount!` });
     } else {
       setCouponStatus({ type: 'error', msg: 'Invalid or expired coupon code' });
     }
@@ -323,10 +353,10 @@ const BookingConfiguration = () => {
                         </div>
                         <button
                           type="button"
-                          onClick={() => handleApplyCoupon('DUSSEHRA')}
+                          onClick={() => handleApplyCoupon(couponConfig?.defaultCoupon || 'DUSSEHRA')}
                           className="text-[11px] font-bold text-amber-800 hover:underline flex items-center gap-1"
                         >
-                          ✨ Click to apply <span className="font-mono font-black bg-amber-200/80 px-1.5 py-0.5 rounded text-amber-950">DUSSEHRA</span> (20% OFF)
+                          ✨ Click to apply <span className="font-mono font-black bg-amber-200/80 px-1.5 py-0.5 rounded text-amber-950">{couponConfig?.defaultCoupon || 'DUSSEHRA'}</span> ({getActiveDiscountPercent() || 20}% OFF)
                         </button>
                       </div>
                     )}
@@ -354,7 +384,7 @@ const BookingConfiguration = () => {
                     {isCouponApplied && getDiscount() > 0 && (
                       <div className="flex justify-between items-center text-emerald-600 bg-emerald-50 px-2.5 py-1.5 rounded-xl border border-emerald-100">
                         <span className="font-bold flex items-center gap-1">
-                          <FaTag className="text-xs" /> Dussehra Discount (20%)
+                          <FaTag className="text-xs" /> Coupon Discount ({couponCode} - {getActiveDiscountPercent()}%)
                         </span>
                         <span className="font-black">- ₹{getDiscount()}</span>
                       </div>

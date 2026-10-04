@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect } from 'react';
+import api from '../services/api';
 
 export const DataContext = createContext();
 
@@ -10,6 +11,29 @@ const initialServices = [
   { id: 5, name: 'Laundry Help', image: `${import.meta.env.BASE_URL}images/laundry.png`, base_price: 149, duration: '1 Hour', description: 'Washing, folding, and basic ironing of everyday clothes.', rating: 4.8, reviewCount: 320 },
   { id: 6, name: 'Bathroom Cleaning', image: `${import.meta.env.BASE_URL}images/bathroom.png`, base_price: 499, duration: '2 Hours', description: 'Deep cleaning and sanitization of your bathroom, floor, and fixtures.', rating: 4.9, reviewCount: 410 }
 ];
+
+const defaultBannerConfig = {
+  isActive: true,
+  badgeText: '🪔 FESTIVE SPECIAL • DUSSEHRA DHAMAKA 🏹',
+  title: 'Celebrate Dussehra with a Sparkling Clean Home',
+  subtitle: 'Get FLAT 20% OFF on all professional cleaning, repairs, and kitchen deep-clean services. Code DUSSEHRA is automatically applied at checkout!',
+  discountBadge: '20% OFF',
+  couponCode: 'DUSSEHRA',
+  discountPercent: 20,
+  ctaText: 'Book Service with 20% OFF',
+  theme: 'amber'
+};
+
+const defaultCouponConfig = {
+  autoApply: true,
+  defaultCoupon: 'DUSSEHRA',
+  coupons: [
+    { code: 'DUSSEHRA', discountPercent: 20, description: 'Festive 20% Discount' },
+    { code: 'DASARA', discountPercent: 20, description: 'Festive 20% Discount' },
+    { code: 'FESTIVE20', discountPercent: 20, description: 'Festive 20% Discount' },
+    { code: 'WELCOME10', discountPercent: 10, description: 'New User 10% Discount' }
+  ]
+};
 
 export const DataProvider = ({ children }) => {
   const [services, setServices] = useState(() => {
@@ -25,6 +49,38 @@ export const DataProvider = ({ children }) => {
   const [isAdminAuth, setIsAdminAuth] = useState(() => {
     return localStorage.getItem('n2d_admin_auth') === 'true';
   });
+
+  const [bannerConfig, setBannerConfig] = useState(() => {
+    const saved = localStorage.getItem('n2d_banner_config');
+    return saved ? JSON.parse(saved) : defaultBannerConfig;
+  });
+
+  const [couponConfig, setCouponConfig] = useState(() => {
+    const saved = localStorage.getItem('n2d_coupon_config');
+    return saved ? JSON.parse(saved) : defaultCouponConfig;
+  });
+
+  // Fetch remote banner and coupon config on load
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const res = await api.get('/home-services/banner-config');
+        if (res.data && res.data.success) {
+          if (res.data.banner) {
+            setBannerConfig(prev => ({ ...prev, ...res.data.banner }));
+            localStorage.setItem('n2d_banner_config', JSON.stringify(res.data.banner));
+          }
+          if (res.data.coupons) {
+            setCouponConfig(prev => ({ ...prev, ...res.data.coupons }));
+            localStorage.setItem('n2d_coupon_config', JSON.stringify(res.data.coupons));
+          }
+        }
+      } catch (err) {
+        console.warn('Using local banner/coupon settings:', err.message);
+      }
+    };
+    fetchConfig();
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('n2d_services', JSON.stringify(services));
@@ -52,11 +108,33 @@ export const DataProvider = ({ children }) => {
     setServices(services.filter(s => s.id !== id));
   };
 
+  const saveBannerConfig = async (newBanner) => {
+    setBannerConfig(newBanner);
+    localStorage.setItem('n2d_banner_config', JSON.stringify(newBanner));
+    try {
+      await api.post('/home-services/admin/banner-config', { banner: newBanner });
+    } catch (e) {
+      console.error('Failed to sync banner config with backend:', e);
+    }
+  };
+
+  const saveCouponConfig = async (newCoupons) => {
+    setCouponConfig(newCoupons);
+    localStorage.setItem('n2d_coupon_config', JSON.stringify(newCoupons));
+    try {
+      await api.post('/home-services/admin/banner-config', { coupons: newCoupons });
+    } catch (e) {
+      console.error('Failed to sync coupon config with backend:', e);
+    }
+  };
+
   return (
     <DataContext.Provider value={{
       services, addService, updateService, deleteService,
       platformFee, setPlatformFee,
-      isAdminAuth, setIsAdminAuth
+      isAdminAuth, setIsAdminAuth,
+      bannerConfig, setBannerConfig, saveBannerConfig,
+      couponConfig, setCouponConfig, saveCouponConfig
     }}>
       {children}
     </DataContext.Provider>
