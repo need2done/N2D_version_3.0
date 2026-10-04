@@ -398,7 +398,7 @@ def send_service_list(to: str):
         rows = [
             {"id": "SERVICE_10", "title": "🏠 Home Services", "description": "Book trusted home cleaning and repairs."},
             {"id": "SERVICE_2", "title": "💊 Medicines", "description": "Buy health supplies or medicines."},
-            {"id": "SERVICE_5", "title": "👨‍🔧 Any Work", "description": "Pick/Drop parcels, run errands."},
+            {"id": "SERVICE_5", "title": "👷 Custom Work Service", "description": "Pick/Drop parcels, run errands, or custom tasks."},
             {"id": "SERVICE_6", "title": "📞 Support", "description": "Talk to our team for assistance."},
             {"id": "SERVICE_8", "title": "📦 My Orders", "description": "View recent order history."}
         ]
@@ -583,7 +583,7 @@ def send_rich_welcome(to: str, name: str = None, image_url: str = None):
         service_bullets = [
             "🏠 Home Services",
             "💊 Medicines Service",
-            "👷 Any Work Service"
+            "👷 Custom Work Service"
         ]
 
     bullets_text = "\n".join(service_bullets)
@@ -690,7 +690,7 @@ def send_rich_service_list(to: str, name: str = None):
         rows = [
             {"id": "SERVICE_10", "title": "🏠 Home Services", "description": "Book trusted home cleaning and repair services."},
             {"id": "SERVICE_2", "title": "💊 Medicines Service", "description": "Buy health supplies or medicines with prescription."},
-            {"id": "SERVICE_5", "title": "👷 Any Work Service", "description": "Pick/Drop parcels, run errands, or custom tasks."},
+            {"id": "SERVICE_5", "title": "👷 Custom Work Service", "description": "Pick/Drop parcels, run errands, or custom tasks."},
             {"id": "SERVICE_6", "title": "📞 Support", "description": "Talk to our team for any assistance or help."},
             {"id": "SERVICE_8", "title": "📦 My Orders", "description": "View your recent order history and tracking."}
         ]

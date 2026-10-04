@@ -34,7 +34,7 @@ const BookingConfiguration = () => {
     houseNo: '',
     street: '',
     area: '',
-    city: 'Mumbai',
+    city: '',
     pincode: ''
   });
 

@@ -39,7 +39,7 @@ async function run() {
             [10, 'home_services', '🏠 Home Services', 'Book trusted home cleaning and repair services.', '🏠', 'Services', 1],
             [2, 'medicines', '💊 Medicines Service', 'Buy health supplies or medicines with prescription.', '💊', 'Healthcare', 1],
             [4, 'ride', '🚗 Ride Service', 'Book a quick bike, auto, or car for your travel.', '🚗', 'Transport', 0],
-            [5, 'anywork', '👨‍🔧 Any Work Service', 'Pick/Drop parcels, run errands, or custom tasks.', '👨‍🔧', 'Custom Tasks', 1]
+            [5, 'customwork', '👷 Custom Work Service', 'Pick/Drop parcels, run errands, or custom tasks.', '👷', 'Custom Tasks', 1]
         ];
 
         for (const s of services) {

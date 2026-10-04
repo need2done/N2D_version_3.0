@@ -463,7 +463,7 @@ export default function Settings() {
                                         <option value="helper">Default / Helper (Global)</option>
                                         <option value="ride">Ride Service</option>
                                         <option value="medicine">Medicine Service</option>
-                                        <option value="anywork">AnyWork Service</option>
+                                        <option value="anywork">Custom Work Service</option>
                                         <option value="groceries">Groceries Service</option>
                                         <option value="veg_fruits">Vegetables & Fruits Service</option>
                                         <option value="food">Food Service</option>
@@ -471,7 +471,7 @@ export default function Settings() {
                                     </select>
                                 </div>
                                 <div className="form-group">
-                                    <label>🚚 Delivery Fee (Helper Charge) (₹) - {selectedModule.toUpperCase()}</label>
+                                    <label>🚚 Delivery Fee (Helper Charge) (₹) - {selectedModule === 'anywork' ? 'CUSTOM WORK' : selectedModule.toUpperCase()}</label>
                                     <input
                                         type="number"
                                         className="form-control"
@@ -480,10 +480,10 @@ export default function Settings() {
                                         onChange={handleEnvChange}
                                         placeholder={selectedModule === 'helper' ? 'e.g. 30' : `Falls back to ${envSettings.HELPER_CHARGE || '30'}`}
                                     />
-                                    <small className="form-text text-muted" style={{ display: 'block', marginTop: '0.25rem' }}>Delivery fee paid to helper for {selectedModule} orders.</small>
+                                    <small className="form-text text-muted" style={{ display: 'block', marginTop: '0.25rem' }}>Delivery fee paid to helper for {selectedModule === 'anywork' ? 'Custom Work' : selectedModule} orders.</small>
                                 </div>
                                 <div className="form-group">
-                                    <label>📋 Platform Fee (₹) - {selectedModule.toUpperCase()}</label>
+                                    <label>📋 Platform Fee (₹) - {selectedModule === 'anywork' ? 'CUSTOM WORK' : selectedModule.toUpperCase()}</label>
                                     <input
                                         type="number"
                                         className="form-control"
@@ -492,11 +492,11 @@ export default function Settings() {
                                         onChange={handleEnvChange}
                                         placeholder={selectedModule === 'helper' ? 'e.g. 8' : `Falls back to ${envSettings.PLATFORM_FEE || '8'}`}
                                     />
-                                    <small className="form-text text-muted" style={{ display: 'block', marginTop: '0.25rem' }}>Platform convenience fee for {selectedModule} orders.</small>
+                                    <small className="form-text text-muted" style={{ display: 'block', marginTop: '0.25rem' }}>Platform convenience fee for {selectedModule === 'anywork' ? 'Custom Work' : selectedModule} orders.</small>
                                 </div>
                                 {selectedModule === 'anywork' && (
                                     <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                                        <label style={{ fontWeight: '600', color: '#1e40af' }}>AnyWork Base Service Fee (₹)</label>
+                                        <label style={{ fontWeight: '600', color: '#1e40af' }}>Custom Work Base Service Fee (₹)</label>
                                         <input
                                             type="number"
                                             className="form-control"
@@ -505,7 +505,7 @@ export default function Settings() {
                                             onChange={handleEnvChange}
                                             placeholder={`Falls back to 50 (Current: ${envSettings.ANYWORK_BASE_FEE || '50'})`}
                                         />
-                                        <small className="form-text text-muted" style={{ display: 'block', marginTop: '0.25rem' }}>Base service labor fee for AnyWork errands (no shopping bill).</small>
+                                        <small className="form-text text-muted" style={{ display: 'block', marginTop: '0.25rem' }}>Base service labor fee for Custom Work errands (no shopping bill).</small>
                                     </div>
                                 )}
                                 <div className="form-group">
@@ -864,7 +864,7 @@ export default function Settings() {
                                             >
                                                 <option value="RIDE">Ride Service</option>
                                                 <option value="TASK">Task Delivery</option>
-                                                <option value="ANYWORK">AnyWork</option>
+                                                <option value="ANYWORK">Custom Work</option>
                                             </select>
                                         </div>
                                         <div className="form-group">

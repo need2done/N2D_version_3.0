@@ -185,7 +185,7 @@ export default function Dashboard() {
         else if (filter === 'HOME SERVICES' || filter === 'HOME SERVICE') svcQuery = 'Home';
         else if (filter === 'MEDICINES' || filter === 'MEDIC') svcQuery = 'Medic';
         else if (filter === 'FOOD') svcQuery = 'Food';
-        else if (filter === 'ANYWORK') svcQuery = 'Anywork';
+        else if (filter === 'CUSTOM WORK' || filter === 'ANYWORK') svcQuery = 'Custom';
         if (svcQuery) orderUrl += `service=${encodeURIComponent(svcQuery)}&`;
       }
 
@@ -534,7 +534,7 @@ export default function Dashboard() {
       <div className="card" style={{ padding: 0, marginBottom: '16px', overflow: 'hidden' }}>
         {/* Horizontal scrollable tab bar */}
         <div className="category-tabs-bar">
-          {['ALL', 'GROCERIES', 'VEG & FRUITS', 'HOME SERVICES', 'RIDE', 'MEDICINES', 'FOOD', 'ANYWORK'].map(f => (
+          {['ALL', 'GROCERIES', 'VEG & FRUITS', 'HOME SERVICES', 'RIDE', 'MEDICINES', 'FOOD', 'CUSTOM WORK'].map(f => (
             <button
               key={f}
               className={`category-tab${filter === f ? ' active' : ''}`}

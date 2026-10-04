@@ -21,7 +21,7 @@ ALL_SERVICES_MAP = {
     10: {"id": "SERVICE_10", "title": "🏠 Home Services", "description": "Book trusted home cleaning and repair services."},
     2: {"id": "SERVICE_2", "title": "💊 Medicines Service", "description": "Buy health supplies or medicines with prescription."},
     4: {"id": "SERVICE_4", "title": "🚗 Ride Service", "description": "Book a quick bike, auto, or car for your travel."},
-    5: {"id": "SERVICE_5", "title": "👷 Any Work Service", "description": "Pick/Drop parcels, run errands, or custom tasks."},
+    5: {"id": "SERVICE_5", "title": "👷 Custom Work Service", "description": "Pick/Drop parcels, run errands, or custom tasks."},
     6: {"id": "SERVICE_6", "title": "📞 Support", "description": "Talk to our team for any assistance or help."},
     8: {"id": "SERVICE_8", "title": "📦 My Orders", "description": "View your recent order history and tracking."}
 }
@@ -33,7 +33,7 @@ SERVICE_NAMES = {
     10: "Home Services",
     2: "Medicines Service",
     4: "Ride Service",
-    5: "Any Work / Custom Work",
+    5: "Custom Work Service",
     6: "Support",
     8: "My Orders"
 }

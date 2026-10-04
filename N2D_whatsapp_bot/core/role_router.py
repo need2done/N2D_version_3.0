@@ -72,7 +72,7 @@ SERVICE_TEXT_MAP = {
     "2": 2, "medicines": 2, "medicine": 2,
     "3": 3, "parcel": 3,
     "4": 4, "ride": 4, "cab": 4, "auto": 4,
-    "5": 5, "any work": 5, "anywork": 5,
+    "5": 5, "custom work": 5, "customwork": 5, "custom task": 5, "custom": 5, "any work": 5, "anywork": 5,
     "6": 6, "support": 6, "help": 6,
     "7": 7, "vegetables": 7, "fruits": 7, "vegetables & fruits": 7,
     "9": 9, "food": 9, "food service": 9
@@ -86,7 +86,7 @@ def detect_service_from_text(text: str) -> Optional[int]:
         return 2
     if "ride" in t or "cab" in t or "auto" in t:
         return 4
-    if "parcel" in t or "any work" in t or "anywork" in t:
+    if "custom" in t or "parcel" in t or "any work" in t or "anywork" in t:
         return 5
     if "vegetable" in t or "fruit" in t:
         return 7
@@ -1168,7 +1168,7 @@ def route_message(
                     "Currently available services:\n"
                     "🏠 *Home Services*\n"
                     "💊 *Medicines Service*\n"
-                    "👨‍🔧 *Custom Work / Any Work*\n\n"
+                    "👷 *Custom Work Service*\n\n"
                     "Please select one of the available options below 👇"
                 )
                 session["service"] = None

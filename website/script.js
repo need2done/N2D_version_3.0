@@ -405,7 +405,7 @@ function submitAnyWorkTask(e) {
   const task = document.getElementById('awTask').value;
   const locations = document.getElementById('awLocations').value;
 
-  const text = `Hi Need2Done, I have an Any Work custom task request:\n\n👤 Name: ${name}\n📞 Phone: ${phone}\n👷 Task Details: ${task}\n📍 Locations: ${locations}`;
+  const text = `Hi Need2Done, I have a Custom Work task request:\n\n👤 Name: ${name}\n📞 Phone: ${phone}\n👷 Task Details: ${task}\n📍 Locations: ${locations}`;
   const encodedText = encodeURIComponent(text);
   const waUrl = `https://wa.me/917989862623?text=${encodedText}`;
   
