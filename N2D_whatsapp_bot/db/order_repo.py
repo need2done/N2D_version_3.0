@@ -28,26 +28,27 @@ from config import HELPER_CHARGE
 # =================================================
 
 VALID_TRANSITIONS = {
-    # Shared / Task flow
-    "DRAFT": ["CONFIRMED", "BASE_FEE_PAID", "ORDER_PLACED", "HELPER_ACCEPTED"],
-    "CONFIRMED": ["HELPER_ACCEPTED", "BASE_FEE_PAID", "ORDER_PLACED"],
-    "BASE_FEE_PAID": ["HELPER_ACCEPTED", "ORDER_PLACED"],
-    "ORDER_PLACED": ["HELPER_ACCEPTED"],
-    "HELPER_ACCEPTED": ["BILL_IMAGE_UPLOADED", "HELPER_ARRIVED", "ARRIVED_AT_STORE", "ARRIVED_AT_CUSTOMER"],
-    "ARRIVED_AT_STORE": ["BILL_IMAGE_UPLOADED", "ITEMS_PICKED_UP"],
-    "BILL_IMAGE_UPLOADED": ["ADMIN_APPROVED_BILL", "BILL_PENDING_ONLINE_PAYMENT", "BILL_PAID_ONLINE", "ITEMS_PICKED_UP"],
-    "BILL_PENDING_ONLINE_PAYMENT": ["BILL_PAID_ONLINE", "ITEMS_PICKED_UP"],
-    "BILL_PAID_ONLINE": ["ITEMS_PICKED_UP", "HELPER_ARRIVED", "ARRIVED_AT_CUSTOMER"],
-    "ADMIN_APPROVED_BILL": ["HELPER_ARRIVED", "ITEMS_PICKED_UP", "ARRIVED_AT_CUSTOMER"],
-    "ITEMS_PICKED_UP": ["HELPER_ARRIVED", "ARRIVED_AT_CUSTOMER"],
-    "HELPER_ARRIVED": ["ITEM_PHOTO_UPLOADED", "RIDE_STARTED", "PAYMENT_GENERATED", "OTP_SUBMITTED", "COMPLETED"],
-    "ARRIVED_AT_CUSTOMER": ["ITEM_PHOTO_UPLOADED", "PAYMENT_GENERATED", "OTP_SUBMITTED", "COMPLETED"],
-    "ITEM_PHOTO_UPLOADED": ["ADMIN_VERIFY_ITEMS", "PAYMENT_GENERATED"],
-    "ADMIN_VERIFY_ITEMS": ["PAYMENT_GENERATED"],
-    "RIDE_STARTED": ["PAYMENT_GENERATED"],     # After END OTP, collect payment first
-    "PAYMENT_GENERATED": ["PAID"],
-    "PAID": ["OTP_SUBMITTED", "COMPLETED"],    # Task uses OTP_SUBMITTED; Ride goes direct COMPLETED
-    "OTP_SUBMITTED": ["COMPLETED"],
+    # Shared / Task / Home Services / Ride flow
+    "DRAFT": ["CONFIRMED", "BASE_FEE_PAID", "ORDER_PLACED", "HELPER_ACCEPTED", "CANCELLED"],
+    "CONFIRMED": ["HELPER_ACCEPTED", "BASE_FEE_PAID", "ORDER_PLACED", "CANCELLED"],
+    "BASE_FEE_PAID": ["HELPER_ACCEPTED", "ORDER_PLACED", "CANCELLED"],
+    "ORDER_PLACED": ["HELPER_ACCEPTED", "CANCELLED"],
+    "HELPER_ACCEPTED": ["BILL_IMAGE_UPLOADED", "HELPER_ARRIVED", "ARRIVED_AT_STORE", "ARRIVED_AT_CUSTOMER", "SERVICE_STARTED", "CANCELLED"],
+    "ARRIVED_AT_STORE": ["BILL_IMAGE_UPLOADED", "ITEMS_PICKED_UP", "CANCELLED"],
+    "BILL_IMAGE_UPLOADED": ["ADMIN_APPROVED_BILL", "BILL_PENDING_ONLINE_PAYMENT", "BILL_PAID_ONLINE", "ITEMS_PICKED_UP", "CANCELLED"],
+    "BILL_PENDING_ONLINE_PAYMENT": ["BILL_PAID_ONLINE", "ITEMS_PICKED_UP", "CANCELLED"],
+    "BILL_PAID_ONLINE": ["ITEMS_PICKED_UP", "HELPER_ARRIVED", "ARRIVED_AT_CUSTOMER", "CANCELLED"],
+    "ADMIN_APPROVED_BILL": ["HELPER_ARRIVED", "ITEMS_PICKED_UP", "ARRIVED_AT_CUSTOMER", "CANCELLED"],
+    "ITEMS_PICKED_UP": ["HELPER_ARRIVED", "ARRIVED_AT_CUSTOMER", "CANCELLED"],
+    "HELPER_ARRIVED": ["ITEM_PHOTO_UPLOADED", "RIDE_STARTED", "SERVICE_STARTED", "PAYMENT_GENERATED", "OTP_SUBMITTED", "COMPLETED", "CANCELLED"],
+    "ARRIVED_AT_CUSTOMER": ["ITEM_PHOTO_UPLOADED", "PAYMENT_GENERATED", "PAID", "OTP_SUBMITTED", "COMPLETED", "CANCELLED"],
+    "ITEM_PHOTO_UPLOADED": ["ADMIN_VERIFY_ITEMS", "PAYMENT_GENERATED", "CANCELLED"],
+    "ADMIN_VERIFY_ITEMS": ["PAYMENT_GENERATED", "CANCELLED"],
+    "SERVICE_STARTED": ["PAYMENT_GENERATED", "PAID", "OTP_SUBMITTED", "COMPLETED", "CANCELLED"],
+    "RIDE_STARTED": ["PAYMENT_GENERATED", "PAID", "COMPLETED", "CANCELLED"],
+    "PAYMENT_GENERATED": ["PAID", "OTP_SUBMITTED", "COMPLETED", "CANCELLED"],
+    "PAID": ["OTP_SUBMITTED", "COMPLETED", "CANCELLED"],
+    "OTP_SUBMITTED": ["COMPLETED", "CANCELLED"],
 }
 
 
@@ -427,7 +428,7 @@ def generate_and_save_otp(order_id: str) -> Optional[str]:
 
         order = _resolve_and_lock(cur, order_id)
 
-        if not order or order["status"] != "PAID" or order.get("otp"):
+        if not order:
             db.rollback()
             return None
 
@@ -437,10 +438,11 @@ def generate_and_save_otp(order_id: str) -> Optional[str]:
             """
             UPDATE orders
             SET otp=%s,
+                delivery_otp=%s,
                 otp_created_at=NOW()
             WHERE id=%s
             """,
-            (otp, order["id"])
+            (otp, otp, order["id"])
         )
 
         db.commit()
@@ -469,7 +471,7 @@ def complete_order(order_id: str) -> bool:
 
         order = _resolve_and_lock(cur, order_id)
 
-        if not order or order["status"] != "OTP_SUBMITTED":
+        if not order or order["status"] not in ("OTP_SUBMITTED", "PAID", "SERVICE_STARTED", "ARRIVED_AT_CUSTOMER"):
             db.rollback()
             return False
 
@@ -758,7 +760,7 @@ def mark_payment_method(db_id: int, method: str) -> bool:
 
 def submit_otp(order_id: str, otp_entered: str) -> bool:
     """
-    Submits OTP for verification (Task Engine).
+    Submits OTP for verification (Task Engine & Home Services).
     """
     import datetime
     from config import OTP_EXPIRY_MINUTES
@@ -772,24 +774,31 @@ def submit_otp(order_id: str, otp_entered: str) -> bool:
             db.rollback()
             return False
             
-        if not order.get('otp'):
+        target_otp = order.get('otp') or order.get('delivery_otp')
+        if not target_otp:
             db.rollback()
             return False
             
-        # Check expiration
+        # Check expiration safely handling UTC vs local timezone difference
         created_at = order.get("otp_created_at")
         if created_at:
-            now = datetime.datetime.now()
-            elapsed = (now - created_at).total_seconds() / 60.0
-            if elapsed > OTP_EXPIRY_MINUTES:
-                db.rollback()
-                print(f"OTP Expired: {elapsed:.2f} minutes elapsed (max: {OTP_EXPIRY_MINUTES})")
-                return False
+            try:
+                now_utc = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                now_local = datetime.datetime.now()
+                elapsed_utc = abs((now_utc - created_at).total_seconds()) / 60.0
+                elapsed_local = abs((now_local - created_at).total_seconds()) / 60.0
+                elapsed = min(elapsed_utc, elapsed_local)
+                if elapsed > OTP_EXPIRY_MINUTES:
+                    db.rollback()
+                    print(f"OTP Expired: {elapsed:.2f} minutes elapsed (max: {OTP_EXPIRY_MINUTES})")
+                    return False
+            except Exception as dt_err:
+                print(f"OTP date check error: {dt_err}")
 
-        if str(otp_entered).strip() == str(order['otp']).strip():
+        if str(otp_entered).strip() == str(target_otp).strip():
             _transition_order(cur, order, "OTP_SUBMITTED", "HELPER")
             # Clear OTP to prevent replay/reuse
-            cur.execute("UPDATE orders SET otp=NULL WHERE id=%s", (order["id"],))
+            cur.execute("UPDATE orders SET otp=NULL, delivery_otp=NULL WHERE id=%s", (order["id"],))
             db.commit()
             return True
         else:
