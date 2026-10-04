@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { exportToExcel, exportToPDF } from '../utils/exportUtils';
+import { formatDateTimeIST } from '../utils/dateUtils';
 import { API_URL } from '../config';
 
 export default function WalletPage() {
@@ -76,7 +77,7 @@ export default function WalletPage() {
                     txn.customer_paid || 0, txn.helper_received || 0,
                     txn.platform_fee || 0, txn.amount, txn.type,
                     txn.description || '-',
-                    new Date(txn.created_at).toLocaleString(),
+                    formatDateTimeIST(txn.created_at),
                 ]);
                 exportToExcel('Need2Done_All_Wallet_Transactions', headers, rows);
             }
@@ -94,7 +95,7 @@ export default function WalletPage() {
             txn.customer_paid || 0, txn.helper_received || 0,
             txn.platform_fee || 0, txn.amount, txn.type,
             txn.description || '-',
-            new Date(txn.created_at).toLocaleString(),
+            formatDateTimeIST(txn.created_at),
         ]);
         exportToExcel(`Need2Done_Wallet_Ledger_${selectedHelper.name}_${selectedHelper.helper_code}`, headers, rows);
     };
@@ -110,7 +111,7 @@ export default function WalletPage() {
         ];
         const headers = ['Date & Time', 'Order ID', 'Service', 'Mode', 'Cust Paid', 'Helper Recv', 'Admin Share', 'Wallet Impact'];
         const rows = ledger.map(txn => [
-            new Date(txn.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+            formatDateTimeIST(txn.created_at, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
             txn.display_order_id || '-', txn.service || '-', txn.payment_method || 'UPI',
             `₹${parseFloat(txn.customer_paid || 0).toFixed(2)}`,
             `₹${parseFloat(txn.helper_received || 0).toFixed(2)}`,
@@ -408,7 +409,7 @@ export default function WalletPage() {
                                             >
                                                 {/* Date */}
                                                 <td style={{ padding: '12px 14px', fontSize: '12.5px', color: '#475569', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-                                                    {new Date(txn.created_at).toLocaleString(undefined, {
+                                                    {formatDateTimeIST(txn.created_at, {
                                                         month: 'short', day: 'numeric',
                                                         hour: '2-digit', minute: '2-digit',
                                                     })}

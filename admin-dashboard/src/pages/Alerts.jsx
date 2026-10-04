@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AlertTriangle, CheckCircle2, RefreshCw, Phone, Trash2, Bell } from 'lucide-react';
 import { API_URL } from '../config';
+import { formatTimeIST } from '../utils/dateUtils';
 
 
 export default function Alerts() {
@@ -105,7 +106,7 @@ export default function Alerts() {
                   <td><span className="badge danger">GPS DELAY</span></td>
                   <td><strong>#{alert.display_id}</strong> (Helper: {alert.helper_name})</td>
                   <td style={{ color: 'var(--danger)', fontWeight: 600 }}>No GPS ping for {Math.round((new Date() - new Date(alert.last_seen)) / 1000 / 60)} mins</td>
-                  <td style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{new Date(alert.last_seen).toLocaleTimeString()}</td>
+                  <td style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{formatTimeIST(alert.last_seen)}</td>
                   <td style={{ textAlign: 'right' }}>
                     <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                       <button className="btn btn-primary" style={{ padding: '0.3rem 0.75rem', fontSize: '0.8rem' }}>

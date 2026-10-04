@@ -12,7 +12,8 @@ const pool = mysql.createPool({
     database: process.env.DB_NAME || 'n2d',
     waitForConnections: true,
     connectionLimit: 10,
-    queueLimit: 0
+    queueLimit: 0,
+    timezone: '+00:00'
 });
 
 // Test connection

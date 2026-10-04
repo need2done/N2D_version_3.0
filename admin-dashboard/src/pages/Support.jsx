@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { LifeBuoy, RefreshCw, CheckCircle, Check, Search, X } from 'lucide-react';
 import { API_URL } from '../config';
+import { formatDateTimeIST } from '../utils/dateUtils';
 
 
 export default function Support() {
@@ -119,7 +120,7 @@ export default function Support() {
                     {req.status}
                   </span>
                 </td>
-                <td style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{new Date(req.created_at).toLocaleString()}</td>
+                <td style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{formatDateTimeIST(req.created_at)}</td>
                 <td style={{ textAlign: 'right' }}>
                   {req.status === 'PENDING' && (
                     <button 

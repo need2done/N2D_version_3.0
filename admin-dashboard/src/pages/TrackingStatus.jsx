@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Activity, RefreshCw, Radio, MapPin } from 'lucide-react';
 import { API_URL } from '../config';
+import { formatTimeIST } from '../utils/dateUtils';
 
 
 export default function TrackingStatus() {
@@ -87,7 +88,7 @@ export default function TrackingStatus() {
                     </span>
                   ) : 'No data'}
                 </td>
-                <td style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{new Date(session.last_seen).toLocaleTimeString()}</td>
+                <td style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{formatTimeIST(session.last_seen)}</td>
                 <td>
                   <span className="badge active" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                     <Radio size={12} className="animate-pulse" /> LIVE

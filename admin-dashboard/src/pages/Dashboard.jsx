@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { LayoutDashboard, Users, MapPin, Activity, Download, FileText, Calendar, RotateCcw, Filter, RefreshCw, Search, X, Zap, Eye, Phone, MessageSquare, ExternalLink, Clock, Store, ShieldCheck, CreditCard } from 'lucide-react';
 import { exportToExcel, exportToPDF } from '../utils/exportUtils';
+import { formatOrderDateTime, formatDateTimeIST, formatTimeIST, formatDateIST } from '../utils/dateUtils';
 import { API_URL } from '../config';
 
 
@@ -99,49 +100,7 @@ export default function Dashboard() {
     }
   };
 
-  const formatOrderDateTime = (dateStr) => {
-    if (!dateStr) return '';
-    try {
-      const d = new Date(dateStr);
-      const now = new Date();
-      const isToday = d.toDateString() === now.toDateString();
-      
-      const yesterday = new Date();
-      yesterday.setDate(now.getDate() - 1);
-      const isYesterday = d.toDateString() === yesterday.toDateString();
 
-      const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      
-      if (isToday) {
-        return (
-          <span>
-            <span style={{ color: '#059669', fontWeight: 700, fontSize: '0.72rem', background: '#ecfdf5', padding: '1px 5px', borderRadius: '4px', border: '1px solid #a7f3d0' }}>Today</span>
-            <br />
-            <small style={{ color: 'var(--text-muted)' }}>{timeStr}</small>
-          </span>
-        );
-      } else if (isYesterday) {
-        return (
-          <span>
-            <span style={{ color: '#d97706', fontWeight: 700, fontSize: '0.72rem', background: '#fffbeb', padding: '1px 5px', borderRadius: '4px', border: '1px solid #fde68a' }}>Yesterday</span>
-            <br />
-            <small style={{ color: 'var(--text-muted)' }}>{timeStr}</small>
-          </span>
-        );
-      } else {
-        const dateFormatted = d.toLocaleDateString([], { day: '2-digit', month: 'short' });
-        return (
-          <span>
-            <span style={{ color: '#475569', fontWeight: 700, fontSize: '0.72rem', background: '#f1f5f9', padding: '1px 5px', borderRadius: '4px', border: '1px solid #cbd5e1' }}>{dateFormatted}</span>
-            <br />
-            <small style={{ color: 'var(--text-muted)' }}>{timeStr}</small>
-          </span>
-        );
-      }
-    } catch (e) {
-      return dateStr;
-    }
-  };
 
   // Vendor Assignment Modal State
   const [vendors, setVendors] = useState([]);
@@ -381,7 +340,7 @@ export default function Dashboard() {
       order.total_amount || order.bill_amount || 0,
       order.helper_name || 'Unassigned',
       order.vendor_name || 'None',
-      new Date(order.created_at).toLocaleString()
+      formatDateTimeIST(order.created_at)
     ]);
 
     const summaryRow = [
@@ -419,7 +378,7 @@ export default function Dashboard() {
       order.ride_locked ? 'LOCKED' : order.status,
       `₹${order.total_amount || order.bill_amount || 0}`,
       order.helper_name || 'Unassigned',
-      new Date(order.created_at).toLocaleTimeString()
+      formatTimeIST(order.created_at)
     ]);
 
     exportToPDF(reportTitle, dateRangeText, summaryStats, headers, rows);
@@ -1009,7 +968,7 @@ export default function Dashboard() {
                     </div>
                     <p style={{ margin: '5px 0 0', fontSize: '13px', color: '#64748b' }}>
                       Service: <strong style={{ color: '#334155' }}>{selectedOrderDetail.service || 'General'}</strong>
-                      {' '}({selectedOrderDetail.engine_type}) &nbsp;·&nbsp; Placed: {new Date(selectedOrderDetail.created_at).toLocaleString()}
+                      {' '}({selectedOrderDetail.engine_type}) &nbsp;·&nbsp; Placed: {formatDateTimeIST(selectedOrderDetail.created_at)}
                     </p>
                   </div>
                   <button
@@ -1198,7 +1157,7 @@ export default function Dashboard() {
                         {selectedOrderDetail.timeline.map((t, idx) => (
                           <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', background: '#fff', border: '1px solid #e2e8f0', padding: '8px 12px', borderRadius: '8px', color: '#334155' }}>
                             <span><strong style={{ color: '#0f172a' }}>{t.event_type}:</strong> {t.event_text}</span>
-                            <span style={{ color: '#94a3b8', fontSize: '11px', whiteSpace: 'nowrap', marginLeft: '12px' }}>{new Date(t.created_at).toLocaleTimeString()}</span>
+                            <span style={{ color: '#94a3b8', fontSize: '11px', whiteSpace: 'nowrap', marginLeft: '12px' }}>{formatTimeIST(t.created_at)}</span>
                           </div>
                         ))}
                       </div>
