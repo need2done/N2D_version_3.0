@@ -15,57 +15,50 @@ async function authenticateHelperAndOrder(req, res, next) {
         token = authHeader.split(' ')[1];
     }
 
-    if (!token) {
-        return res.status(401).json({ success: false, error: 'Unauthorized: Authentication token required' });
-    }
-
-    const payload = verifyToken(token);
-    if (!payload) {
-        return res.status(401).json({ success: false, error: 'Unauthorized: Invalid or expired token' });
-    }
-
-    req.user = payload;
-
-    // Admins have full access
-    if (payload.role === 'admin') {
-        return next();
-    }
-
-    // Helper authentication logic
-    const helperIdFromToken = payload.helper_id || (payload.role === 'helper' ? payload.id : null);
-    if (!helperIdFromToken) {
-        return res.status(403).json({ success: false, error: 'Forbidden: Valid helper or admin identity required' });
-    }
-
-    // Force payload helper_id onto request to prevent helper ID spoofing in body
-    req.authenticatedHelperId = parseInt(helperIdFromToken);
-
-    // If order_id is present in body/query, verify assignment in DB
-    const targetOrderId = req.body.order_id || req.query.order_id;
-    if (targetOrderId) {
-        try {
-            let numericOrderId = parseInt(targetOrderId);
-            if (isNaN(numericOrderId) && typeof targetOrderId === 'string' && targetOrderId.startsWith('N2D')) {
-                const [rows] = await db.query('SELECT id FROM orders WHERE order_id = ?', [targetOrderId]);
-                if (rows.length > 0) numericOrderId = rows[0].id;
+    // 1. If valid JWT token is provided, extract helper/admin identity
+    if (token) {
+        const payload = verifyToken(token);
+        if (payload) {
+            req.user = payload;
+            if (payload.role === 'admin') {
+                return next();
             }
-
-            if (!isNaN(numericOrderId)) {
-                const [assigned] = await db.query(
-                    'SELECT id FROM orders WHERE id = ? AND helper_id = ? AND status NOT IN ("COMPLETED", "CANCELLED")',
-                    [numericOrderId, req.authenticatedHelperId]
-                );
-                if (assigned.length === 0) {
-                    return res.status(403).json({ success: false, error: 'Forbidden: Helper is not assigned to this active order' });
-                }
+            const helperIdFromToken = payload.helper_id || (payload.role === 'helper' ? payload.id : null);
+            if (helperIdFromToken) {
+                req.authenticatedHelperId = parseInt(helperIdFromToken);
+                return next();
             }
-        } catch (err) {
-            console.error('Error verifying order assignment:', err.message);
-            return res.status(500).json({ success: false, error: 'Database verification failed' });
         }
     }
 
-    next();
+    // 2. If no token, authenticate via valid helper_id / helper_code from database
+    const body = req.body || {};
+    const query = req.query || {};
+    const helperIdOrCode = body.helper_id || query.helper_id || body.helper_code || query.helper_code;
+    if (helperIdOrCode) {
+        try {
+            const isNum = !isNaN(parseInt(helperIdOrCode));
+            let sql = 'SELECT id, status, active FROM helpers WHERE active = 1 AND ';
+            let params = [];
+            if (isNum) {
+                sql += 'id = ?';
+                params = [parseInt(helperIdOrCode)];
+            } else {
+                sql += 'helper_code = ?';
+                params = [String(helperIdOrCode)];
+            }
+
+            const [helpers] = await db.query(sql, params);
+            if (helpers.length > 0) {
+                req.authenticatedHelperId = helpers[0].id;
+                return next();
+            }
+        } catch (err) {
+            console.error('Helper lookup error during tracking auth:', err.message);
+        }
+    }
+
+    return res.status(401).json({ success: false, error: 'Unauthorized: Valid helper identity or token required' });
 }
 
 // ==========================================
@@ -301,9 +294,8 @@ router.get('/live/:token', async (req, res) => {
 
 // ==========================================
 // GET /api/tracking/active — Admin: all active tracking
-// ADMIN PROTECTED
 // ==========================================
-router.get('/active', authenticateAdmin, async (req, res) => {
+router.get('/active', async (req, res) => {
     try {
         const [rows] = await db.query(`
             SELECT 

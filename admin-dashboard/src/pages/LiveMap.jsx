@@ -73,8 +73,15 @@ export default function LiveMap() {
           return diffHours <= 24;
         });
         setSessions(activeSessions);
-        if (activeSessions.length > 0 && !selectedSession) {
-          setSelectedSession(activeSessions[0]);
+        if (activeSessions.length > 0) {
+          if (!selectedSession) {
+            setSelectedSession(activeSessions[0]);
+          } else {
+            const currentSelected = activeSessions.find(s => s.helper_id === selectedSession.helper_id);
+            if (currentSelected) {
+              setSelectedSession(currentSelected);
+            }
+          }
         }
       }
     } catch (err) {
@@ -85,7 +92,7 @@ export default function LiveMap() {
 
   useEffect(() => {
     fetchActiveSessions();
-    const interval = setInterval(fetchActiveSessions, 5000);
+    const interval = setInterval(fetchActiveSessions, 3000);
     return () => clearInterval(interval);
   }, []);
 

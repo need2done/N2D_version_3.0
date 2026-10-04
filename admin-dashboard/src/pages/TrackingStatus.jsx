@@ -10,10 +10,12 @@ export default function TrackingStatus() {
 
   const fetchSessions = async () => {
     try {
-      const res = await fetch(`${API_URL}/tracking/active`);
+      const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+      const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+      const res = await fetch(`${API_URL}/tracking/active`, { headers });
       const data = await res.json();
       if (data.success) {
-        setSessions(data.sessions);
+        setSessions(data.sessions || []);
       }
       setLoading(false);
     } catch (err) {
@@ -25,7 +27,7 @@ export default function TrackingStatus() {
 
   useEffect(() => {
     fetchSessions();
-    const interval = setInterval(fetchSessions, 10000);
+    const interval = setInterval(fetchSessions, 4000);
     return () => clearInterval(interval);
   }, []);
 
