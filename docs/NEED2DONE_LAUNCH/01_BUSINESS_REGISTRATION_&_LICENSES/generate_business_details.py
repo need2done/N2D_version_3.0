@@ -26,6 +26,7 @@ ORANGE_COLOR = colors.HexColor("#FF7D00")
 DARK_TEXT = colors.HexColor("#1E293B")
 LIGHT_BG = colors.HexColor("#F8FAFC")
 BORDER_COLOR = colors.HexColor("#CBD5E1")
+EMERALD_COLOR = colors.HexColor("#059669")
 
 class NumberedCanvas(canvas.Canvas):
     def __init__(self, *args, **kwargs):
@@ -106,6 +107,17 @@ def build_pdf():
         keepWithNext=True
     )
 
+    sub_section_heading = ParagraphStyle(
+        'SubSecHead',
+        fontName='Helvetica-Bold',
+        fontSize=9.5,
+        leading=13,
+        textColor=ORANGE_COLOR,
+        spaceBefore=8,
+        spaceAfter=4,
+        keepWithNext=True
+    )
+
     field_label_style = ParagraphStyle(
         'FieldLabel',
         fontName='Helvetica-Bold',
@@ -152,7 +164,7 @@ def build_pdf():
         [Paragraph("<b>Operating Website URL</b>", field_label_style), Paragraph("<b>https://need2done.in</b>", field_val_style)],
         [Paragraph("<b>Official Contact Helpline</b>", field_label_style), Paragraph("<b>+91 7989862623</b>", field_val_style)],
         [Paragraph("<b>Official Support Email</b>", field_label_style), Paragraph("<b>support@need2done.in</b>", field_val_style)],
-        [Paragraph("<b>Official Support Channels</b>", field_label_style), Paragraph("WhatsApp Business Bot & Web Intermediary Portal", field_val_style)]
+        [Paragraph("<b>Platform Access Channels</b>", field_label_style), Paragraph("WhatsApp Business Bot & Web Intermediary Portal", field_val_style)]
     ]
 
     t = Table(table_data, colWidths=[165, 339])
@@ -173,54 +185,38 @@ def build_pdf():
     # SECTION 2: Business Activity
     story.append(Paragraph("2. Official Business Activity", section_heading))
     story.append(Paragraph(
-        "<b>Information Technology Enabled Services (ITeS) & Multi-Category Hyperlocal Marketplace Intermediary</b> connecting local residential customers with verified independent delivery partners, runners, and domestic service providers across Home Services, Medicine Delivery, Custom Work & Errands, Food & Grocery fulfillment, and Fresh Produce logistics via automated digital channels (WhatsApp Bot & Web Portals).",
+        "<b>Information Technology Enabled Services (ITeS) & Hyperlocal Marketplace Intermediary</b> connecting local residential customers with verified independent delivery partners, runners, and domestic service providers. Currently operational across <b>Home Services (HS)</b>, <b>Custom Work (CW)</b>, and <b>Medicine Delivery (MEDI)</b>, with planned future rollouts for <b>Food Delivery</b>, <b>Grocery Delivery</b>, <b>Fruits & Vegetables</b>, and <b>Rides / Mobility</b>.",
         body_style
     ))
 
     # SECTION 3: Business Description
     story.append(Paragraph("3. Detailed Business Description (For Bank / Payment Gateway / Govt Portals)", section_heading))
     story.append(Paragraph(
-        "<b>Need2Done</b> is a technology-driven multi-service hyperlocal convenience platform facilitating on-demand domestic support, residential deep cleaning, prescription pharmacy pickup, custom errand execution, food delivery, and daily essential procurement. Operating strictly as a digital intermediary under Section 79 of the Information Technology Act, 2000, Need2Done provides real-time GPS dispatching, automated order lifecycle tracking, and secure digital payment processing connecting consumers with local merchants and independent service partners.",
+        "<b>Need2Done</b> is a technology-driven multi-service hyperlocal convenience platform facilitating on-demand domestic assistance, residential deep cleaning, prescription pharmacy pickup, and custom errand execution. Operating strictly as a digital intermediary under Section 79 of the Information Technology Act, 2000, Need2Done provides real-time GPS dispatching, automated order lifecycle tracking, and secure digital payment processing connecting consumers with local merchants and independent service partners.",
         body_style
     ))
 
-    # SECTION 4: Comprehensive Multi-Service Scope
-    story.append(Paragraph("4. Comprehensive Multi-Service Verticals", section_heading))
+    # SECTION 4: Active Services vs Future Roadmap
+    story.append(Paragraph("4. Service Framework: Active Services & Future Rollout Roadmap", section_heading))
     
-    verticals_data = [
-        [Paragraph("Service Vertical", field_label_style), Paragraph("Operational Scope & Service Description", field_label_style)],
+    story.append(Paragraph("🟢 Part A: Currently Active Services (Live Operations)", sub_section_heading))
+    active_data = [
+        [Paragraph("Active Service", field_label_style), Paragraph("Live Operational Scope & Service Description", field_label_style)],
         [
-            Paragraph("<b>1. Home Services (HS)</b>", field_label_style),
-            Paragraph("On-demand domestic assistance including <b>Home Deep Cleaning</b>, <b>Kitchen Cleaning</b>, <b>Bathroom Scrubbing & Sanitization</b>, <b>Dishwashing Assistance</b>, <b>Laundry & Ironing Help</b>, and <b>Fan/Window Cleaning</b> by verified helpers.", field_val_style)
+            Paragraph("<b>1. Home Services (HS)</b><br/><i>(Live on Web & Bot)</i>", field_label_style),
+            Paragraph("On-demand domestic assistance including <b>Home Deep Cleaning</b>, <b>Kitchen Deep Cleaning</b>, <b>Bathroom Scrubbing & Sanitization</b>, <b>Dishwashing Assistance</b>, <b>Laundry & Ironing Help</b>, and <b>Fan/Window Cleaning</b> by verified helpers.", field_val_style)
         ],
         [
-            Paragraph("<b>2. Medicine Delivery (Medi)</b>", field_label_style),
-            Paragraph("Doorstep collection and delivery of prescription medications and OTC wellness products from licensed local retail pharmacies against valid customer prescription uploads.", field_val_style)
+            Paragraph("<b>2. Custom Work (CW)</b><br/><i>(Live on WhatsApp Bot)</i>", field_label_style),
+            Paragraph("On-demand personalized errands, custom task execution, item/document pick-and-drop, queue standing, and tailored domestic assistance requested by customers.", field_val_style)
         ],
         [
-            Paragraph("<b>3. Custom Work & Errands</b>", field_label_style),
-            Paragraph("On-demand personalized errands, custom tasks, item/document pick-and-drop, queue standing, and tailored domestic assistance requested by customers.", field_val_style)
-        ],
-        [
-            Paragraph("<b>4. Food Delivery</b>", field_label_style),
-            Paragraph("Ordering and doorstep delivery of prepared meals and beverages from local restaurants and food vendors.", field_val_style)
-        ],
-        [
-            Paragraph("<b>5. Grocery Delivery</b>", field_label_style),
-            Paragraph("Procurement and delivery of daily household groceries and packaged goods from neighborhood supermarkets.", field_val_style)
-        ],
-        [
-            Paragraph("<b>6. Fruits & Vegetables</b>", field_label_style),
-            Paragraph("Collection and delivery of fresh farm produce and greens from local retail mandis and fresh produce vendors.", field_val_style)
-        ],
-        [
-            Paragraph("<b>7. Mobility & Rides</b>", field_label_style),
-            Paragraph("Point-to-point urban mobility and commuter transport services (where locally permitted and licensed).", field_val_style)
+            Paragraph("<b>3. Medicine Delivery (MEDI)</b><br/><i>(Live on WhatsApp Bot)</i>", field_label_style),
+            Paragraph("Rapid doorstep collection and delivery of prescription medications and OTC wellness products from licensed local retail pharmacies against valid customer prescription uploads.", field_val_style)
         ]
     ]
-
-    t_v = Table(verticals_data, colWidths=[140, 364])
-    t_v.setStyle(TableStyle([
+    t_active = Table(active_data, colWidths=[140, 364])
+    t_active.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), NAVY_COLOR),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
@@ -232,10 +228,45 @@ def build_pdf():
         ('GRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
         ('BACKGROUND', (0, 1), (-1, 1), LIGHT_BG),
         ('BACKGROUND', (0, 3), (-1, 3), LIGHT_BG),
-        ('BACKGROUND', (0, 5), (-1, 5), LIGHT_BG),
-        ('BACKGROUND', (0, 7), (-1, 7), LIGHT_BG),
     ]))
-    story.append(t_v)
+    story.append(t_active)
+    story.append(Spacer(1, 6))
+
+    story.append(Paragraph("🟡 Part B: Upcoming Services (Future Rollout Roadmap)", sub_section_heading))
+    future_data = [
+        [Paragraph("Upcoming Service", field_label_style), Paragraph("Planned Scope in Expansion Phase", field_label_style)],
+        [
+            Paragraph("<b>4. Food Delivery (FD)</b>", field_label_style),
+            Paragraph("Doorstep delivery of prepared meals and beverages from local restaurants and eateries.", field_val_style)
+        ],
+        [
+            Paragraph("<b>5. Grocery Delivery (Groce)</b>", field_label_style),
+            Paragraph("Procurement and delivery of daily household groceries and packaged goods from neighborhood supermarkets.", field_val_style)
+        ],
+        [
+            Paragraph("<b>6. Fruits & Vegetables</b>", field_label_style),
+            Paragraph("Collection and delivery of fresh farm produce and greens from local retail mandis and fresh produce vendors.", field_val_style)
+        ],
+        [
+            Paragraph("<b>7. Rides & Mobility (Ride)</b>", field_label_style),
+            Paragraph("Point-to-point urban mobility and commuter transport services (where locally permitted and licensed).", field_val_style)
+        ]
+    ]
+    t_future = Table(future_data, colWidths=[140, 364])
+    t_future.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#475569')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('TOPPADDING', (0, 0), (-1, -1), 3.5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3.5),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ('GRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ('BACKGROUND', (0, 1), (-1, 1), LIGHT_BG),
+        ('BACKGROUND', (0, 3), (-1, 3), LIGHT_BG),
+    ]))
+    story.append(t_future)
     story.append(Spacer(1, 6))
 
     # SECTION 5: Payment Gateway Mapping (Razorpay / PayU)
@@ -341,26 +372,47 @@ def build_docx():
     add_h("2. Official Business Activity")
     p = doc.add_paragraph()
     p.paragraph_format.line_spacing = 1.15
-    p.add_run("Information Technology Enabled Services (ITeS) & Multi-Category Hyperlocal Marketplace Intermediary connecting local residential customers with verified independent delivery partners, runners, and domestic service providers across Home Services, Medicine Delivery, Custom Work & Errands, Food & Grocery fulfillment, and Fresh Produce logistics via automated digital channels (WhatsApp Bot & Web Portals).")
+    p.add_run("Information Technology Enabled Services (ITeS) & Hyperlocal Marketplace Intermediary connecting local residential customers with verified independent delivery partners, runners, and domestic service providers. Currently operational across Home Services (HS), Custom Work (CW), and Medicine Delivery (MEDI), with planned future rollouts for Food Delivery (FD), Grocery Delivery, Fruits & Vegetables, and Rides / Mobility.")
 
     # Section 3
     add_h("3. Detailed Business Description")
     p = doc.add_paragraph()
     p.paragraph_format.line_spacing = 1.15
-    p.add_run("Need2Done is a technology-driven multi-service hyperlocal convenience platform facilitating on-demand domestic support, residential deep cleaning, prescription pharmacy pickup, custom errand execution, food delivery, and daily essential procurement. Operating strictly as a digital intermediary under Section 79 of the Information Technology Act, 2000, Need2Done provides real-time GPS dispatching, automated order lifecycle tracking, and secure digital payment processing connecting consumers with local merchants and independent service partners.")
+    p.add_run("Need2Done is a technology-driven multi-service hyperlocal convenience platform facilitating on-demand domestic assistance, residential deep cleaning, prescription pharmacy pickup, and custom errand execution. Operating strictly as a digital intermediary under Section 79 of the Information Technology Act, 2000, Need2Done provides real-time GPS dispatching, automated order lifecycle tracking, and secure digital payment processing connecting consumers with local merchants and independent service partners.")
 
     # Section 4
-    add_h("4. Comprehensive Multi-Service Verticals")
-    verticals = [
+    add_h("4. Service Framework: Active Services & Future Rollout Roadmap")
+    
+    p_a = doc.add_paragraph()
+    r_a = p_a.add_run("Part A: Currently Active Services (Live Operations)")
+    r_a.bold = True
+    r_a.font.color.rgb = RGBColor(255, 125, 0)
+
+    active_items = [
         ("1. Home Services (HS):", "On-demand domestic assistance including Home Deep Cleaning, Kitchen Cleaning, Bathroom Cleaning & Sanitization, Dishwashing, Laundry & Ironing, and Fan/Window Cleaning by verified helpers."),
-        ("2. Medicine Delivery (Medi):", "Doorstep collection and delivery of prescription medications and OTC wellness products from licensed local retail pharmacies against valid customer prescription uploads."),
-        ("3. Custom Work & Errands:", "On-demand personalized errands, custom tasks, item/document pick-and-drop, queue standing, and tailored domestic assistance requested by customers."),
-        ("4. Food Delivery:", "Ordering and doorstep delivery of prepared meals and beverages from local restaurants and food vendors."),
-        ("5. Grocery Delivery:", "Procurement and delivery of daily household groceries and packaged goods from neighborhood supermarkets."),
-        ("6. Fruits & Vegetables:", "Collection and delivery of fresh farm produce and greens from local retail mandis and fresh produce vendors."),
-        ("7. Mobility & Rides:", "Point-to-point urban mobility and commuter transport services (where locally permitted and licensed).")
+        ("2. Custom Work (CW):", "On-demand personalized errands, custom task execution, item/document pick-and-drop, queue standing, and tailored domestic assistance requested by customers."),
+        ("3. Medicine Delivery (MEDI):", "Doorstep collection and delivery of prescription medications and OTC wellness products from licensed local retail pharmacies against valid customer prescription uploads.")
     ]
-    for v_title, v_desc in verticals:
+    for v_title, v_desc in active_items:
+        bp = doc.add_paragraph(style='List Bullet')
+        bp.paragraph_format.space_after = Pt(2)
+        r1 = bp.add_run(f"{v_title} ")
+        r1.bold = True
+        bp.add_run(v_desc)
+
+    p_b = doc.add_paragraph()
+    p_b.paragraph_format.space_before = Pt(6)
+    r_b = p_b.add_run("Part B: Upcoming Services (Future Rollout Roadmap)")
+    r_b.bold = True
+    r_b.font.color.rgb = RGBColor(100, 116, 139)
+
+    future_items = [
+        ("4. Food Delivery (FD):", "Doorstep delivery of prepared meals and beverages from local restaurants and eateries."),
+        ("5. Grocery Delivery (Groce):", "Procurement and delivery of daily household groceries and packaged goods from neighborhood supermarkets."),
+        ("6. Fruits & Vegetables:", "Collection and delivery of fresh farm produce and greens from local retail mandis and fresh produce vendors."),
+        ("7. Rides & Mobility (Ride):", "Point-to-point urban mobility and commuter transport services (where locally permitted and licensed).")
+    ]
+    for v_title, v_desc in future_items:
         bp = doc.add_paragraph(style='List Bullet')
         bp.paragraph_format.space_after = Pt(2)
         r1 = bp.add_run(f"{v_title} ")

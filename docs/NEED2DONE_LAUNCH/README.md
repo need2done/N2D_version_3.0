@@ -1,14 +1,19 @@
-# Need2Done (N2D) — Master Launch & Compliance Index
-**Folder Structure & Legal Documentation System for Commercial Launch**
+## 🌟 Need2Done Multi-Service Ecosystem Architecture
 
-## 🌟 Need2Done Active Core Verticals (3 Services)
-Need2Done operates as a master hyperlocal platform offering three foundational service lines:
-1. **Home Services (`https://need2done.in/home-services/`):** Deep cleaning (kitchen, bathroom, floors, fans, windows), dishwashing, laundry, ironing, and professional domestic helpers.
-2. **Medicine Delivery:** Rapid prescription and OTC medicine collection and doorstep delivery from licensed neighborhood pharmacies.
-3. **Custom Work:** On-demand custom tasks, pickup and delivery, document courier, store errands, and personalized assistance.
-
-> [!NOTE]
-> **Upcoming Services Notice:** Additional services including General Handyman & Electrical/Plumbing Repairs, Grocery Fulfilment, and Extended Specialized Maintenance are currently under engineering and will launch in subsequent rollout phases.
+```
+Need2Done (N2D Master Platform)
+│
+├── 🟢 PART A: CURRENTLY ACTIVE SERVICES (LIVE OPERATIONS)
+│   ├── 1. HOME SERVICES (HS)        → Deep cleaning, dishwashing, laundry, sanitization & helper assistance (https://need2done.in)
+│   ├── 2. CUSTOM WORK (CW)          → On-demand personalized tasks, document pickup/drop, store errands & chore help
+│   └── 3. MEDICINE DELIVERY (MEDI)  → Rapid prescription & OTC medicine delivery from licensed local pharmacies
+│
+└── 🟡 PART B: UPCOMING SERVICES IN DEVELOPMENT (EXPANSION ROADMAP)
+    ├── 4. FOOD DELIVERY (FD)        → Restaurant meal ordering and doorstep delivery
+    ├── 5. GROCERY DELIVERY (Groce)  → Supermarket groceries and daily packaged goods
+    ├── 6. FRUITS & VEGETABLES       → Fresh farm produce and local market pickups
+    └── 7. RIDES & MOBILITY (Ride)   → Hyperlocal point-to-point urban mobility
+```
 
 ---
 

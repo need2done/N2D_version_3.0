@@ -18,16 +18,18 @@ By accessing, messaging our WhatsApp bot, placing a service request, or using an
 
 ---
 
-## 3. Scope of Service Verticals & Offerings
-Need2Done operates a comprehensive hyperlocal convenience ecosystem covering:
+## 3. Service Framework: Active Services & Future Rollout Roadmap
 
-1. **Home Services:** On-demand domestic assistance including residential deep cleaning, kitchen cleaning, bathroom sanitization, dishwashing, laundry, ironing, fan/window upkeep, and domestic chores.
-2. **Medicine Delivery (Pharmacy Assistance):** On-demand collection and doorstep delivery of prescription medicines and OTC health/wellness products from licensed local retail pharmacies against valid prescription uploads.
-3. **Custom Work & Hyperlocal Tasks:** Tailor-made errand execution, point-to-point courier pick-and-drop, document delivery, store purchases, queue standing, and personalized chores.
-4. **Food Delivery:** Order placement and doorstep delivery from local restaurants and eateries.
-5. **Grocery & Daily Essentials:** Purchasing and delivery of packaged goods and daily household essentials from local supermarkets and neighborhood stores.
+### A. Currently Active Services (Live Operations)
+1. **Home Services (HS):** On-demand domestic assistance including residential deep cleaning, kitchen cleaning, bathroom sanitization, dishwashing, laundry, ironing, fan/window upkeep, and domestic chores.
+2. **Custom Work & Hyperlocal Tasks (CW):** Tailor-made errand execution, point-to-point courier pick-and-drop, document delivery, store purchases, queue standing, and personalized chores.
+3. **Medicine Delivery (MEDI / Pharmacy Assistance):** On-demand collection and doorstep delivery of prescription medicines and OTC health/wellness products from licensed local retail pharmacies against valid prescription uploads.
+
+### B. Upcoming Services (Future Expansion Roadmap)
+4. **Food Delivery (FD):** Order placement and doorstep delivery from local restaurants and eateries.
+5. **Grocery & Daily Essentials (Groce):** Purchasing and delivery of packaged goods and daily household essentials from local supermarkets and neighborhood stores.
 6. **Fresh Fruits & Vegetables:** Procurement and delivery of fresh produce from local vendors and markets.
-7. **Hyperlocal Mobility & Rides:** On-demand point-to-point transport (where locally licensed and authorized).
+7. **Hyperlocal Mobility & Rides (Ride):** On-demand point-to-point transport (where locally licensed and authorized).
 
 ---
 

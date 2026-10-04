@@ -3,16 +3,21 @@
 
 ---
 
-## 1. Description of Services
-**Need2Done ("N2D")** is an automated conversational platform and software ecosystem enabling users to request and manage on-demand domestic tasks and hyperlocal assistance.
+## 1. Description of Services & Platform Architecture
+**Need2Done ("N2D")** is an automated conversational platform and software ecosystem enabling users to request and manage on-demand domestic tasks and hyperlocal convenience services.
 
-The platform currently operates **three (3) active service verticals**:
-1. **Home Services:** On-demand domestic assistance including deep cleaning (kitchen, bathroom, floors, fans, windows), dishwashing, laundry, ironing, and helper services via web portal (`https://need2done.in/home-services/`) and WhatsApp.
-2. **Medicine Delivery:** Pickup and doorstep courier delivery of pharmacy products and prescription medications from licensed local retailers.
-3. **Custom Work:** On-demand personalized errands, custom tasks, item pick-and-drop, and chore assistance.
+The platform architecture is structured into two operational phases:
 
-> [!NOTE]
-> **Upcoming Service Expansions:** Additional verticals including General Handyman & Appliance Maintenance, Grocery Fulfilment, and Specialized Trade Repairs will be introduced in subsequent launch phases.
+### A. Currently Active & Operational Services
+1. **Home Services (HS):** On-demand domestic assistance including deep cleaning (kitchen, bathroom, floors, fans, windows), dishwashing, laundry, ironing, and helper services via web portal (`https://need2done.in`) and WhatsApp bot.
+2. **Custom Work & Errands (CW):** On-demand personalized errands, custom tasks, item/document pick-and-drop, and chore assistance.
+3. **Medicine Delivery (MEDI):** Doorstep collection and delivery of pharmacy products and prescription medications from licensed local retailers.
+
+### B. Upcoming Services in Development (Future Expansion)
+4. **Food Delivery (FD):** Doorstep meal fulfillment from neighborhood restaurants.
+5. **Grocery Delivery (Groce):** Supermarket and packaged grocery delivery.
+6. **Fruits & Vegetables:** Fresh farm produce pickup and delivery.
+7. **Rides & Mobility (Ride):** Point-to-point urban transit and commuter mobility.
 
 By initiating conversations with the Need2Done WhatsApp Business account or accessing associated portals (Web Portals, Tracking Maps, or Admin Dashboards), users agree to these Service Terms.
 
