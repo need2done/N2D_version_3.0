@@ -108,7 +108,9 @@ def recalculate_and_send_summary(session, data, user):
     
     # 4. Night Fare
     night_config = advanced.get("NIGHT_FARE", {})
-    current_hour = datetime.now().hour
+    from datetime import timezone, timedelta
+    ist_tz = timezone(timedelta(hours=5, minutes=30))
+    current_hour = datetime.now(timezone.utc).astimezone(ist_tz).hour
     try:
         start_hour = int(night_config.get("start_hour", 23))
         end_hour = int(night_config.get("end_hour", 6))

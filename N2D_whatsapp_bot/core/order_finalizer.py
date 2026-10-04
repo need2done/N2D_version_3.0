@@ -8,6 +8,9 @@ import logging
 import uuid
 import json
 import traceback
+from datetime import datetime, timezone, timedelta
+
+IST = timezone(timedelta(hours=5, minutes=30))
 
 from db.mysql_conn import get_db
 from whatsapp_client import send_admin_new_order_with_assign_refresh, send_helper_auto_assign, send_message, send_reply_buttons
@@ -572,7 +575,7 @@ def finalize_order(session: dict) -> str | None:
                 dist_val = h.get('distance', 0.0)
                 dist_str = f"{round(dist_val, 1)} km away" if dist_val and dist_val > 0.05 else "N/A"
 
-                now_time_str = datetime.now().strftime('%I:%M %p').lstrip('0')
+                now_time_str = datetime.now(timezone.utc).astimezone(IST).strftime('%I:%M %p').lstrip('0')
                 timing_preview = f"📅 Order Date: *Today, {now_time_str} (Just now 🟢)*\n"
                 if service_id == 10 or 'home' in service_name(service_id).lower():
                     b_date = data.get('bookingDate') or data.get('booking_date')

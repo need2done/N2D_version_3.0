@@ -40,14 +40,43 @@ def get_message_trigger_interval() -> int:
     except Exception:
         return 120
 
+from datetime import datetime, timedelta, timezone
+
+# Indian Standard Time (UTC+5:30)
+IST = timezone(timedelta(hours=5, minutes=30))
+
+def get_ist_now() -> datetime:
+    """Returns the current datetime in Indian Standard Time (IST)."""
+    return datetime.now(timezone.utc).astimezone(IST)
+
+def to_ist(dt) -> datetime:
+    """Converts a naive or aware datetime/string timestamp to IST."""
+    if dt is None:
+        return None
+    if isinstance(dt, str):
+        try:
+            # Handle ISO string with/without Z
+            dt = datetime.fromisoformat(dt.replace('Z', '+00:00'))
+        except Exception:
+            try:
+                dt = datetime.strptime(dt[:19], "%Y-%m-%d %H:%M:%S")
+            except Exception:
+                return None
+    if isinstance(dt, datetime):
+        if dt.tzinfo is None:
+            # Naive datetime from MySQL (stored in UTC)
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(IST)
+    return None
+
 def format_order_broadcast_timing(order, pdata=None):
     """
     Returns (timing_lines, is_old_order)
-    - Formats clear date & time: Today, Tomorrow, scheduled date/slot, or placed timestamp.
+    - Formats clear date & time in Indian Standard Time (IST): Today, Tomorrow, scheduled slot, or placed timestamp.
     - Accurately detects and flags old/stale/expired orders so they are not broadcasted.
     """
-    now = datetime.now()
-    today = now.date()
+    now_ist = get_ist_now()
+    today = now_ist.date()
     yesterday = today - timedelta(days=1)
     tomorrow = today + timedelta(days=1)
 
@@ -80,7 +109,8 @@ def format_order_broadcast_timing(order, pdata=None):
                 if booking_slot:
                     try:
                         slot_dt = datetime.strptime(f"{b_date} {booking_slot.strip()}", "%Y-%m-%d %I:%M %p")
-                        if (now - slot_dt).total_seconds() > 2 * 3600:
+                        slot_dt_ist = slot_dt.replace(tzinfo=IST)
+                        if (now_ist - slot_dt_ist).total_seconds() > 2 * 3600:
                             is_old = True
                     except Exception:
                         pass
@@ -94,19 +124,14 @@ def format_order_broadcast_timing(order, pdata=None):
         except Exception:
             timing_lines += f"📅 Scheduled: *{booking_date_str} {booking_slot}*\n"
 
-    # Order creation date & time
+    # Order creation date & time in IST
     created_at = order.get('created_at')
-    if created_at:
-        if isinstance(created_at, str):
-            try:
-                created_at = datetime.fromisoformat(created_at.replace('Z', ''))
-            except Exception:
-                created_at = None
+    created_at_ist = to_ist(created_at)
 
-    if created_at:
-        c_date = created_at.date()
-        c_time_str = created_at.strftime('%I:%M %p').lstrip('0')
-        age_hours = (now - created_at).total_seconds() / 3600.0
+    if created_at_ist:
+        c_date = created_at_ist.date()
+        c_time_str = created_at_ist.strftime('%I:%M %p').lstrip('0')
+        age_hours = (now_ist - created_at_ist).total_seconds() / 3600.0
 
         if not booking_date_str:
             # For non-scheduled instant orders, filter out old orders older than max age
