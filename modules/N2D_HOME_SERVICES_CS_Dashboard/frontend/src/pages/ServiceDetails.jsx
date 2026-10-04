@@ -11,6 +11,12 @@ const ServiceDetails = () => {
   const { services } = useContext(DataContext);
 
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, []);
+
+  useEffect(() => {
     setTimeout(() => {
       const selectedData = services.find(s => s.id.toString() === id) || services[0];
       setService({

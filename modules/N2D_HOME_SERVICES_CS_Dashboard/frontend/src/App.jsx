@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { DataProvider } from './context/DataContext';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
@@ -21,8 +21,28 @@ const Loader = () => (
   </div>
 );
 
+// Always ensure page is at top on route change / load
+function ScrollToTop() {
+  const { pathname, search } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [pathname, search]);
+
+  return null;
+}
+
 function App() {
   useEffect(() => {
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+
     const params = new URLSearchParams(window.location.search);
     const cid = params.get('customerId');
     if (cid) {
@@ -43,6 +63,7 @@ function App() {
   return (
     <DataProvider>
       <Router basename="/home-services">
+      <ScrollToTop />
       <div className="flex flex-col min-h-screen bg-lightBg font-sans">
         <Navbar />
         <main className="flex-grow pb-16 md:pb-0">

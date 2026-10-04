@@ -41,6 +41,12 @@ const BookingConfiguration = () => {
   const { services, platformFee } = useContext(DataContext);
 
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, []);
+
+  useEffect(() => {
     const selectedData = services.find(s => s.id.toString() === id) || services[0];
     if (selectedData) {
       setService({

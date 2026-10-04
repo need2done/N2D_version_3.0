@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect } from 'react';
 import { DataContext } from '../context/DataContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaStar, FaArrowRight, FaCheckCircle, FaRegClock, FaHistory, FaChevronRight } from 'react-icons/fa';
@@ -14,6 +14,12 @@ import { GiSofa } from 'react-icons/gi';
 
 const Home = () => {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, []);
 
   const handleBookNow = (serviceId) => {
     navigate(`/book/${serviceId}`);

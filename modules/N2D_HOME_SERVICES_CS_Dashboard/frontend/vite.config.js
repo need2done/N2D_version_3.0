@@ -9,4 +9,7 @@ export default defineConfig({
     tailwindcss(),
     react()
   ],
+  build: {
+    emptyOutDir: true
+  }
 })
