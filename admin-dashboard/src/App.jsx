@@ -213,7 +213,7 @@ const DashboardLayout = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('adminToken');
-    window.location.href = '/login';
+    window.location.href = '/admin/login';
   };
 
   const closeSidebar = () => setIsSidebarOpen(false);
