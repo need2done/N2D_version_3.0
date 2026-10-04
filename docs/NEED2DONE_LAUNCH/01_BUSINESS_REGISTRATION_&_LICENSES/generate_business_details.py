@@ -131,17 +131,6 @@ def build_pdf():
         spaceAfter=5
     )
 
-    bullet_style = ParagraphStyle(
-        'Bullet',
-        fontName='Helvetica',
-        fontSize=8.5,
-        leading=12.5,
-        textColor=DARK_TEXT,
-        leftIndent=12,
-        firstLineIndent=-8,
-        spaceAfter=3
-    )
-
     story = []
 
     # Title Banner
@@ -160,8 +149,9 @@ def build_pdf():
         [Paragraph("<b>Business Entity Type</b>", field_label_style), Paragraph("<b>Sole Proprietorship</b> <i>(or Partnership / LLP / Pvt Ltd as applicable)</i>", field_val_style)],
         [Paragraph("<b>Nature of Business</b>", field_label_style), Paragraph("<b>Services / Technology Platform / Hyperlocal E-Commerce Intermediary</b>", field_val_style)],
         [Paragraph("<b>Primary NIC Codes (MSME / GST)</b>", field_label_style), Paragraph("<b>63112 / 63999</b> (Web portals, data processing & IT enabled services)<br/><b>96099</b> (Other personal service activities n.e.c.)<br/><b>53200</b> (Other postal & courier / delivery activities)", field_val_style)],
-        [Paragraph("<b>Operating Website URL</b>", field_label_style), Paragraph("<b>https://need2done.in/home-services/</b>", field_val_style)],
-        [Paragraph("<b>Official Contact Helpline</b>", field_label_style), Paragraph("+91 7989862623", field_val_style)],
+        [Paragraph("<b>Operating Website URL</b>", field_label_style), Paragraph("<b>https://need2done.in</b>", field_val_style)],
+        [Paragraph("<b>Official Contact Helpline</b>", field_label_style), Paragraph("<b>+91 7989862623</b>", field_val_style)],
+        [Paragraph("<b>Official Support Email</b>", field_label_style), Paragraph("<b>support@need2done.in</b>", field_val_style)],
         [Paragraph("<b>Official Support Channels</b>", field_label_style), Paragraph("WhatsApp Business Bot & Web Intermediary Portal", field_val_style)]
     ]
 
@@ -170,8 +160,8 @@ def build_pdf():
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#F1F5F9')),
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 3.5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3.5),
         ('LEFTPADDING', (0, 0), (-1, -1), 6),
         ('RIGHTPADDING', (0, 0), (-1, -1), 6),
         ('GRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
@@ -235,8 +225,8 @@ def build_pdf():
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 3.5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3.5),
         ('LEFTPADDING', (0, 0), (-1, -1), 6),
         ('RIGHTPADDING', (0, 0), (-1, -1), 6),
         ('GRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
@@ -253,16 +243,17 @@ def build_pdf():
     pg_data = [
         [Paragraph("<b>Merchant Category:</b>", field_label_style), Paragraph("Services", field_val_style)],
         [Paragraph("<b>Merchant Sub-Category:</b>", field_label_style), Paragraph("Facility Services / Cleaning & Home Maintenance Services (or Internet & Information Services)", field_val_style)],
-        [Paragraph("<b>Operating Website URL:</b>", field_label_style), Paragraph("https://need2done.in/home-services/", field_val_style)],
+        [Paragraph("<b>Operating Website URL:</b>", field_label_style), Paragraph("https://need2done.in", field_val_style)],
         [Paragraph("<b>Customer Support Helpline:</b>", field_label_style), Paragraph("+91 7989862623", field_val_style)],
+        [Paragraph("<b>Support Email:</b>", field_label_style), Paragraph("support@need2done.in", field_val_style)],
         [Paragraph("<b>Billing Descriptor:</b>", field_label_style), Paragraph("NEED2DONE", field_val_style)]
     ]
     t_pg = Table(pg_data, colWidths=[165, 339])
     t_pg.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, -1), LIGHT_BG),
         ('GRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 3.5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3.5),
         ('LEFTPADDING', (0, 0), (-1, -1), 6),
         ('RIGHTPADDING', (0, 0), (-1, -1), 6),
     ]))
@@ -325,8 +316,9 @@ def build_docx():
         ("Business Entity Type", "Sole Proprietorship (or Partnership / LLP / Pvt Ltd as applicable)"),
         ("Nature of Business", "Services / Technology Platform / Hyperlocal E-Commerce Intermediary"),
         ("Primary NIC Codes (MSME / GST)", "63112 / 63999 (Web portals & ITeS), 96099 (Other personal services), 53200 (Courier / delivery)"),
-        ("Operating Website URL", "https://need2done.in/home-services/"),
+        ("Operating Website URL", "https://need2done.in"),
         ("Official Contact Helpline", "+91 7989862623"),
+        ("Official Support Email", "support@need2done.in"),
         ("Official Support Channels", "WhatsApp Business Bot & Web Intermediary Portal")
     ]
 

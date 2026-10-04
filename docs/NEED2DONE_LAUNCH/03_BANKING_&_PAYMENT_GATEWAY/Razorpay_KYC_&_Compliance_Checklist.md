@@ -25,7 +25,7 @@ Payment aggregators require live, working legal links on your website before act
 * **Business Type:** Sole Proprietorship *(or Partnership / Pvt Ltd as applicable)*
 * **Category:** `Services`
 * **Sub-Category:** `Facility Services / Cleaning & Home Maintenance Services` or `Internet & Information Services`
-* **Operating Website:** `https://need2done.in/home-services/`
+* **Operating Website:** `https://need2done.in`
 * **Support Phone:** `+91 7989862623`
 * **Support Email:** `support@need2done.in`
 
