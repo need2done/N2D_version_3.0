@@ -519,14 +519,32 @@ export default function Settings() {
                                     />
                                 </div>
                                 <div className="form-group">
-                                    <label>OTP Expiry (minutes)</label>
+                                    <label>🔔 Helper Msg Trigger Interval</label>
+                                    <select
+                                        className="form-control"
+                                        name="MESSAGE_TRIGGER_INTERVAL_MINS"
+                                        value={envSettings.MESSAGE_TRIGGER_INTERVAL_MINS || '2'}
+                                        onChange={handleEnvChange}
+                                    >
+                                        <option value="1">Every 1 minute</option>
+                                        <option value="2">Every 2 minutes (Default)</option>
+                                        <option value="3">Every 3 minutes</option>
+                                        <option value="5">Every 5 minutes</option>
+                                        <option value="10">Every 10 minutes</option>
+                                    </select>
+                                    <small className="form-text text-muted" style={{ display: 'block', marginTop: '0.25rem' }}>Frequency for sending WhatsApp order broadcast alerts to nearby helpers.</small>
+                                </div>
+                                <div className="form-group">
+                                    <label>⏱️ Max Broadcast Order Age (hours)</label>
                                     <input
                                         type="number"
                                         className="form-control"
-                                        name="OTP_EXPIRY_MINUTES"
-                                        value={envSettings.OTP_EXPIRY_MINUTES || ''}
+                                        name="MAX_ORDER_BROADCAST_AGE_HOURS"
+                                        value={envSettings.MAX_ORDER_BROADCAST_AGE_HOURS || '24'}
                                         onChange={handleEnvChange}
+                                        placeholder="24"
                                     />
+                                    <small className="form-text text-muted" style={{ display: 'block', marginTop: '0.25rem' }}>Orders older than this cutoff will not trigger messages to helpers (Default: 24 hours).</small>
                                 </div>
                             </div>
 

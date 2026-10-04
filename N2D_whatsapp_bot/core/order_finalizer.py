@@ -572,10 +572,19 @@ def finalize_order(session: dict) -> str | None:
                 dist_val = h.get('distance', 0.0)
                 dist_str = f"{round(dist_val, 1)} km away" if dist_val and dist_val > 0.05 else "N/A"
 
+                now_time_str = datetime.now().strftime('%I:%M %p').lstrip('0')
+                timing_preview = f"📅 Order Date: *Today, {now_time_str} (Just now 🟢)*\n"
+                if service_id == 10 or 'home' in service_name(service_id).lower():
+                    b_date = data.get('bookingDate') or data.get('booking_date')
+                    b_slot = data.get('bookingSlot') or data.get('booking_slot')
+                    if b_date:
+                        timing_preview = f"📅 Scheduled: *{b_date} {b_slot or ''}*\n🕒 Booked On: Today, {now_time_str}\n"
+
                 invite_text = (
                     f"📦 *New Order Offer*\n\n"
                     f"🛠 Service  : {service_name(service_id)}\n"
                     f"{items_preview}{bill_preview}{ride_length}"
+                    f"{timing_preview}"
                     f"📍 Pickup is : {dist_str}\n\n"
                     "Tap below to accept or reject (First Come, First Served)."
                 )
@@ -640,7 +649,20 @@ def push_unassigned_orders_to_helper(phone: str, lat: float, lng: float):
         logger.info(f"🚀 PUSH: Checking {len(unassigned)} unassigned orders for helper {phone}")
         
         count = 0
+        from auto_assigner import format_order_broadcast_timing
         for order in unassigned:
+            pdata = {}
+            if order.get("payload"):
+                try:
+                    pdata = json.loads(order["payload"]) if isinstance(order["payload"], str) else (order["payload"] or {})
+                except Exception:
+                    pdata = {}
+
+            # Skip old/past orders
+            timing_lines, is_old = format_order_broadcast_timing(order, pdata)
+            if is_old:
+                continue
+
             # Distance check
             o_lat = order.get("customer_lat")
             o_lng = order.get("customer_lng")
@@ -650,18 +672,15 @@ def push_unassigned_orders_to_helper(phone: str, lat: float, lng: float):
                 if dist <= 50:
                     items_preview = ""
                     if order.get("engine_type") == "TASK":
-                        try:
-                            payload_data = json.loads(order.get("payload", "{}"))
-                            items = payload_data.get("items", [])
-                            if items:
-                                items_preview = "🛍️ Items:\n" + "\n".join(f"• {item}" for item in items) + "\n\n"
-                        except:
-                            pass
+                        items = pdata.get("items", [])
+                        if items:
+                            items_preview = "🛍️ Items:\n" + "\n".join(f"• {item}" for item in items) + "\n\n"
 
                     invite_text = (
                         f"📦 *Pending Order Offer*\n\n"
                         f"🛠 Service  : {order['service']}\n"
                         f"{items_preview}"
+                        f"{timing_lines}"
                         f"💰 Est. Bill: ₹{order['total_amount'] or 'TBD'}\n"
                         f"📏 Distance : {round(dist, 2)} km away\n\n"
                         "Tap below to accept."
@@ -669,7 +688,7 @@ def push_unassigned_orders_to_helper(phone: str, lat: float, lng: float):
                     send_helper_auto_assign(phone, order['order_id'], invite_text)
                     count += 1
                     
-            if count >= 3: # Don't overwhelm with too many old orders
+            if count >= 3: # Don't overwhelm with too many orders
                 break
                 
         if count > 0:

@@ -378,14 +378,18 @@ async def internal_payment_success(payload: PaymentSuccessPayload):
 import threading
 
 def _start_auto_assigner_daemon():
-    from auto_assigner import run_auto_assigner
-    logger.info("🚀 Starting background Auto-Assigner daemon thread (30s interval)...")
+    from auto_assigner import run_auto_assigner, get_message_trigger_interval
+    init_interval = get_message_trigger_interval()
+    logger.info(f"🚀 Starting background Auto-Assigner daemon thread (default: {init_interval // 60}m interval)...")
     while True:
         try:
             run_auto_assigner()
         except Exception as e:
             logger.error(f"Error in Auto-Assigner background thread: {e}")
-        time.sleep(30)
+        
+        # Dynamically read trigger interval from .env/settings so changes from Admin Dashboard apply immediately
+        sleep_sec = get_message_trigger_interval()
+        time.sleep(sleep_sec)
 
 @app.on_event("startup")
 def startup_event():

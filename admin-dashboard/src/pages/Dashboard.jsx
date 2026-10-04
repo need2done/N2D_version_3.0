@@ -56,6 +56,93 @@ export default function Dashboard() {
   const [dateFilter, setDateFilter] = useState(getLocalDate());
   const [draftDateFilter, setDraftDateFilter] = useState(getLocalDate());
 
+  // Message Trigger Interval State
+  const [triggerInterval, setTriggerInterval] = useState('2');
+  const [triggerIntervalUpdating, setTriggerIntervalUpdating] = useState(false);
+  const [triggerIntervalSaved, setTriggerIntervalSaved] = useState(false);
+
+  const fetchTriggerInterval = async () => {
+    try {
+      const res = await fetch(`${API_URL}/settings/trigger-interval`);
+      const data = await res.json();
+      if (data.success && data.intervalMinutes) {
+        setTriggerInterval(String(data.intervalMinutes));
+      }
+    } catch (err) {
+      console.error('Failed to fetch trigger interval:', err);
+    }
+  };
+
+  const handleTriggerIntervalChange = async (newInterval) => {
+    setTriggerInterval(newInterval);
+    setTriggerIntervalUpdating(true);
+    try {
+      const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+      const authHeader = token ? { 'Authorization': `Bearer ${token}` } : {};
+      const res = await fetch(`${API_URL}/settings/trigger-interval`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeader
+        },
+        body: JSON.stringify({ intervalMinutes: newInterval })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTriggerIntervalSaved(true);
+        setTimeout(() => setTriggerIntervalSaved(false), 3000);
+      }
+    } catch (err) {
+      console.error('Error updating trigger interval:', err);
+    } finally {
+      setTriggerIntervalUpdating(false);
+    }
+  };
+
+  const formatOrderDateTime = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      const d = new Date(dateStr);
+      const now = new Date();
+      const isToday = d.toDateString() === now.toDateString();
+      
+      const yesterday = new Date();
+      yesterday.setDate(now.getDate() - 1);
+      const isYesterday = d.toDateString() === yesterday.toDateString();
+
+      const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      
+      if (isToday) {
+        return (
+          <span>
+            <span style={{ color: '#059669', fontWeight: 700, fontSize: '0.72rem', background: '#ecfdf5', padding: '1px 5px', borderRadius: '4px', border: '1px solid #a7f3d0' }}>Today</span>
+            <br />
+            <small style={{ color: 'var(--text-muted)' }}>{timeStr}</small>
+          </span>
+        );
+      } else if (isYesterday) {
+        return (
+          <span>
+            <span style={{ color: '#d97706', fontWeight: 700, fontSize: '0.72rem', background: '#fffbeb', padding: '1px 5px', borderRadius: '4px', border: '1px solid #fde68a' }}>Yesterday</span>
+            <br />
+            <small style={{ color: 'var(--text-muted)' }}>{timeStr}</small>
+          </span>
+        );
+      } else {
+        const dateFormatted = d.toLocaleDateString([], { day: '2-digit', month: 'short' });
+        return (
+          <span>
+            <span style={{ color: '#475569', fontWeight: 700, fontSize: '0.72rem', background: '#f1f5f9', padding: '1px 5px', borderRadius: '4px', border: '1px solid #cbd5e1' }}>{dateFormatted}</span>
+            <br />
+            <small style={{ color: 'var(--text-muted)' }}>{timeStr}</small>
+          </span>
+        );
+      }
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
   // Vendor Assignment Modal State
   const [vendors, setVendors] = useState([]);
   const [showVendorModal, setShowVendorModal] = useState(false);
@@ -146,6 +233,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchData();
+    fetchTriggerInterval();
     const interval = setInterval(fetchData, 15000);
     return () => clearInterval(interval);
   }, [filter, statusFilter, searchQuery, dateFilter]);
@@ -558,28 +646,72 @@ export default function Dashboard() {
 
       {/* Main Orders Table */}
       <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
           <div>
             <h3 style={{ margin: 0, fontSize: '1.15rem' }}>Master Order Stream (N2D)</h3>
             <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Live order lifecycle stream. Auto-refreshes every 15s.</p>
           </div>
-          <button 
-            className="btn btn-outline"
-            style={{
-              padding: '0.4rem 0.85rem',
-              fontSize: '0.825rem',
-              borderRadius: '20px',
-              border: '1px solid #10b981',
-              color: '#34d399',
-              cursor: 'pointer',
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            {/* Helper Message Broadcast Interval Control */}
+            <div style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '6px'
-            }}
-            onClick={() => setStatusFilter(statusFilter === 'ACTIVE' ? 'ALL' : 'ACTIVE')}
-          >
-            <Zap size={14} /> {activeOrdersCount} ACTIVE ORDERS
-          </button>
+              gap: '6px',
+              background: 'rgba(59, 130, 246, 0.08)',
+              padding: '0.35rem 0.75rem',
+              borderRadius: '20px',
+              border: '1px solid rgba(59, 130, 246, 0.3)',
+              fontSize: '0.825rem',
+              color: '#1e40af'
+            }}>
+              <MessageSquare size={14} style={{ color: '#2563eb' }} />
+              <span style={{ fontWeight: 600 }}>Msg Trigger:</span>
+              <select
+                value={triggerInterval}
+                onChange={(e) => handleTriggerIntervalChange(e.target.value)}
+                disabled={triggerIntervalUpdating}
+                style={{
+                  background: '#fff',
+                  border: '1px solid #93c5fd',
+                  borderRadius: '12px',
+                  padding: '2px 8px',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  color: '#1d4ed8',
+                  cursor: 'pointer',
+                  outline: 'none'
+                }}
+                title="Broadcast interval for sending WhatsApp messages for unassigned orders to helpers"
+              >
+                <option value="1">Every 1 min</option>
+                <option value="2">Every 2 mins (Recommended)</option>
+                <option value="3">Every 3 mins</option>
+                <option value="5">Every 5 mins</option>
+                <option value="10">Every 10 mins</option>
+              </select>
+              {triggerIntervalSaved && (
+                <span style={{ color: '#16a34a', fontWeight: 700, fontSize: '0.75rem' }}>✓ Saved</span>
+              )}
+            </div>
+
+            <button 
+              className="btn btn-outline"
+              style={{
+                padding: '0.4rem 0.85rem',
+                fontSize: '0.825rem',
+                borderRadius: '20px',
+                border: '1px solid #10b981',
+                color: '#34d399',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+              onClick={() => setStatusFilter(statusFilter === 'ACTIVE' ? 'ALL' : 'ACTIVE')}
+            >
+              <Zap size={14} /> {activeOrdersCount} ACTIVE ORDERS
+            </button>
+          </div>
         </div>
 
         <table>
@@ -610,7 +742,7 @@ export default function Dashboard() {
                     #{order.order_id}
                   </button>
                   <br/>
-                  <small style={{ color: 'var(--text-muted)' }}>{new Date(order.created_at).toLocaleTimeString()}</small>
+                  {formatOrderDateTime(order.created_at)}
                 </td>
                 <td>
                   <span className={`badge ${order.engine_type === 'RIDE' ? 'ride' : 'task'}`}>

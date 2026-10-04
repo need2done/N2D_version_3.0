@@ -1,7 +1,10 @@
+import os
 import time
 import json
 import logging
 from datetime import datetime, timedelta
+from pathlib import Path
+from dotenv import dotenv_values
 
 from db.mysql_conn import get_db
 from whatsapp_client import send_reply_buttons, send_message
@@ -14,6 +17,141 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+def get_message_trigger_interval() -> int:
+    """
+    Returns message trigger interval in seconds from .env or os.getenv.
+    Defaults to 2 minutes (120 seconds).
+    """
+    try:
+        env_file = Path(__file__).resolve().parent.parent / ".env"
+        if env_file.exists():
+            data = dotenv_values(env_file)
+            val = data.get("MESSAGE_TRIGGER_INTERVAL_MINS")
+            if val is not None and str(val).strip():
+                mins = float(str(val).strip())
+                return max(30, int(mins * 60))
+    except Exception:
+        pass
+    try:
+        val = os.getenv("MESSAGE_TRIGGER_INTERVAL_MINS", "2")
+        mins = float(str(val).strip())
+        return max(30, int(mins * 60))
+    except Exception:
+        return 120
+
+def format_order_broadcast_timing(order, pdata=None):
+    """
+    Returns (timing_lines, is_old_order)
+    - Formats clear date & time: Today, Tomorrow, scheduled date/slot, or placed timestamp.
+    - Accurately detects and flags old/stale/expired orders so they are not broadcasted.
+    """
+    now = datetime.now()
+    today = now.date()
+    yesterday = today - timedelta(days=1)
+    tomorrow = today + timedelta(days=1)
+
+    if pdata is None:
+        pdata = {}
+        if order.get('payload'):
+            try:
+                pdata = json.loads(order['payload']) if isinstance(order['payload'], str) else (order['payload'] or {})
+            except Exception:
+                pdata = {}
+
+    timing_lines = ""
+    is_old = False
+
+    # Check for Home Services or Scheduled appointments
+    booking_date_str = pdata.get('bookingDate') or pdata.get('booking_date') or pdata.get('scheduled_date')
+    booking_slot = pdata.get('bookingSlot') or pdata.get('booking_slot') or pdata.get('scheduled_time') or ''
+
+    if booking_date_str:
+        try:
+            b_date = datetime.strptime(str(booking_date_str).strip()[:10], "%Y-%m-%d").date()
+            slot_display = f" at {booking_slot}" if booking_slot else ""
+            
+            if b_date < today:
+                # Scheduled appointment was in the past! Old order.
+                is_old = True
+                date_label = f"{b_date.strftime('%d %b %Y')}{slot_display} (Past Date ⚠️)"
+            elif b_date == today:
+                # Check if slot passed earlier today
+                if booking_slot:
+                    try:
+                        slot_dt = datetime.strptime(f"{b_date} {booking_slot.strip()}", "%Y-%m-%d %I:%M %p")
+                        if (now - slot_dt).total_seconds() > 2 * 3600:
+                            is_old = True
+                    except Exception:
+                        pass
+                date_label = f"Today ({b_date.strftime('%d %b')}){slot_display}"
+            elif b_date == tomorrow:
+                date_label = f"Tomorrow ({b_date.strftime('%d %b')}){slot_display}"
+            else:
+                date_label = f"{b_date.strftime('%a, %d %b %Y')}{slot_display}"
+
+            timing_lines += f"📅 Scheduled: *{date_label}*\n"
+        except Exception:
+            timing_lines += f"📅 Scheduled: *{booking_date_str} {booking_slot}*\n"
+
+    # Order creation date & time
+    created_at = order.get('created_at')
+    if created_at:
+        if isinstance(created_at, str):
+            try:
+                created_at = datetime.fromisoformat(created_at.replace('Z', ''))
+            except Exception:
+                created_at = None
+
+    if created_at:
+        c_date = created_at.date()
+        c_time_str = created_at.strftime('%I:%M %p').lstrip('0')
+        age_hours = (now - created_at).total_seconds() / 3600.0
+
+        if not booking_date_str:
+            # For non-scheduled instant orders, filter out old orders older than max age
+            max_age = float(os.getenv("MAX_ORDER_BROADCAST_AGE_HOURS", 24))
+            if age_hours > max_age:
+                is_old = True
+
+        if c_date == today:
+            if age_hours < 0.25:  # Placed within 15 mins
+                created_label = f"Today, {c_time_str} (New 🟢)"
+            else:
+                created_label = f"Today, {c_time_str}"
+        elif c_date == yesterday:
+            created_label = f"Yesterday, {c_time_str}"
+        else:
+            created_label = f"{c_date.strftime('%d %b %Y')}, {c_time_str}"
+
+        if booking_date_str:
+            timing_lines += f"🕒 Booked On: {created_label}\n"
+        else:
+            timing_lines += f"📅 Order Date: *{created_label}*\n"
+    elif not booking_date_str:
+        timing_lines += f"📅 Order Date: *Today*\n"
+
+    return timing_lines, is_old
+
+def format_order_item_details(order, pdata):
+    """Formats details / items summary for helper message."""
+    if pdata.get('serviceName'):
+        dur = f" ({pdata['duration']})" if pdata.get('duration') else ""
+        return f"📝 Task: {pdata['serviceName']}{dur}\n"
+    elif pdata.get('items'):
+        items_raw = pdata['items']
+        if isinstance(items_raw, list):
+            items_preview = ", ".join([str(it).replace('•', '').strip() for it in items_raw[:3]])
+            if len(items_raw) > 3:
+                items_preview += f" (+{len(items_raw)-3} more)"
+        else:
+            items_preview = str(items_raw)[:60]
+        if items_preview:
+            return f"🛍️ Items: {items_preview}\n"
+    elif pdata.get('task_description'):
+        desc = str(pdata['task_description'])[:60]
+        return f"📝 Task: {desc}\n"
+    return ""
 
 def find_nearest_helpers(customer_lat, customer_lng, radius_km, engine_type='TASK', service=None):
     """Find ONLINE/AVAILABLE helpers within radius."""
@@ -92,13 +230,14 @@ def run_auto_assigner():
         # 0. UNASSIGNED VENDOR AUTO-BROADCAST (First Pick)
         # =======================================================
         cur.execute("""
-            SELECT id, order_id, service, engine_type, status, vendor_id, vendor_status, payload, updated_at
+            SELECT id, order_id, service, engine_type, status, vendor_id, vendor_status, payload, updated_at, created_at
             FROM orders
             WHERE (vendor_id IS NULL OR vendor_status = 'UNASSIGNED' OR vendor_status IS NULL)
               AND engine_type = 'TASK'
               AND status IN ('CONFIRMED', 'ADMIN_APPROVED_BILL', 'PLACED', 'PACKED', 'BILL_SENT', 'PENDING')
               AND status NOT IN ('CANCELLED', 'COMPLETED', 'EXPIRED')
               AND service NOT IN ('Medicines', 'Any Work', 'Parcel', 'Support', 'Home Services')
+              AND (created_at IS NULL OR created_at >= NOW() - INTERVAL 24 HOUR)
         """)
         unassigned_vendor_orders = cur.fetchall()
 
@@ -214,7 +353,7 @@ def run_auto_assigner():
         # 2. HELPER AUTO ASSIGNMENT & RADIUS EXPANSION
         # =======================================================
         cur.execute("""
-            SELECT id, order_id, engine_type, status, vendor_status, customer_lat, customer_lng, service, payload, updated_at
+            SELECT id, order_id, engine_type, status, vendor_status, customer_lat, customer_lng, service, payload, updated_at, created_at
             FROM orders
             WHERE (
                 vendor_status IN ('PACKED', 'ACCEPTED', 'UNASSIGNED', 'NONE', '')
@@ -224,6 +363,7 @@ def run_auto_assigner():
             )
             AND helper_id IS NULL
             AND status NOT IN ('CANCELLED', 'COMPLETED', 'EXPIRED', 'DELIVERED', 'DRAFT')
+            AND (created_at IS NULL OR created_at >= NOW() - INTERVAL 7 DAY)
         """)
         unassigned_orders = cur.fetchall()
 
@@ -245,6 +385,14 @@ def run_auto_assigner():
                     pdata = json.loads(order['payload']) if isinstance(order['payload'], str) else order['payload']
                 except Exception:
                     pdata = {}
+
+            # Filter old/stale orders & format clear date/time
+            timing_lines, is_old = format_order_broadcast_timing(order, pdata)
+            if is_old:
+                logger.info(f"⏭️ Skipping old/past order {order['order_id']} ({order['service']}) from helper broadcast.")
+                continue
+
+            details_line = format_order_item_details(order, pdata)
             
             if (c_lat is None or c_lng is None or float(c_lat or 0) == 0) and pdata:
                 c_lat = pdata.get('customer_lat') or pdata.get('lat') or pdata.get('pickup_lat')
@@ -273,6 +421,8 @@ def run_auto_assigner():
                     f"📦 *New Order Available!*\n\n"
                     f"🆔 Order : {order['order_id']}\n"
                     f"🛠 Service: {order['service']}\n"
+                    f"{details_line}"
+                    f"{timing_lines}"
                     f"📍 Distance: {dist_str}\n\n"
                     "Tap below to accept or reject (First Come, First Served)."
                 )
@@ -287,7 +437,9 @@ def run_auto_assigner():
         db.close()
 
 if __name__ == "__main__":
-    logger.info("Starting Auto-Assigner daemon...")
+    interval = get_message_trigger_interval()
+    logger.info(f"Starting Auto-Assigner daemon ({interval // 60}m interval)...")
     while True:
         run_auto_assigner()
-        time.sleep(60)
+        sleep_sec = get_message_trigger_interval()
+        time.sleep(sleep_sec)

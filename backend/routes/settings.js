@@ -56,6 +56,61 @@ router.get('/pricing', (req, res) => {
     }
 });
 
+// ==========================================
+// GET /api/settings/trigger-interval — Message trigger interval in minutes
+// ==========================================
+router.get('/trigger-interval', (req, res) => {
+    try {
+        let envContent = '';
+        if (fs.existsSync(ENV_PATH)) {
+            envContent = fs.readFileSync(ENV_PATH, 'utf8');
+        }
+        let intervalMinutes = 2;
+        envContent.split(/\r?\n/).forEach(line => {
+            const trimmed = line.trim();
+            if (trimmed.startsWith('MESSAGE_TRIGGER_INTERVAL_MINS=')) {
+                const val = parseFloat(trimmed.split('=')[1]);
+                if (!isNaN(val) && val > 0) intervalMinutes = val;
+            }
+        });
+        res.json({ success: true, intervalMinutes });
+    } catch (err) {
+        res.json({ success: true, intervalMinutes: 2 });
+    }
+});
+
+// ==========================================
+// POST /api/settings/trigger-interval — Update message trigger interval in minutes
+// ==========================================
+router.post('/trigger-interval', (req, res) => {
+    try {
+        let { intervalMinutes } = req.body;
+        intervalMinutes = parseFloat(intervalMinutes);
+        if (isNaN(intervalMinutes) || intervalMinutes < 0.5) intervalMinutes = 2;
+
+        let envContent = fs.readFileSync(ENV_PATH, 'utf8');
+        const lines = envContent.split(/\r?\n/);
+        let found = false;
+        for (let i = 0; i < lines.length; i++) {
+            if (lines[i].startsWith('MESSAGE_TRIGGER_INTERVAL_MINS=')) {
+                lines[i] = `MESSAGE_TRIGGER_INTERVAL_MINS=${intervalMinutes}`;
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            lines.push(`MESSAGE_TRIGGER_INTERVAL_MINS=${intervalMinutes}`);
+        }
+        fs.writeFileSync(ENV_PATH, lines.join('\n'));
+        process.env.MESSAGE_TRIGGER_INTERVAL_MINS = String(intervalMinutes);
+
+        res.json({ success: true, intervalMinutes, message: `Message trigger interval updated to ${intervalMinutes} minute(s)` });
+    } catch (err) {
+        console.error('Error updating trigger interval:', err);
+        res.status(500).json({ success: false, error: 'Failed to update trigger interval' });
+    }
+});
+
 const { authenticateAdmin } = require('../middleware/auth');
 
 // ==========================================
