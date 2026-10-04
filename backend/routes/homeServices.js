@@ -204,7 +204,7 @@ router.delete('/admin/services/:id', async (req, res) => {
 // 2. CHECKOUT & CREATE BOOKING
 // ==========================================
 router.post('/checkout', async (req, res) => {
-    let { customerId, serviceId, duration, bookingDate, bookingSlot, address, estimatedTotal, serviceName } = req.body;
+    let { customerId, serviceId, duration, bookingDate, bookingSlot, address, estimatedTotal, serviceName, couponCode, discountAmount } = req.body;
 
     if (!customerId || !serviceId) {
         return res.status(400).json({ success: false, error: 'Missing required fields' });
@@ -260,6 +260,8 @@ router.post('/checkout', async (req, res) => {
             bookingDate,
             bookingSlot,
             address: addrText,
+            coupon_code: couponCode || null,
+            discount_amount: parseFloat(discountAmount || 0),
             helper_charge: helperCharge,
             platform_fee: platformFee
         });
@@ -274,11 +276,12 @@ router.post('/checkout', async (req, res) => {
 
         const orderDbId = orderResult.insertId;
 
+        const discountTag = (couponCode && discountAmount > 0) ? ` [${couponCode} -₹${discountAmount}]` : '';
         await db.query(`
             INSERT INTO order_tasks (
                 order_id, items_text
             ) VALUES (?, ?)
-        `, [orderDbId, `Home Service: ${serviceName} (${duration}) on ${bookingDate} at ${bookingSlot}`]);
+        `, [orderDbId, `Home Service: ${serviceName} (${duration}) on ${bookingDate} at ${bookingSlot}${discountTag}`]);
 
         // Trigger Python Bot Webhook to send Confirmation Message
         try {

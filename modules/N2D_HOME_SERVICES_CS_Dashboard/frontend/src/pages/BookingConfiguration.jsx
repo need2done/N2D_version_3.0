@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useSession } from '../context/SessionContext';
 import { DataContext } from '../context/DataContext';
-import { FaCalendarAlt, FaClock, FaMapMarkerAlt, FaCreditCard } from 'react-icons/fa';
+import { FaCalendarAlt, FaClock, FaMapMarkerAlt, FaCreditCard, FaTag, FaCheck, FaTimes } from 'react-icons/fa';
 import api from '../services/api';
 import PaymentModal from '../components/modals/PaymentModal';
 
@@ -40,6 +40,12 @@ const BookingConfiguration = () => {
 
   const { services, platformFee } = useContext(DataContext);
 
+  // Coupon State (Default: DUSSEHRA applied)
+  const [couponCode, setCouponCode] = useState('DUSSEHRA');
+  const [isCouponApplied, setIsCouponApplied] = useState(true);
+  const [couponInput, setCouponInput] = useState('');
+  const [couponStatus, setCouponStatus] = useState({ type: 'success', msg: 'DUSSEHRA (20% OFF) applied!' });
+
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     document.documentElement.scrollTop = 0;
@@ -58,11 +64,46 @@ const BookingConfiguration = () => {
     }
   }, [id, services]);
 
-  const calculatePrice = () => {
+  const getSubtotal = () => {
     if (!service) return 0;
     const base = service.base_price;
     const multiplier = parseInt(duration.split(' ')[0]) || 1;
-    return (base * multiplier) + platformFee;
+    return base * multiplier;
+  };
+
+  const getDiscount = () => {
+    if (!isCouponApplied) return 0;
+    const subtotal = getSubtotal();
+    return Math.round(subtotal * 0.20);
+  };
+
+  const calculatePrice = () => {
+    const subtotal = getSubtotal();
+    const discount = getDiscount();
+    return Math.max(0, subtotal - discount) + (platformFee || 0);
+  };
+
+  const handleApplyCoupon = (codeToApply) => {
+    const code = (codeToApply || couponInput).trim().toUpperCase();
+    if (!code) {
+      setCouponStatus({ type: 'error', msg: 'Please enter a coupon code' });
+      return;
+    }
+    const validCodes = ['DUSSEHRA', 'DASARA', 'FESTIVE20'];
+    if (validCodes.includes(code)) {
+      setCouponCode(code);
+      setIsCouponApplied(true);
+      setCouponInput('');
+      setCouponStatus({ type: 'success', msg: `${code} applied: 20% discount!` });
+    } else {
+      setCouponStatus({ type: 'error', msg: 'Invalid or expired coupon code' });
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setIsCouponApplied(false);
+    setCouponCode('');
+    setCouponStatus({ type: 'info', msg: 'Coupon removed' });
   };
 
   const handleDetectLocation = () => {
@@ -106,6 +147,8 @@ const BookingConfiguration = () => {
         bookingDate: date,
         bookingSlot: slot,
         address,
+        couponCode: isCouponApplied ? couponCode : null,
+        discountAmount: getDiscount(),
         estimatedTotal: calculatePrice()
       };
       const res = await api.post('/home-services/checkout', payload);
@@ -232,7 +275,70 @@ const BookingConfiguration = () => {
 
               {date && slot ? (
                 <>
-                  <div className="space-y-4 text-sm font-medium text-gray-600 mb-8 border-b border-gray-100 pb-8">
+                  {/* Dussehra Coupon Card */}
+                  <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <FaTag className="text-amber-600 text-sm" />
+                        <span className="text-xs font-black text-amber-900 uppercase tracking-wider">Festive Offer</span>
+                      </div>
+                      {isCouponApplied && (
+                        <span className="text-xs font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md flex items-center gap-1">
+                          <FaCheck className="text-[10px]" /> 20% OFF
+                        </span>
+                      )}
+                    </div>
+
+                    {isCouponApplied ? (
+                      <div className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-amber-300 shadow-sm">
+                        <div>
+                          <p className="font-mono font-black text-amber-950 text-sm tracking-wider">{couponCode}</p>
+                          <p className="text-[11px] font-bold text-emerald-600">Saved ₹{getDiscount()} on this booking</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleRemoveCoupon}
+                          className="text-xs font-bold text-red-500 hover:text-red-700 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-red-50 transition-colors"
+                        >
+                          <FaTimes className="text-[10px]" /> Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Enter Code (e.g. DUSSEHRA)"
+                            value={couponInput}
+                            onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                            className="w-full text-xs font-mono font-bold uppercase p-2 border border-gray-300 rounded-xl focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none bg-white"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleApplyCoupon()}
+                            className="bg-amber-500 hover:bg-amber-600 text-white text-xs font-black px-4 py-2 rounded-xl shadow transition-colors"
+                          >
+                            Apply
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleApplyCoupon('DUSSEHRA')}
+                          className="text-[11px] font-bold text-amber-800 hover:underline flex items-center gap-1"
+                        >
+                          ✨ Click to apply <span className="font-mono font-black bg-amber-200/80 px-1.5 py-0.5 rounded text-amber-950">DUSSEHRA</span> (20% OFF)
+                        </button>
+                      </div>
+                    )}
+
+                    {couponStatus.msg && (
+                      <p className={`text-[11px] font-bold mt-2 ${couponStatus.type === 'error' ? 'text-red-600' : couponStatus.type === 'success' ? 'text-emerald-700' : 'text-gray-600'}`}>
+                        {couponStatus.msg}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-3.5 text-sm font-medium text-gray-600 mb-8 border-b border-gray-100 pb-8">
                     <div className="flex justify-between items-center">
                       <span>Base Price</span>
                       <span className="font-bold text-gray-900">₹{service.base_price}</span>
@@ -241,8 +347,20 @@ const BookingConfiguration = () => {
                       <span>Multiplier</span>
                       <span className="font-bold text-gray-900">x {parseInt(duration.split(' ')[0]) || 1}</span>
                     </div>
+                    <div className="flex justify-between items-center text-gray-700 pt-1 border-t border-gray-50">
+                      <span>Subtotal</span>
+                      <span className="font-bold text-gray-900">₹{getSubtotal()}</span>
+                    </div>
+                    {isCouponApplied && getDiscount() > 0 && (
+                      <div className="flex justify-between items-center text-emerald-600 bg-emerald-50 px-2.5 py-1.5 rounded-xl border border-emerald-100">
+                        <span className="font-bold flex items-center gap-1">
+                          <FaTag className="text-xs" /> Dussehra Discount (20%)
+                        </span>
+                        <span className="font-black">- ₹{getDiscount()}</span>
+                      </div>
+                    )}
                     {platformFee > 0 && (
-                      <div className="flex justify-between items-center text-orange-600 pt-2 border-t border-gray-50">
+                      <div className="flex justify-between items-center text-orange-600 pt-1 border-t border-gray-50">
                         <span>Platform Fee</span>
                         <span className="font-bold">+ ₹{platformFee}</span>
                       </div>
@@ -259,7 +377,7 @@ const BookingConfiguration = () => {
                   <button 
                     onClick={handleContinue}
                     disabled={!address.houseNo}
-                    className="w-full flex items-center justify-center py-4 px-6 rounded-2xl text-white font-black text-lg bg-indigo-600 hover:bg-indigo-700 transition-all shadow-lg hover:shadow-xl hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                    className="w-full flex items-center justify-center py-4 px-6 rounded-2xl text-white font-black text-lg bg-indigo-600 hover:bg-indigo-700 transition-all shadow-lg hover:shadow-xl hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none cursor-pointer"
                   >
                     <FaCreditCard className="mr-2 text-2xl" /> Proceed to Payment
                   </button>

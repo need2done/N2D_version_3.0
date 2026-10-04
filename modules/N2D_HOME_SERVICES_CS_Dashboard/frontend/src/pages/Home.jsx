@@ -154,45 +154,53 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 3. Offers for you */}
-      <section className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 mt-16">
-        <h2 className="text-3xl font-black text-gray-900 mb-8 tracking-tight">Offers for you</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
-          
-          {/* Card 1 */}
-          <Link to="/offer/first-booking" className="bg-orange-50 rounded-[24px] p-8 relative overflow-hidden border border-orange-100 flex flex-col hover:shadow-xl hover:-translate-y-2 transition-all duration-300 group">
-            <span className="bg-orange-100 text-orange-700 text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider w-fit mb-4">NEW USER</span>
-            <h3 className="text-xl font-black text-gray-900 mb-2">First Booking Offer</h3>
-            <p className="text-sm font-medium text-gray-600 mb-8 max-w-[180px]">Get 20% OFF on your first service</p>
-            <div className="mt-auto">
-              <span className="text-3xl font-black text-orange-500">20% <span className="text-sm font-bold text-gray-500">OFF</span></span>
-            </div>
-            <div className="absolute right-[-10px] bottom-[-10px] text-[100px] transform group-hover:scale-110 group-hover:rotate-6 transition-transform duration-500">🎁</div>
-          </Link>
+      {/* 3. Dussehra Festive Offer Banner */}
+      <section className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 mt-14">
+        <div className="relative rounded-[32px] overflow-hidden shadow-2xl bg-gradient-to-br from-[#78350f] via-[#b45309] to-[#d97706] border-2 border-amber-300/40 p-8 md:p-12 text-white flex flex-col lg:flex-row items-center justify-between gap-8">
+          {/* Decorative Festive Background Glows */}
+          <div className="absolute -top-24 -right-24 w-80 h-80 bg-yellow-400/20 rounded-full blur-3xl pointer-events-none"></div>
+          <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-orange-600/30 rounded-full blur-3xl pointer-events-none"></div>
 
-          {/* Card 2 */}
-          <Link to="/offer/festival" className="bg-blue-50 rounded-[24px] p-8 relative overflow-hidden border border-blue-100 flex flex-col hover:shadow-xl hover:-translate-y-2 transition-all duration-300 group">
-            <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider w-fit mb-4">FESTIVAL</span>
-            <h3 className="text-xl font-black text-gray-900 mb-2">Festival Special</h3>
-            <p className="text-sm font-medium text-gray-600 mb-8 max-w-[180px]">Upto ₹200 OFF on selected services</p>
-            <div className="mt-auto flex flex-col leading-tight">
-              <span className="text-xs text-blue-500 font-bold mb-1 tracking-wider">UPTO</span>
-              <span className="text-3xl font-black text-blue-600">₹200 <span className="text-sm font-bold text-gray-500">OFF</span></span>
+          {/* Left Content */}
+          <div className="relative z-10 max-w-2xl text-center lg:text-left">
+            <div className="inline-flex items-center gap-2 bg-amber-400/20 backdrop-blur-md text-amber-200 text-xs md:text-sm font-black px-4 py-1.5 rounded-full uppercase tracking-wider mb-4 border border-amber-300/30 shadow-sm">
+              <span>🪔</span> FESTIVE SPECIAL • DUSSEHRA DHAMAKA <span>🏹</span>
             </div>
-            <div className="absolute right-4 bottom-2 text-[80px] transform group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-500">🪔</div>
-          </Link>
+            <h2 className="text-3xl md:text-5xl font-black text-white leading-tight mb-3 tracking-tight">
+              Celebrate Dussehra with a <span className="text-amber-200 underline decoration-amber-400 underline-offset-4">Sparkling Clean Home</span>
+            </h2>
+            <p className="text-amber-100/90 text-sm md:text-lg mb-6 leading-relaxed">
+              Get <strong className="text-white font-black">FLAT 20% OFF</strong> on all professional cleaning, repairs, and kitchen deep-clean services. Code <span className="bg-black/30 text-amber-300 font-mono font-black px-2.5 py-1 rounded-lg border border-amber-400/40">DUSSEHRA</span> is automatically applied at checkout!
+            </p>
+            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4">
+              <button 
+                onClick={() => {
+                  const el = document.getElementById('all-services');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="bg-white hover:bg-amber-50 text-amber-900 font-black py-4 px-8 rounded-2xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 text-base md:text-lg flex items-center gap-2 cursor-pointer border border-amber-200"
+              >
+                <span>Book Service with 20% OFF</span>
+                <FaArrowRight className="text-amber-700" />
+              </button>
+              <div className="text-xs md:text-sm text-amber-100 font-bold flex items-center gap-2 bg-black/20 px-4 py-3 rounded-2xl backdrop-blur-sm border border-white/10">
+                <FaCheckCircle className="text-emerald-400 text-base" /> Auto-applied on all services
+              </div>
+            </div>
+          </div>
 
-          {/* Card 3 */}
-          <Link to="/offer/weekend" className="bg-green-50 rounded-[24px] p-8 relative overflow-hidden border border-green-100 flex flex-col hover:shadow-xl hover:-translate-y-2 transition-all duration-300 group">
-            <span className="bg-green-100 text-green-700 text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider w-fit mb-4">WEEKEND</span>
-            <h3 className="text-xl font-black text-gray-900 mb-2">Weekend Bonanza</h3>
-            <p className="text-sm font-medium text-gray-600 mb-8 max-w-[180px]">Flat ₹150 OFF on all bookings above ₹799</p>
-            <div className="mt-auto flex flex-col leading-tight">
-              <span className="text-xs text-green-600 font-bold mb-1 tracking-wider">FLAT</span>
-              <span className="text-3xl font-black text-green-600">₹150 <span className="text-sm font-bold text-gray-500">OFF</span></span>
+          {/* Right Festive Emblem / Promo Badge */}
+          <div className="relative z-10 flex-shrink-0 flex flex-col items-center justify-center bg-black/25 backdrop-blur-md rounded-[28px] p-6 md:p-8 border border-white/20 text-center min-w-[240px]">
+            <div className="text-5xl md:text-6xl mb-2">🪔</div>
+            <span className="text-amber-300 text-xs font-bold tracking-widest uppercase">Special Discount</span>
+            <div className="text-4xl md:text-5xl font-black text-white my-1">
+              20% <span className="text-2xl text-amber-300">OFF</span>
             </div>
-            <div className="absolute right-4 bottom-2 text-[80px] transform group-hover:scale-110 group-hover:rotate-12 transition-transform duration-500">📅</div>
-          </Link>
+            <span className="text-xs text-amber-200/80 font-medium">Coupon Code</span>
+            <div className="mt-2 bg-amber-400 text-amber-950 font-mono font-black px-4 py-1.5 rounded-xl text-sm tracking-wider shadow-inner">
+              DUSSEHRA
+            </div>
+          </div>
         </div>
       </section>
 

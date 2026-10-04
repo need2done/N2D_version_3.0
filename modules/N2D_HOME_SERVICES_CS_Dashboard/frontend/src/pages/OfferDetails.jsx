@@ -7,6 +7,26 @@ const OfferDetails = () => {
   const navigate = useNavigate();
 
   const offers = {
+    'dussehra': {
+      title: 'Dussehra Festive Offer',
+      badge: 'FESTIVE SPECIAL',
+      color: 'orange',
+      bgClass: 'bg-amber-50',
+      borderClass: 'border-amber-200',
+      textClass: 'text-amber-700',
+      badgeBg: 'bg-amber-100',
+      badgeText: 'text-amber-800',
+      emoji: '🪔',
+      subtitle: 'Flat 20% OFF on all home services with coupon DUSSEHRA!',
+      description: 'Celebrate the festive season of Dussehra with a fresh, sparkling home! Enjoy an exclusive flat 20% discount on all professional home services including Home Cleaning, Bathroom Deep Clean, Kitchen Cleaning, Dishwashing, Laundry, and Custom Works. Verified professionals delivered to your doorstep.',
+      terms: [
+        'Use promo code DUSSEHRA at checkout.',
+        'Flat 20% discount applied instantly on service subtotal.',
+        'Valid on all Need2Done Home Services.',
+        'Applicable for both new and existing users.',
+        'Can be used across all available service time slots during the festive period.'
+      ]
+    },
     'first-booking': {
       title: 'First Booking Offer',
       badge: 'NEW USER',
@@ -24,7 +44,7 @@ const OfferDetails = () => {
         'Maximum discount capped at ₹500.',
         'Valid on all home services (Cleaning, Dishwashing, Laundry, etc).',
         'Cannot be combined with other offers.',
-        'Offer applied automatically during WhatsApp checkout.'
+        'Offer applied automatically during checkout.'
       ]
     },
     'festival': {
@@ -41,9 +61,8 @@ const OfferDetails = () => {
       description: 'Get your home festival-ready with our premium deep cleaning services! For a limited time, get up to ₹200 off to make sure your home shines bright for the celebrations.',
       terms: [
         'Applicable for all users.',
-        'Valid only on Kitchen Cleaning and Bathroom Cleaning.',
-        'Minimum booking amount of ₹499 required.',
-        'Offer applied automatically during WhatsApp checkout.',
+        'Valid on Home & Kitchen Cleaning.',
+        'Offer applied automatically during checkout.',
         'Valid until the end of the festive season.'
       ]
     },
@@ -63,13 +82,12 @@ const OfferDetails = () => {
         'Applicable only for bookings scheduled on Saturday or Sunday.',
         'Minimum booking amount of ₹799 required.',
         'Valid on all home services.',
-        'Cannot be combined with New User offers.',
-        'Offer applied automatically during WhatsApp checkout.'
+        'Offer applied automatically during checkout.'
       ]
     }
   };
 
-  const offer = offers[id];
+  const offer = offers[id] || offers['dussehra'];
 
   if (!offer) {
     return (
