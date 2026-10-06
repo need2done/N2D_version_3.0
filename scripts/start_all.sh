@@ -35,14 +35,23 @@ echo "⏳ Waiting 3s for bot to initialize..."
 sleep 3
 
 # --- Step 2: Start Node.js Backend ---
-echo "▶ Step 2/2 — Node.js Backend..."
+echo "▶ Step 2/3 — Node.js Backend..."
 bash "$SCRIPTS_DIR/start_backend.sh"
 echo ""
 
+# --- Step 3: Start Open-Source Uptime Kuma Monitoring ---
+if [ -f "$SCRIPTS_DIR/setup_uptime_kuma.sh" ]; then
+    echo "▶ Step 3/3 — Uptime Kuma Open-Source Monitoring..."
+    bash "$SCRIPTS_DIR/setup_uptime_kuma.sh" || true
+    echo ""
+fi
+
 echo "=========================================="
-echo "✅ All services started!"
+echo "✅ All services & monitoring started!"
 echo ""
-echo "  Check status : ./scripts/status.sh"
-echo "  Stop all     : ./scripts/stop_all.sh"
-echo "  Health check : curl https://need2done.in/api/health"
+echo "  Check status     : ./scripts/status.sh"
+echo "  Stop all         : ./scripts/stop_all.sh"
+echo "  Health check     : curl https://need2done.in/api/health"
+echo "  Status Dashboard : https://need2done.in/status/"
 echo "=========================================="
+

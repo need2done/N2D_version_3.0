@@ -720,6 +720,86 @@ def route_message(
                 send_message(user, reply)
             return
 
+        # =================================================
+        # 🔑 CUSTOMER WHATSAPP OTP VERIFICATION (HOME SERVICES)
+        # =================================================
+        if msg_type == "text" and raw_text:
+            otp_match = re.search(r"\b(\d{4})\b", raw_text)
+            if otp_match:
+                candidate_otp = otp_match.group(1)
+                db = get_db()
+                if db:
+                    try:
+                        cur = db.cursor(dictionary=True)
+                        cur.execute("""
+                            SELECT o.id, o.order_id, o.status, o.payload, o.service, o.helper_id, o.helper_charge,
+                                   h.name as helper_name, h.phone as helper_phone, COALESCE(h.device_type, 'SMARTPHONE') as helper_device_type
+                            FROM orders o
+                            LEFT JOIN helpers h ON o.helper_id = h.id
+                            WHERE o.customer_number = %s
+                              AND (o.service = 'Home Services' OR o.service = '10' OR o.order_id LIKE 'N2D_HS_%')
+                              AND o.status IN ('ARRIVED', 'HELPER_ARRIVED', 'SERVICE_STARTED', 'END_OTP_REQUESTED')
+                            ORDER BY o.id DESC LIMIT 1
+                        """, (user,))
+                        hs_order = cur.fetchone()
+                        if hs_order:
+                            from core.helper_router import safe_parse_payload, log_event
+                            pdata = safe_parse_payload(hs_order.get("payload"))
+                            
+                            # 1. Match START OTP
+                            if hs_order["status"] in ("ARRIVED", "HELPER_ARRIVED") and pdata.get("start_otp") and str(pdata.get("start_otp")) == str(candidate_otp):
+                                duration_str = pdata.get("duration", "1 Hour")
+                                minutes = 60
+                                if "1.5" in duration_str: minutes = 90
+                                elif "2" in duration_str: minutes = 120
+                                elif "3" in duration_str: minutes = 180
+                                elif "45" in duration_str: minutes = 45
+
+                                cur.execute("""
+                                    UPDATE orders 
+                                    SET status = 'SERVICE_STARTED', tracking_status = 'STARTED',
+                                        service_start_time = NOW(), service_end_time = DATE_ADD(NOW(), INTERVAL %s MINUTE)
+                                    WHERE id = %s
+                                """, (minutes, hs_order["id"]))
+                                db.commit()
+                                log_event(hs_order["id"], "SERVICE_STARTED", f"Customer verified Start OTP ({candidate_otp}) on WhatsApp", "CUSTOMER")
+
+                                send_message(user, f"🛠️ *Service Started!* 🎉\n\nYour Start OTP ({candidate_otp}) is confirmed. Your professional *{hs_order.get('helper_name') or 'Helper'}* has started the work.\n\nScheduled duration: *{duration_str}*.")
+                                
+                                if ADMIN_NUMBER:
+                                    send_message(ADMIN_NUMBER, f"🔔 *Start OTP Verified on WhatsApp!*\nOrder: #{hs_order['order_id']}\nCustomer: {user}\nHelper: {hs_order.get('helper_name')}\nOTP: {candidate_otp}\nStatus: SERVICE_STARTED")
+                                cur.close()
+                                db.close()
+                                return
+
+                            # 2. Match END OTP
+                            if hs_order["status"] in ("SERVICE_STARTED", "END_OTP_REQUESTED") and pdata.get("end_otp") and str(pdata.get("end_otp")) == str(candidate_otp):
+                                cur.execute("""
+                                    UPDATE orders 
+                                    SET status = 'COMPLETED', tracking_status = 'COMPLETED', completed_at = NOW(),
+                                        payout_method = 'PHYSICAL_CASH', payout_settled = 0
+                                    WHERE id = %s
+                                """, (hs_order["id"],))
+                                if hs_order.get("helper_id"):
+                                    cur.execute("UPDATE helpers SET status = 'ONLINE' WHERE id = %s", (hs_order["helper_id"],))
+                                    cur.execute("UPDATE helper_status SET status = 'AVAILABLE' WHERE helper_id = %s", (hs_order["helper_id"],))
+                                db.commit()
+                                log_event(hs_order["id"], "COMPLETED", f"Customer verified End OTP ({candidate_otp}) on WhatsApp", "CUSTOMER")
+
+                                send_message(user, "🎉 *Service Completed Successfully!*\n\nThank you for choosing Need2Done Home Services. We hope your experience was wonderful!\n\nPlease rate your service (1 to 5).")
+
+                                if ADMIN_NUMBER:
+                                    h_charge = hs_order.get('helper_charge') or 0
+                                    send_message(ADMIN_NUMBER, f"✅ *End OTP Verified on WhatsApp!*\nOrder: #{hs_order['order_id']}\nCustomer: {user}\nHelper: {hs_order.get('helper_name')}\nStatus: COMPLETED\nPhysical Cash Payout: ₹{h_charge} (Pending Settlement)")
+                                cur.close()
+                                db.close()
+                                return
+
+                        cur.close()
+                    except Exception as otp_e:
+                        print("Error handling customer WhatsApp OTP:", otp_e)
+                    finally:
+                        if db: db.close()
 
         # =================================================
         # 👤 SESSION INIT

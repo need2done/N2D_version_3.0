@@ -88,6 +88,8 @@ router.get('/', async (req, res) => {
         let query = `
             SELECT o.*, c.phone as customer_phone,
                    h.name as helper_name,
+                   COALESCE(h.device_type, 'SMARTPHONE') as helper_device_type,
+                   h.phone as helper_phone_db,
                    v.name as vendor_name,
                    ot.items_text, 
                    (SELECT GROUP_CONCAT(media_id) FROM order_images WHERE order_id = o.id AND image_type = 'ITEM') as item_media_ids,
@@ -160,6 +162,7 @@ router.get('/:id', async (req, res) => {
         let query = `
             SELECT o.*, c.phone as customer_phone, c.name as customer_db_name,
                    h.name as helper_name, h.phone as helper_phone,
+                   COALESCE(h.device_type, 'SMARTPHONE') as helper_device_type,
                    v.name as vendor_name, v.phone as vendor_phone,
                    ot.items_text,
                    (SELECT GROUP_CONCAT(media_id) FROM order_images WHERE order_id = o.id AND image_type = 'ITEM') as item_media_ids,
@@ -635,6 +638,325 @@ router.post('/:id/unlock', authenticateAdmin, async (req, res) => {
         res.json({ success: true, message: 'Ride unlocked successfully' });
     } catch (err) {
         console.error('Error unlocking ride:', err);
+        res.status(500).json({ success: false, error: 'DB error' });
+    }
+});
+
+// ==========================================
+// ASSISTED WORKFLOW (KEYPAD / OLD PHONE HELPERS)
+// ==========================================
+
+// 1. POST /api/orders/:id/assisted/assign — Admin confirms keypad helper & notifies customer
+router.post('/:id/assisted/assign', authenticateAdmin, async (req, res) => {
+    try {
+        const { helper_id } = req.body;
+        const [helpers] = await db.query('SELECT id, phone, name, helper_code, COALESCE(device_type, "SMARTPHONE") as device_type FROM helpers WHERE id = ?', [helper_id]);
+        if (helpers.length === 0) return res.status(404).json({ success: false, error: 'Helper not found' });
+        const helper = helpers[0];
+
+        const [orders] = await db.query(`
+            SELECT o.*, c.name as customer_name, c.phone as customer_phone
+            FROM orders o
+            LEFT JOIN customers c ON o.customer_id = c.id
+            WHERE o.id = ?
+        `, [req.params.id]);
+        if (orders.length === 0) return res.status(404).json({ success: false, error: 'Order not found' });
+        const order = orders[0];
+
+        // Update order status and assigned helper
+        await db.query(`
+            UPDATE orders 
+            SET helper_id = ?, helper_phone = ?, status = 'HELPER_ASSIGNED', assigned_at = NOW(), tracking_status = 'ASSIGNED'
+            WHERE id = ?
+        `, [helper.id, helper.phone, order.id]);
+
+        // Helper status to BUSY
+        await db.query('UPDATE helpers SET status = "BUSY" WHERE id = ?', [helper.id]);
+
+        // Add timeline log
+        await db.query(`INSERT INTO order_timeline (order_id, event_type, event_text, triggered_by) 
+                        VALUES (?, 'HELPER_ASSIGNED', ?, 'ADMIN')`, 
+                        [order.id, `Admin confirmed & assigned keypad helper ${helper.name} (${helper.phone})`]);
+
+        // Parse payload
+        let payload = {};
+        try {
+            payload = typeof order.payload === 'string' ? JSON.parse(order.payload) : (order.payload || {});
+        } catch(e) {}
+
+        const serviceName = payload.serviceName || order.service || 'Home Service';
+        const bookingDate = payload.bookingDate || 'Scheduled date';
+        const bookingSlot = payload.bookingSlot || '';
+        const scheduledTimeStr = bookingSlot ? ` (${bookingDate} at ${bookingSlot})` : '';
+
+        // Notify Customer via WhatsApp
+        const customerPhone = order.customer_number || order.customer_phone;
+        if (customerPhone) {
+            const customerMsg = 
+                `✅ *Helper Assigned!*\n\n` +
+                `Your service order *${order.order_id}* has been confirmed.\n\n` +
+                `👤 *Assigned Professional:* ${helper.name}\n` +
+                `📞 *Contact:* ${helper.phone}\n` +
+                `🛠️ *Service:* ${serviceName}${scheduledTimeStr}\n\n` +
+                `Our professional will arrive at your address as scheduled. Need2Done support is coordinating your request.`;
+            await sendWhatsAppText(customerPhone, customerMsg);
+        }
+
+        res.json({ success: true, message: `Helper ${helper.name} assigned and customer notified!`, helper_name: helper.name });
+    } catch (err) {
+        console.error('Error in assisted assign:', err);
+        res.status(500).json({ success: false, error: err.message || 'DB error' });
+    }
+});
+
+// 2. POST /api/orders/:id/assisted/arrived — Helper reaches location and calls Admin
+// Admin triggers "Helper Arrived" -> Customer receives arrival + Start OTP + Request Time message
+router.post('/:id/assisted/arrived', authenticateAdmin, async (req, res) => {
+    try {
+        const [orders] = await db.query(`
+            SELECT o.*, h.name as helper_name, h.phone as helper_phone, c.phone as customer_phone
+            FROM orders o
+            LEFT JOIN helpers h ON o.helper_id = h.id
+            LEFT JOIN customers c ON o.customer_id = c.id
+            WHERE o.id = ?
+        `, [req.params.id]);
+        if (orders.length === 0) return res.status(404).json({ success: false, error: 'Order not found' });
+        const order = orders[0];
+
+        let payload = {};
+        try {
+            payload = typeof order.payload === 'string' ? JSON.parse(order.payload) : (order.payload || {});
+        } catch(e) {}
+
+        // Ensure 4-digit start OTP
+        if (!payload.start_otp) {
+            payload.start_otp = String(Math.floor(1000 + Math.random() * 9000));
+        }
+        const startOtp = payload.start_otp;
+        const durationStr = payload.duration || '1 Hour';
+
+        // Update order status to ARRIVED
+        await db.query(`
+            UPDATE orders 
+            SET status = 'ARRIVED', tracking_status = 'ARRIVED', payload = ?, delivery_otp = ?
+            WHERE id = ?
+        `, [JSON.stringify(payload), startOtp, order.id]);
+
+        // Add timeline log
+        await db.query(`INSERT INTO order_timeline (order_id, event_type, event_text, triggered_by) 
+                        VALUES (?, 'HELPER_ARRIVED', ?, 'ADMIN')`, 
+                        [order.id, `Admin marked helper ${order.helper_name || ''} as arrived at customer location`]);
+
+        // Notify Customer via WhatsApp
+        const customerPhone = order.customer_number || order.customer_phone;
+        if (customerPhone) {
+            const customerMsg = 
+                `📍 *Helper is at your location!*\n\n` +
+                `Your service professional *${order.helper_name || 'Helper'}* has arrived at your address.\n\n` +
+                `🔐 Please reply with your *START OTP* directly on this WhatsApp chat to start the service:\n` +
+                `*START OTP: ${startOtp}*\n\n` +
+                `⏱️ *Scheduled Duration:* ${durationStr}\n` +
+                `_(If extra time is required during or after work, you can request an extension.)_`;
+            await sendWhatsAppText(customerPhone, customerMsg);
+        }
+
+        if (ADMIN_NUMBER) {
+            await sendWhatsAppText(ADMIN_NUMBER, `🔔 *Order #${order.order_id}*: Helper arrived at customer location. Start OTP: *${startOtp}*`);
+        }
+
+        res.json({ success: true, message: 'Helper marked as arrived and Start OTP sent to customer WhatsApp!', start_otp: startOtp });
+    } catch (err) {
+        console.error('Error in assisted arrived:', err);
+        res.status(500).json({ success: false, error: err.message || 'DB error' });
+    }
+});
+
+// 3. POST /api/orders/:id/assisted/verify-start-otp — Admin verifies Start OTP
+router.post('/:id/assisted/verify-start-otp', authenticateAdmin, async (req, res) => {
+    try {
+        const { otp } = req.body;
+        const [orders] = await db.query(`
+            SELECT o.*, h.name as helper_name, c.phone as customer_phone
+            FROM orders o
+            LEFT JOIN helpers h ON o.helper_id = h.id
+            LEFT JOIN customers c ON o.customer_id = c.id
+            WHERE o.id = ?
+        `, [req.params.id]);
+        if (orders.length === 0) return res.status(404).json({ success: false, error: 'Order not found' });
+        const order = orders[0];
+
+        let payload = {};
+        try {
+            payload = typeof order.payload === 'string' ? JSON.parse(order.payload) : (order.payload || {});
+        } catch(e) {}
+
+        const expectedOtp = payload.start_otp || order.delivery_otp;
+        if (otp && expectedOtp && String(otp).trim() !== String(expectedOtp).trim()) {
+            return res.status(400).json({ success: false, error: `Invalid Start OTP. Expected ${expectedOtp}` });
+        }
+
+        const durationStr = payload.duration || '1 Hour';
+        let minutes = 60;
+        if (durationStr.includes('1.5')) minutes = 90;
+        else if (durationStr.includes('2')) minutes = 120;
+        else if (durationStr.includes('3')) minutes = 180;
+        else if (durationStr.includes('45')) minutes = 45;
+
+        // Update status to SERVICE_STARTED
+        await db.query(`
+            UPDATE orders 
+            SET status = 'SERVICE_STARTED', tracking_status = 'STARTED', 
+                service_start_time = NOW(), service_end_time = DATE_ADD(NOW(), INTERVAL ? MINUTE)
+            WHERE id = ?
+        `, [minutes, order.id]);
+
+        // Timeline
+        await db.query(`INSERT INTO order_timeline (order_id, event_type, event_text, triggered_by) 
+                        VALUES (?, 'SERVICE_STARTED', ?, 'ADMIN')`, 
+                        [order.id, `Admin verified Start OTP (${expectedOtp || otp}). Service timer started.`]);
+
+        // Notify Customer via WhatsApp
+        const customerPhone = order.customer_number || order.customer_phone;
+        if (customerPhone) {
+            await sendWhatsAppText(customerPhone, 
+                `🛠️ *Service Started!* 🎉\n\n` +
+                `Your service professional has begun the work.\n` +
+                `Scheduled duration: *${durationStr}*.\n\n` +
+                `Once completed, you will receive an End OTP to verify completion.`
+            );
+        }
+
+        res.json({ success: true, message: 'Start OTP verified! Service is now IN_PROGRESS.' });
+    } catch (err) {
+        console.error('Error verifying start otp:', err);
+        res.status(500).json({ success: false, error: err.message || 'DB error' });
+    }
+});
+
+// 4. POST /api/orders/:id/assisted/request-end-otp — Admin triggers End OTP to customer
+router.post('/:id/assisted/request-end-otp', authenticateAdmin, async (req, res) => {
+    try {
+        const [orders] = await db.query(`
+            SELECT o.*, h.name as helper_name, c.phone as customer_phone
+            FROM orders o
+            LEFT JOIN helpers h ON o.helper_id = h.id
+            LEFT JOIN customers c ON o.customer_id = c.id
+            WHERE o.id = ?
+        `, [req.params.id]);
+        if (orders.length === 0) return res.status(404).json({ success: false, error: 'Order not found' });
+        const order = orders[0];
+
+        let payload = {};
+        try {
+            payload = typeof order.payload === 'string' ? JSON.parse(order.payload) : (order.payload || {});
+        } catch(e) {}
+
+        if (!payload.end_otp) {
+            payload.end_otp = String(Math.floor(1000 + Math.random() * 9000));
+        }
+        const endOtp = payload.end_otp;
+
+        await db.query('UPDATE orders SET payload = ? WHERE id = ?', [JSON.stringify(payload), order.id]);
+
+        await db.query(`INSERT INTO order_timeline (order_id, event_type, event_text, triggered_by) 
+                        VALUES (?, 'END_OTP_REQUESTED', ?, 'ADMIN')`, 
+                        [order.id, `Admin triggered End OTP (${endOtp}) to customer`]);
+
+        const customerPhone = order.customer_number || order.customer_phone;
+        if (customerPhone) {
+            await sendWhatsAppText(customerPhone, 
+                `🏁 *Service Completion Verification*\n\n` +
+                `Your service is wrapping up! Please reply with your *END OTP* directly on this WhatsApp chat to confirm completion:\n\n` +
+                `*END OTP: ${endOtp}*`
+            );
+        }
+
+        if (ADMIN_NUMBER) {
+            await sendWhatsAppText(ADMIN_NUMBER, `🔔 *Order #${order.order_id}*: End OTP triggered. Customer End OTP is *${endOtp}*`);
+        }
+
+        res.json({ success: true, message: 'End OTP sent to customer WhatsApp!', end_otp: endOtp });
+    } catch (err) {
+        console.error('Error in request end otp:', err);
+        res.status(500).json({ success: false, error: err.message || 'DB error' });
+    }
+});
+
+// 5. POST /api/orders/:id/assisted/verify-end-otp — Admin enters End OTP to complete job
+router.post('/:id/assisted/verify-end-otp', authenticateAdmin, async (req, res) => {
+    try {
+        const { otp } = req.body;
+        const [orders] = await db.query(`
+            SELECT o.*, h.name as helper_name, c.phone as customer_phone
+            FROM orders o
+            LEFT JOIN helpers h ON o.helper_id = h.id
+            LEFT JOIN customers c ON o.customer_id = c.id
+            WHERE o.id = ?
+        `, [req.params.id]);
+        if (orders.length === 0) return res.status(404).json({ success: false, error: 'Order not found' });
+        const order = orders[0];
+
+        let payload = {};
+        try {
+            payload = typeof order.payload === 'string' ? JSON.parse(order.payload) : (order.payload || {});
+        } catch(e) {}
+
+        const expectedOtp = payload.end_otp;
+        if (otp && expectedOtp && String(otp).trim() !== String(expectedOtp).trim()) {
+            return res.status(400).json({ success: false, error: `Invalid End OTP. Expected ${expectedOtp}` });
+        }
+
+        // Mark COMPLETED, payout tagged as Physical Cash
+        await db.query(`
+            UPDATE orders 
+            SET status = 'COMPLETED', tracking_status = 'COMPLETED', completed_at = NOW(),
+                payout_method = 'PHYSICAL_CASH', payout_settled = 0
+            WHERE id = ?
+        `, [order.id]);
+
+        if (order.helper_id) {
+            await db.query('UPDATE helpers SET status = "ONLINE" WHERE id = ?', [order.helper_id]);
+            await db.query('UPDATE helper_status SET status = "AVAILABLE" WHERE helper_id = ?', [order.helper_id]);
+        }
+
+        await db.query(`INSERT INTO order_timeline (order_id, event_type, event_text, triggered_by) 
+                        VALUES (?, 'COMPLETED', ?, 'ADMIN')`, 
+                        [order.id, `Admin verified End OTP (${expectedOtp || otp}). Job completed. Payout tagged as Physical Cash.`]);
+
+        const customerPhone = order.customer_number || order.customer_phone;
+        if (customerPhone) {
+            await sendWhatsAppText(customerPhone, 
+                `🎉 *Service Completed Successfully!*\n\n` +
+                `Thank you for using Need2Done Home Services. We hope your experience was wonderful!\n\n` +
+                `Rate your service (1-5) by replying directly with a number.`
+            );
+        }
+
+        if (ADMIN_NUMBER) {
+            await sendWhatsAppText(ADMIN_NUMBER, 
+                `✅ *Job Completed!* Order #${order.order_id} completed.\n` +
+                `Helper: ${order.helper_name || 'N/A'}\n` +
+                `Physical Payout: ₹${order.helper_charge || 0} (Pending Settlement)`
+            );
+        }
+
+        res.json({ success: true, message: 'Order completed successfully! Helper payout tagged as Physical Cash.' });
+    } catch (err) {
+        console.error('Error verifying end otp:', err);
+        res.status(500).json({ success: false, error: err.message || 'DB error' });
+    }
+});
+
+// 6. POST /api/orders/:id/assisted/settle-cash — Admin marks physical cash paid
+router.post('/:id/assisted/settle-cash', authenticateAdmin, async (req, res) => {
+    try {
+        await db.query('UPDATE orders SET payout_settled = 1 WHERE id = ?', [req.params.id]);
+        await db.query(`INSERT INTO order_timeline (order_id, event_type, event_text, triggered_by) 
+                        VALUES (?, 'PAYOUT_SETTLED', 'Admin marked physical cash payout as handed over to helper', 'ADMIN')`, 
+                        [req.params.id]);
+        res.json({ success: true, message: 'Cash payout marked as settled!' });
+    } catch (err) {
+        console.error('Error settling cash payout:', err);
         res.status(500).json({ success: false, error: 'DB error' });
     }
 });

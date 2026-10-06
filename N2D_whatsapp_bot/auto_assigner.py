@@ -194,6 +194,7 @@ def find_nearest_helpers(customer_lat, customer_lng, radius_km, engine_type='TAS
             JOIN helper_status hs ON h.id = hs.helper_id
             WHERE (h.status IN ('ONLINE', 'Active') OR hs.status IN ('AVAILABLE', 'ONLINE'))
               AND (h.wallet_balance >= 0 OR h.wallet_balance IS NULL)
+              AND (h.device_type IS NULL OR h.device_type = '' OR UPPER(h.device_type) = 'SMARTPHONE')
               AND h.category IN {category_filter}
         """)
         helpers = cur.fetchall()

@@ -10,11 +10,16 @@ export default function HomeServiceHelpers() {
   const [selectedHelper, setSelectedHelper] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [newHelper, setNewHelper] = useState({ name: '', phone: '', helper_code: '', category: 'HOME_SERVICES' });
+  const [newHelper, setNewHelper] = useState({ name: '', phone: '', helper_code: '', category: 'HOME_SERVICES', device_type: 'SMARTPHONE' });
+
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+  };
 
   const fetchHelpers = async () => {
     try {
-      const res = await fetch(`${API_URL}/helpers`);
+      const res = await fetch(`${API_URL}/helpers`, { headers: getAuthHeaders() });
       const data = await res.json();
       if (data.success) {
         // Filter helpers that have category 'HOME_SERVICES' or 'BOTH'
@@ -37,7 +42,7 @@ export default function HomeServiceHelpers() {
     try {
       const res = await fetch(`${API_URL}/helpers/${helperId}/category`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ category: newCategory })
       });
       const data = await res.json();
@@ -51,18 +56,36 @@ export default function HomeServiceHelpers() {
     }
   };
 
+  const handleDeviceTypeChange = async (helperId, newDeviceType) => {
+    try {
+      const res = await fetch(`${API_URL}/helpers/${helperId}/device-type`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ device_type: newDeviceType })
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchHelpers();
+      } else {
+        alert(data.error || 'Failed to update device type');
+      }
+    } catch (err) {
+      alert('Failed to update device type');
+    }
+  };
+
   const handleAddHelper = async (e) => {
     e.preventDefault();
     try {
       const res = await fetch(`${API_URL}/helpers`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify(newHelper)
       });
       const data = await res.json();
       if (data.success) {
         setShowAddModal(false);
-        setNewHelper({ name: '', phone: '', helper_code: '', category: 'HOME_SERVICES' });
+        setNewHelper({ name: '', phone: '', helper_code: '', category: 'HOME_SERVICES', device_type: 'SMARTPHONE' });
         fetchHelpers();
       } else {
         alert(data.error || 'Failed to add helper');
@@ -136,13 +159,14 @@ export default function HomeServiceHelpers() {
               <th>Name</th>
               <th>WhatsApp Phone</th>
               <th>Category</th>
+              <th>Device Mode</th>
               <th>Status</th>
               <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {filteredHelpers.length === 0 && (
-              <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)' }}>No Home Service helpers registered yet.</td></tr>
+              <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)' }}>No Home Service helpers registered yet.</td></tr>
             )}
             {filteredHelpers.map(helper => (
               <tr key={helper.id}>
@@ -164,6 +188,25 @@ export default function HomeServiceHelpers() {
                     <option value="VEG_FRUITS">VEG & FRUITS (Fruits/Veg)</option>
                     <option value="MEDICINES">MEDICINES (Pharmacy)</option>
                     <option value="ANYWORK">ANYWORK (Anywork)</option>
+                  </select>
+                </td>
+                <td>
+                  <select 
+                    value={helper.device_type || 'SMARTPHONE'} 
+                    onChange={(e) => handleDeviceTypeChange(helper.id, e.target.value)}
+                    style={{ 
+                      background: helper.device_type === 'KEYPAD' ? '#fef3c7' : '#e0f2fe', 
+                      color: helper.device_type === 'KEYPAD' ? '#92400e' : '#0369a1', 
+                      border: `1px solid ${helper.device_type === 'KEYPAD' ? '#fde68a' : '#bae6fd'}`,
+                      fontSize: '0.8rem', 
+                      fontWeight: 600,
+                      padding: '0.25rem 0.5rem', 
+                      borderRadius: '6px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value="SMARTPHONE">📱 Smart Phone (Auto)</option>
+                    <option value="KEYPAD">📞 Keypad (Assisted)</option>
                   </select>
                 </td>
                 <td>
@@ -251,6 +294,22 @@ export default function HomeServiceHelpers() {
                   <option value="MEDICINES">MEDICINES (Pharmacy)</option>
                   <option value="ANYWORK">ANYWORK (Anywork)</option>
                 </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)' }}>Device / Phone Mode</label>
+                <select
+                  value={newHelper.device_type}
+                  onChange={(e) => setNewHelper({...newHelper, device_type: e.target.value})}
+                  style={{ width: '100%' }}
+                >
+                  <option value="SMARTPHONE">📱 Smart Phone (WhatsApp Broadcast & Self-Service)</option>
+                  <option value="KEYPAD">📞 Keypad / Old Phone (Admin-Assisted & Voice Call Flow)</option>
+                </select>
+                <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', display: 'block', marginTop: '4px' }}>
+                  {newHelper.device_type === 'KEYPAD' 
+                    ? '💡 Keypad helpers receive assignments via phone calls and admin-guided OTP check-in.' 
+                    : '💡 Smart phone helpers receive automated WhatsApp broadcast offers.'}
+                </small>
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)' }}>Helper Code (Optional)</label>

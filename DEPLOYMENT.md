@@ -355,11 +355,18 @@ kill $(cat logs/backend.pid) && ./scripts/start_backend.sh
 # Edit crontab
 crontab -e
 
-# Add this line at the bottom to auto-start on every reboot:
+# 1. Auto-start all N2D services on system reboot
 @reboot sleep 15 && /home/ubuntu/Need2Done/scripts/start_all.sh >> /home/ubuntu/Need2Done/logs/startup.log 2>&1
+
+# 2. Daily SSL & API Token Expiration Health Check (Every day at 7:00 AM)
+0 7 * * * /home/ubuntu/Need2Done/scripts/monitor_expirations.sh >> /home/ubuntu/Need2Done/logs/cron_health.log 2>&1
+
+# 3. Automatic SSL Certificate Renewal Check (Every 12 hours)
+0 0,12 * * * sudo certbot renew --quiet --post-hook "systemctl reload nginx" >> /var/log/certbot-renew.log 2>&1
 ```
 
 > The `sleep 15` gives MySQL time to fully start before the app services launch.
+
 
 ---
 

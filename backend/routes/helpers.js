@@ -14,6 +14,7 @@ router.get('/', async (req, res) => {
     try {
         const [rows] = await db.query(`
             SELECT h.id, h.name, h.phone, h.helper_code, h.status, h.category, h.active,
+                   COALESCE(h.device_type, 'SMARTPHONE') as device_type,
                    hs.latitude, hs.longitude, hs.last_seen
             FROM helpers h
             LEFT JOIN helper_status hs ON h.id = hs.helper_id
@@ -38,16 +39,17 @@ function sanitizePhone(raw) {
 
 // ==========================================
 // POST /api/helpers — Register a new helper
-// Body: { name, phone, helper_code }
+// Body: { name, phone, helper_code, category, device_type }
 // ==========================================
 router.post('/', async (req, res) => {
     try {
-        const { name, phone, helper_code, category } = req.body;
+        const { name, phone, helper_code, category, device_type } = req.body;
         const cleanPhone = sanitizePhone(phone);
+        const validDeviceType = (device_type && device_type.toUpperCase() === 'KEYPAD') ? 'KEYPAD' : 'SMARTPHONE';
 
         const [result] = await db.query(
-            'INSERT INTO helpers (name, phone, helper_code, category, status, active) VALUES (?, ?, ?, ?, "OFFLINE", 1)',
-            [name, cleanPhone, helper_code || `N2D-${Date.now().toString().slice(-4)}`, category || 'BOTH']
+            'INSERT INTO helpers (name, phone, helper_code, category, device_type, status, active) VALUES (?, ?, ?, ?, ?, "OFFLINE", 1)',
+            [name, cleanPhone, helper_code || `N2D-${Date.now().toString().slice(-4)}`, category || 'BOTH', validDeviceType]
         );
         const helperId = result.insertId;
 
@@ -95,6 +97,22 @@ router.patch('/:id/category', async (req, res) => {
         res.json({ success: true, message: `Helper category updated to ${category}` });
     } catch (err) {
         console.error('Error updating helper category:', err);
+        res.status(500).json({ success: false, error: 'DB error' });
+    }
+});
+
+// ==========================================
+// PATCH /api/helpers/:id/device-type — Update Device Type
+// Body: { device_type: "SMARTPHONE" | "KEYPAD" }
+// ==========================================
+router.patch('/:id/device-type', async (req, res) => {
+    try {
+        const { device_type } = req.body;
+        const validDeviceType = (device_type && device_type.toUpperCase() === 'KEYPAD') ? 'KEYPAD' : 'SMARTPHONE';
+        await db.query('UPDATE helpers SET device_type = ? WHERE id = ?', [validDeviceType, req.params.id]);
+        res.json({ success: true, message: `Helper device type updated to ${validDeviceType}`, device_type: validDeviceType });
+    } catch (err) {
+        console.error('Error updating helper device type:', err);
         res.status(500).json({ success: false, error: 'DB error' });
     }
 });

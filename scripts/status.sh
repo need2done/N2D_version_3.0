@@ -81,3 +81,10 @@ echo "  Logs Directory: $LOG_DIR"
 echo "  bot.log     : tail -f $LOG_DIR/bot.log"
 echo "  backend.log : tail -f $LOG_DIR/backend.log"
 echo "=========================================="
+echo ""
+
+if [ -f "$SCRIPTS_DIR/monitor_expirations.sh" ]; then
+    echo "🔍 Running Token & SSL Expiration Health Check..."
+    bash "$SCRIPTS_DIR/monitor_expirations.sh" || true
+fi
+

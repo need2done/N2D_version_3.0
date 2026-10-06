@@ -50,5 +50,12 @@ stop_service() {
 # --- Stop each service ---
 stop_service "WhatsApp Bot"   "$LOG_DIR/bot.pid"
 stop_service "Node.js Backend" "$LOG_DIR/backend.pid"
+stop_service "Uptime Kuma"     "$LOG_DIR/kuma.pid"
+
+if command -v docker &> /dev/null && [ -f "$APP_DIR/docker-compose.monitoring.yml" ]; then
+    echo "🛑 Stopping Uptime Kuma docker container..."
+    docker compose -f "$APP_DIR/docker-compose.monitoring.yml" down >/dev/null 2>&1 || true
+fi
 
 echo "✅ All services stopped."
+

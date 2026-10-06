@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, MapPin, Activity, Download, FileText, Calendar, RotateCcw, Filter, RefreshCw, Search, X, Zap, Eye, Phone, MessageSquare, ExternalLink, Clock, Store, ShieldCheck, CreditCard } from 'lucide-react';
+import { LayoutDashboard, Users, MapPin, Activity, Download, FileText, Calendar, RotateCcw, Filter, RefreshCw, Search, X, Zap, Eye, Phone, MessageSquare, ExternalLink, Clock, Store, ShieldCheck, CreditCard, Smartphone, PhoneCall, CheckCircle2 } from 'lucide-react';
 import { exportToExcel, exportToPDF } from '../utils/exportUtils';
 import { formatOrderDateTime, formatDateTimeIST, formatTimeIST, formatDateIST } from '../utils/dateUtils';
 import { API_URL } from '../config';
@@ -108,6 +108,13 @@ export default function Dashboard() {
   const [vendorTargetOrder, setVendorTargetOrder] = useState(null);
   const [selectedVendorId, setSelectedVendorId] = useState('');
 
+  // Helper Assignment & Assisted Workflow Modal State
+  const [allHelpers, setAllHelpers] = useState([]);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [assignTargetOrder, setAssignTargetOrder] = useState(null);
+  const [selectedAssignHelperId, setSelectedAssignHelperId] = useState('');
+  const [assignHelperFilter, setAssignHelperFilter] = useState('ALL'); // ALL, SMARTPHONE, KEYPAD
+
   // Order Details Modal State
   const [selectedOrderDetail, setSelectedOrderDetail] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -164,6 +171,7 @@ export default function Dashboard() {
       
       const helperRes = await fetch(`${API_URL}/helpers`, { headers: authHeader });
       const helperData = await helperRes.json();
+      if (helperData.success && Array.isArray(helperData.helpers)) setAllHelpers(helperData.helpers);
       
       const trackingRes = await fetch(`${API_URL}/tracking/active`, { headers: authHeader });
       const trackingData = await trackingRes.json();
@@ -219,9 +227,7 @@ export default function Dashboard() {
     setDateFilter(dStr);
   };
 
-  const handleAssign = async (dbId) => {
-    const helperId = prompt('Enter Helper DB ID to assign:');
-    if (!helperId) return;
+  const handleAssignSmart = async (dbId, helperId) => {
     try {
       const res = await fetch(`${API_URL}/orders/${dbId}/assign`, {
         method: 'POST',
@@ -230,12 +236,156 @@ export default function Dashboard() {
       });
       const data = await res.json();
       if (data.success) {
+        alert('WhatsApp assignment offer sent to helper!');
+        setShowAssignModal(false);
         fetchData();
+        if (selectedOrderDetail && selectedOrderDetail.id === dbId) openOrderDetails(dbId);
       } else {
         alert(data.error || 'Failed to assign helper');
       }
     } catch (err) {
       alert('Failed to assign helper');
+    }
+  };
+
+  const handleAssistedAssign = async (dbId, helperId) => {
+    if (!helperId) {
+      alert('Please select a helper to assign');
+      return;
+    }
+    const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+    const authHeader = token ? { 'Authorization': `Bearer ${token}` } : {};
+    try {
+      const res = await fetch(`${API_URL}/orders/${dbId}/assisted/assign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeader },
+        body: JSON.stringify({ helper_id: parseInt(helperId) })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message || 'Keypad helper confirmed & assigned! Customer notified.');
+        setShowAssignModal(false);
+        fetchData();
+        if (selectedOrderDetail && selectedOrderDetail.id === dbId) openOrderDetails(dbId);
+      } else {
+        alert(data.error || 'Failed to assign helper');
+      }
+    } catch (err) {
+      alert('Network error assigning helper');
+    }
+  };
+
+  const handleAssistedArrived = async (dbId) => {
+    if (!confirm('Mark helper as ARRIVED at location? This will dispatch Start OTP to customer WhatsApp.')) return;
+    const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+    const authHeader = token ? { 'Authorization': `Bearer ${token}` } : {};
+    try {
+      const res = await fetch(`${API_URL}/orders/${dbId}/assisted/arrived`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeader }
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message || 'Helper marked arrived & Start OTP dispatched to customer WhatsApp!');
+        fetchData();
+        if (selectedOrderDetail && selectedOrderDetail.id === dbId) openOrderDetails(dbId);
+      } else {
+        alert(data.error || 'Failed to update arrival');
+      }
+    } catch (err) {
+      alert('Error updating arrival');
+    }
+  };
+
+  const handleAssistedVerifyStartOtp = async (dbId, defaultOtp = '') => {
+    const otpInput = prompt('Enter 4-digit Start OTP received from customer WhatsApp:', defaultOtp || '');
+    if (!otpInput) return;
+    const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+    const authHeader = token ? { 'Authorization': `Bearer ${token}` } : {};
+    try {
+      const res = await fetch(`${API_URL}/orders/${dbId}/assisted/verify-start-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeader },
+        body: JSON.stringify({ otp: otpInput.trim() })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message || 'Start OTP verified! Service timer started.');
+        fetchData();
+        if (selectedOrderDetail && selectedOrderDetail.id === dbId) openOrderDetails(dbId);
+      } else {
+        alert(data.error || 'Failed to verify Start OTP');
+      }
+    } catch (err) {
+      alert('Error verifying Start OTP');
+    }
+  };
+
+  const handleAssistedRequestEndOtp = async (dbId) => {
+    if (!confirm('Trigger End OTP to customer WhatsApp?')) return;
+    const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+    const authHeader = token ? { 'Authorization': `Bearer ${token}` } : {};
+    try {
+      const res = await fetch(`${API_URL}/orders/${dbId}/assisted/request-end-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeader }
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`End OTP (${data.end_otp}) dispatched to customer WhatsApp!`);
+        fetchData();
+        if (selectedOrderDetail && selectedOrderDetail.id === dbId) openOrderDetails(dbId);
+      } else {
+        alert(data.error || 'Failed to trigger End OTP');
+      }
+    } catch (err) {
+      alert('Error triggering End OTP');
+    }
+  };
+
+  const handleAssistedVerifyEndOtp = async (dbId, defaultOtp = '') => {
+    const otpInput = prompt('Enter 4-digit End OTP received from customer WhatsApp:', defaultOtp || '');
+    if (!otpInput) return;
+    const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+    const authHeader = token ? { 'Authorization': `Bearer ${token}` } : {};
+    try {
+      const res = await fetch(`${API_URL}/orders/${dbId}/assisted/verify-end-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeader },
+        body: JSON.stringify({ otp: otpInput.trim() })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message || 'Job completed successfully! Cash payout recorded.');
+        fetchData();
+        if (selectedOrderDetail && selectedOrderDetail.id === dbId) openOrderDetails(dbId);
+      } else {
+        alert(data.error || 'Failed to verify End OTP');
+      }
+    } catch (err) {
+      alert('Error verifying End OTP');
+    }
+  };
+
+  const handleAssistedSettleCash = async (dbId) => {
+    if (!confirm('Confirm that physical cash has been paid to the helper?')) return;
+    const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+    const authHeader = token ? { 'Authorization': `Bearer ${token}` } : {};
+    try {
+      const res = await fetch(`${API_URL}/orders/${dbId}/assisted/settle-cash`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeader }
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message || 'Cash payout marked as settled!');
+        fetchData();
+        if (selectedOrderDetail && selectedOrderDetail.id === dbId) openOrderDetails(dbId);
+      } else {
+        alert(data.error || 'Failed to settle payout');
+      }
+    } catch (err) {
+      alert('Error settling cash payout');
     }
   };
 
@@ -834,8 +984,76 @@ export default function Dashboard() {
                   >
                     <Eye size={13} /> View Details
                   </button>
-                  {order.status === 'CONFIRMED' && (
-                    <button className="btn btn-primary" style={{ fontSize: '0.8rem' }} onClick={() => handleAssign(order.id)}>👤 Assign</button>
+                  {order.status === 'CONFIRMED' && !order.helper_id && (
+                    <button 
+                      className="btn btn-primary" 
+                      style={{ fontSize: '0.8rem' }} 
+                      onClick={() => { setAssignTargetOrder(order); setSelectedAssignHelperId(''); setShowAssignModal(true); }}
+                    >
+                      👤 Assign
+                    </button>
+                  )}
+                  {order.status === 'HELPER_ASSIGNED' && (
+                    <button 
+                      className="btn" 
+                      style={{ fontSize: '0.8rem', background: '#f59e0b', color: '#fff', border: 'none', fontWeight: 600 }} 
+                      onClick={() => handleAssistedArrived(order.id)}
+                      title="Helper reached location"
+                    >
+                      📍 Arrived
+                    </button>
+                  )}
+                  {order.status === 'ARRIVED' && (
+                    <button 
+                      className="btn" 
+                      style={{ fontSize: '0.8rem', background: '#3b82f6', color: '#fff', border: 'none', fontWeight: 600 }} 
+                      onClick={() => {
+                        let pData = {};
+                        try { pData = typeof order.payload === 'string' ? JSON.parse(order.payload) : (order.payload || {}); } catch(e){}
+                        handleAssistedVerifyStartOtp(order.id, pData.start_otp || order.delivery_otp);
+                      }}
+                      title="Verify Start OTP"
+                    >
+                      🔐 Start OTP
+                    </button>
+                  )}
+                  {order.status === 'SERVICE_STARTED' && (
+                    <button 
+                      className="btn" 
+                      style={{ fontSize: '0.8rem', background: '#10b981', color: '#fff', border: 'none', fontWeight: 600 }} 
+                      onClick={() => handleAssistedRequestEndOtp(order.id)}
+                      title="Request End OTP"
+                    >
+                      🏁 End OTP
+                    </button>
+                  )}
+                  {order.status === 'END_OTP_REQUESTED' && (
+                    <button 
+                      className="btn" 
+                      style={{ fontSize: '0.8rem', background: '#10b981', color: '#fff', border: 'none', fontWeight: 600 }} 
+                      onClick={() => {
+                        let pData = {};
+                        try { pData = typeof order.payload === 'string' ? JSON.parse(order.payload) : (order.payload || {}); } catch(e){}
+                        handleAssistedVerifyEndOtp(order.id, pData.end_otp);
+                      }}
+                      title="Verify End OTP"
+                    >
+                      🏁 Verify End OTP
+                    </button>
+                  )}
+                  {order.status === 'COMPLETED' && order.payout_method === 'PHYSICAL_CASH' && (
+                    order.payout_settled ? (
+                      <span style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: 700, padding: '2px 6px', background: '#dcfce7', borderRadius: '4px' }}>💵 Paid</span>
+                    ) : (
+                      <button 
+                        className="btn" 
+                        style={{ fontSize: '0.8rem', background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', fontWeight: 600 }} 
+                        onClick={() => handleAssistedSettleCash(order.id)}
+                        title="Mark cash paid to helper"
+                      >
+                        💵 Settle Cash
+                      </button>
+                    )
                   )}
                   {['HELPER_ACCEPTED', 'BILL_IMAGE_UPLOADED', 'ADMIN_APPROVED_BILL', 'HELPER_ARRIVED', 'ITEM_PHOTO_UPLOADED'].includes(order.status) && !order.vendor_id && order.engine_type === 'TASK' && (
                     <button className="btn btn-primary" style={{ fontSize: '0.8rem', background: '#8b5cf6', borderColor: '#8b5cf6' }} onClick={() => { setVendorTargetOrder(order); setShowVendorModal(true); }}>ðŸª Assign Vendor</button>
@@ -916,6 +1134,137 @@ export default function Dashboard() {
                   } catch (err) { alert('Failed to assign vendor'); }
                 }}
               >Assign Vendor</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* HELPER ASSIGNMENT MODAL (Smart Phone vs Keypad Phone) */}
+      {showAssignModal && assignTargetOrder && (
+        <div className="modal-overlay">
+          <div className="modal-card animate-fade" style={{ maxWidth: '600px', width: '100%' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800 }}>
+                👤 Assign Helper to Order #{assignTargetOrder.order_id}
+              </h3>
+              <button className="btn btn-outline" style={{ padding: '0.2rem 0.5rem' }} onClick={() => setShowAssignModal(false)}>✕</button>
+            </div>
+
+            <div style={{ marginBottom: '1.2rem', padding: '0.85rem 1rem', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '0.875rem' }}>
+              <div><strong>Service:</strong> <span style={{ color: '#2563eb', fontWeight: 700 }}>{assignTargetOrder.service}</span></div>
+              <div style={{ marginTop: '3px' }}><strong>Customer:</strong> {assignTargetOrder.customer_name} ({assignTargetOrder.customer_number || assignTargetOrder.customer_phone})</div>
+            </div>
+
+            {/* Filter Pills */}
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+              <button 
+                type="button"
+                className={`btn ${assignHelperFilter === 'ALL' ? 'btn-primary' : 'btn-outline'}`}
+                style={{ fontSize: '0.8rem', padding: '0.35rem 0.8rem' }}
+                onClick={() => setAssignHelperFilter('ALL')}
+              >
+                All Helpers ({allHelpers.length})
+              </button>
+              <button 
+                type="button"
+                className={`btn ${assignHelperFilter === 'SMARTPHONE' ? 'btn-primary' : 'btn-outline'}`}
+                style={{ fontSize: '0.8rem', padding: '0.35rem 0.8rem' }}
+                onClick={() => setAssignHelperFilter('SMARTPHONE')}
+              >
+                📱 Smart Phone ({allHelpers.filter(h => (h.device_type || 'SMARTPHONE') === 'SMARTPHONE').length})
+              </button>
+              <button 
+                type="button"
+                className={`btn ${assignHelperFilter === 'KEYPAD' ? 'btn-primary' : 'btn-outline'}`}
+                style={{ fontSize: '0.8rem', padding: '0.35rem 0.8rem' }}
+                onClick={() => setAssignHelperFilter('KEYPAD')}
+              >
+                📞 Keypad / Old ({allHelpers.filter(h => h.device_type === 'KEYPAD').length})
+              </button>
+            </div>
+
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 700, fontSize: '0.875rem' }}>
+                Select Helper:
+              </label>
+              <select 
+                style={{ width: '100%', padding: '0.65rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.9rem' }}
+                value={selectedAssignHelperId}
+                onChange={(e) => setSelectedAssignHelperId(e.target.value)}
+              >
+                <option value="">-- Choose Helper from list --</option>
+                {allHelpers
+                  .filter(h => {
+                    if (assignHelperFilter === 'SMARTPHONE') return (h.device_type || 'SMARTPHONE') === 'SMARTPHONE';
+                    if (assignHelperFilter === 'KEYPAD') return h.device_type === 'KEYPAD';
+                    return true;
+                  })
+                  .map(h => (
+                    <option key={h.id} value={h.id}>
+                      {h.device_type === 'KEYPAD' ? '📞 [KEYPAD]' : '📱 [SMART]'} {h.name} ({h.phone}) — {h.status || 'ONLINE'} — {h.category}
+                    </option>
+                  ))
+                }
+              </select>
+            </div>
+
+            {/* Instruction Banner based on selected helper's device */}
+            {(() => {
+              const selected = allHelpers.find(h => String(h.id) === String(selectedAssignHelperId));
+              if (!selected) return null;
+              const isKeypad = selected.device_type === 'KEYPAD';
+              return (
+                <div style={{ 
+                  padding: '1rem', 
+                  borderRadius: '10px', 
+                  marginBottom: '1.25rem',
+                  background: isKeypad ? '#fef3c7' : '#eff6ff', 
+                  border: `1px solid ${isKeypad ? '#fde68a' : '#bfdbfe'}`,
+                  color: isKeypad ? '#92400e' : '#1e40af',
+                  fontSize: '0.85rem',
+                  lineHeight: 1.5
+                }}>
+                  <div style={{ fontWeight: 800, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {isKeypad ? '📞 Keypad / Basic Phone Helper Flow' : '📱 Smart Phone Helper Flow'}
+                  </div>
+                  {isKeypad ? (
+                    <div>
+                      Call <strong>{selected.name}</strong> at <strong>{selected.phone}</strong> to confirm availability.<br/>
+                      If she says <strong>"YES"</strong>, click <em>Confirm & Assign (Keypad Mode)</em>.<br/>
+                      The customer will automatically receive a WhatsApp notification that {selected.name} is assigned!
+                    </div>
+                  ) : (
+                    <div>
+                      Clicking button will send an interactive WhatsApp offer to <strong>{selected.name} ({selected.phone})</strong> with Accept / Reject buttons.
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button type="button" className="btn btn-outline" onClick={() => setShowAssignModal(false)}>Cancel</button>
+              {(() => {
+                const selected = allHelpers.find(h => String(h.id) === String(selectedAssignHelperId));
+                const isKeypad = selected?.device_type === 'KEYPAD';
+                return (
+                  <button 
+                    type="button" 
+                    className="btn btn-primary"
+                    style={{ background: isKeypad ? '#f59e0b' : '#2563eb', borderColor: isKeypad ? '#f59e0b' : '#2563eb', fontWeight: 700 }}
+                    disabled={!selectedAssignHelperId}
+                    onClick={() => {
+                      if (isKeypad) {
+                        handleAssistedAssign(assignTargetOrder.id, selectedAssignHelperId);
+                      } else {
+                        handleAssignSmart(assignTargetOrder.id, selectedAssignHelperId);
+                      }
+                    }}
+                  >
+                    {isKeypad ? '✅ Confirm & Assign (Keypad Mode)' : '📲 Send WhatsApp Offer (Smart Mode)'}
+                  </button>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -1096,6 +1445,302 @@ export default function Dashboard() {
                     )}
                   </div>
 
+                  {/* ── Keypad / Home Service Assisted Operations Panel ── */}
+                  {((selectedOrderDetail.helper_device_type === 'KEYPAD') || (selectedOrderDetail.service || '').toLowerCase().includes('home') || (selectedOrderDetail.order_id || '').startsWith('N2D_HS_')) && (() => {
+                    let pData = selectedOrderDetail.parsed_payload;
+                    if (!pData && selectedOrderDetail.payload) {
+                      try { pData = typeof selectedOrderDetail.payload === 'string' ? JSON.parse(selectedOrderDetail.payload) : selectedOrderDetail.payload; } catch(e){}
+                    }
+                    pData = pData || {};
+
+                    const isKeypadHelper = selectedOrderDetail.helper_device_type === 'KEYPAD';
+                    const startOtpVal = pData.start_otp || selectedOrderDetail.start_otp;
+                    const endOtpVal = pData.end_otp || selectedOrderDetail.end_otp;
+                    const currentStatus = selectedOrderDetail.status;
+                    const isSettled = selectedOrderDetail.payout_settled === 1;
+
+                    return (
+                      <div style={{
+                        background: isKeypadHelper ? '#fffbeb' : '#f8fafc',
+                        border: `1.5px solid ${isKeypadHelper ? '#fde68a' : '#e2e8f0'}`,
+                        borderRadius: '14px',
+                        padding: '18px 20px',
+                      }}>
+                        {/* Section Header */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '18px' }}>{isKeypadHelper ? '📞' : '🏠'}</span>
+                            <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: isKeypadHelper ? '#92400e' : '#1e3a8a' }}>
+                              {isKeypadHelper ? 'Keypad Phone Assisted Operations' : 'Home Service Operations Panel'}
+                            </h4>
+                          </div>
+                          <span style={{
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            padding: '3px 8px',
+                            borderRadius: '20px',
+                            background: isKeypadHelper ? '#fef3c7' : '#e0e7ff',
+                            color: isKeypadHelper ? '#b45309' : '#3730a3',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '5px'
+                          }}>
+                            {isKeypadHelper ? <><PhoneCall size={12} /> Keypad / Old Phone Mode</> : <><Smartphone size={12} /> Smartphone Mode</>}
+                          </span>
+                        </div>
+
+                        {/* Workflow Stepper */}
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+                          gap: '8px',
+                          marginBottom: '16px',
+                        }}>
+                          {/* Step 1: Assign */}
+                          <div style={{
+                            padding: '10px',
+                            borderRadius: '8px',
+                            background: selectedOrderDetail.helper_id ? '#ecfdf5' : '#f1f5f9',
+                            border: `1px solid ${selectedOrderDetail.helper_id ? '#a7f3d0' : '#cbd5e1'}`,
+                            fontSize: '11.5px',
+                          }}>
+                            <div style={{ fontWeight: 800, color: selectedOrderDetail.helper_id ? '#065f46' : '#475569' }}>
+                              {selectedOrderDetail.helper_id ? '✓ 1. Assigned' : '1. Assignment'}
+                            </div>
+                            <div style={{ fontSize: '10.5px', color: '#64748b', marginTop: '2px' }}>
+                              {selectedOrderDetail.helper_name ? selectedOrderDetail.helper_name.slice(0, 15) : 'Pending'}
+                            </div>
+                          </div>
+
+                          {/* Step 2: Arrived */}
+                          <div style={{
+                            padding: '10px',
+                            borderRadius: '8px',
+                            background: ['ARRIVED', 'SERVICE_STARTED', 'END_OTP_REQUESTED', 'COMPLETED', 'PAID'].includes(currentStatus) ? '#ecfdf5' : currentStatus === 'HELPER_ASSIGNED' ? '#fef3c7' : '#f1f5f9',
+                            border: `1px solid ${['ARRIVED', 'SERVICE_STARTED', 'END_OTP_REQUESTED', 'COMPLETED', 'PAID'].includes(currentStatus) ? '#a7f3d0' : currentStatus === 'HELPER_ASSIGNED' ? '#fde68a' : '#cbd5e1'}`,
+                            fontSize: '11.5px',
+                          }}>
+                            <div style={{ fontWeight: 800, color: ['ARRIVED', 'SERVICE_STARTED', 'END_OTP_REQUESTED', 'COMPLETED', 'PAID'].includes(currentStatus) ? '#065f46' : currentStatus === 'HELPER_ASSIGNED' ? '#b45309' : '#475569' }}>
+                              {['ARRIVED', 'SERVICE_STARTED', 'END_OTP_REQUESTED', 'COMPLETED', 'PAID'].includes(currentStatus) ? '✓ 2. Arrived' : '2. Arrival'}
+                            </div>
+                            <div style={{ fontSize: '10.5px', color: '#64748b', marginTop: '2px' }}>
+                              {['ARRIVED', 'SERVICE_STARTED', 'END_OTP_REQUESTED', 'COMPLETED', 'PAID'].includes(currentStatus) ? 'At Location' : currentStatus === 'HELPER_ASSIGNED' ? 'On The Way' : 'Pending'}
+                            </div>
+                          </div>
+
+                          {/* Step 3: Start OTP */}
+                          <div style={{
+                            padding: '10px',
+                            borderRadius: '8px',
+                            background: ['SERVICE_STARTED', 'END_OTP_REQUESTED', 'COMPLETED', 'PAID'].includes(currentStatus) ? '#ecfdf5' : currentStatus === 'ARRIVED' ? '#eff6ff' : '#f1f5f9',
+                            border: `1px solid ${['SERVICE_STARTED', 'END_OTP_REQUESTED', 'COMPLETED', 'PAID'].includes(currentStatus) ? '#a7f3d0' : currentStatus === 'ARRIVED' ? '#bfdbfe' : '#cbd5e1'}`,
+                            fontSize: '11.5px',
+                          }}>
+                            <div style={{ fontWeight: 800, color: ['SERVICE_STARTED', 'END_OTP_REQUESTED', 'COMPLETED', 'PAID'].includes(currentStatus) ? '#065f46' : currentStatus === 'ARRIVED' ? '#1d4ed8' : '#475569' }}>
+                              {['SERVICE_STARTED', 'END_OTP_REQUESTED', 'COMPLETED', 'PAID'].includes(currentStatus) ? '✓ 3. Started' : '3. Start OTP'}
+                            </div>
+                            <div style={{ fontSize: '10.5px', color: '#64748b', marginTop: '2px' }}>
+                              {startOtpVal ? `OTP: ${startOtpVal}` : 'Not Generated'}
+                            </div>
+                          </div>
+
+                          {/* Step 4: End OTP */}
+                          <div style={{
+                            padding: '10px',
+                            borderRadius: '8px',
+                            background: ['COMPLETED', 'PAID'].includes(currentStatus) ? '#ecfdf5' : currentStatus === 'END_OTP_REQUESTED' ? '#fef3c7' : '#f1f5f9',
+                            border: `1px solid ${['COMPLETED', 'PAID'].includes(currentStatus) ? '#a7f3d0' : currentStatus === 'END_OTP_REQUESTED' ? '#fde68a' : '#cbd5e1'}`,
+                            fontSize: '11.5px',
+                          }}>
+                            <div style={{ fontWeight: 800, color: ['COMPLETED', 'PAID'].includes(currentStatus) ? '#065f46' : currentStatus === 'END_OTP_REQUESTED' ? '#b45309' : '#475569' }}>
+                              {['COMPLETED', 'PAID'].includes(currentStatus) ? '✓ 4. Finished' : '4. End OTP'}
+                            </div>
+                            <div style={{ fontSize: '10.5px', color: '#64748b', marginTop: '2px' }}>
+                              {endOtpVal ? `OTP: ${endOtpVal}` : currentStatus === 'SERVICE_STARTED' ? 'In Progress' : 'Pending'}
+                            </div>
+                          </div>
+
+                          {/* Step 5: Cash Payout */}
+                          <div style={{
+                            padding: '10px',
+                            borderRadius: '8px',
+                            background: isSettled ? '#ecfdf5' : (currentStatus === 'COMPLETED' ? '#fef3c7' : '#f1f5f9'),
+                            border: `1px solid ${isSettled ? '#a7f3d0' : (currentStatus === 'COMPLETED' ? '#fde68a' : '#cbd5e1')}`,
+                            fontSize: '11.5px',
+                          }}>
+                            <div style={{ fontWeight: 800, color: isSettled ? '#065f46' : (currentStatus === 'COMPLETED' ? '#b45309' : '#475569') }}>
+                              {isSettled ? '✓ 5. Settled' : '5. Cash Payout'}
+                            </div>
+                            <div style={{ fontSize: '10.5px', color: '#64748b', marginTop: '2px' }}>
+                              {isSettled ? 'Handed Over' : 'Offline Cash'}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Interactive Step Actions */}
+                        <div style={{
+                          background: '#fff',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '10px',
+                          padding: '14px 16px',
+                        }}>
+                          {/* UNASSIGNED */}
+                          {(!selectedOrderDetail.helper_id || currentStatus === 'CONFIRMED') && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                              <div>
+                                <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>Step 1: Assign Helper</div>
+                                <div style={{ fontSize: '12px', color: '#64748b' }}>Select a Keypad Phone helper or Smartphone helper.</div>
+                              </div>
+                              <button
+                                className="btn btn-primary"
+                                style={{ fontSize: '12.5px', padding: '6px 14px' }}
+                                onClick={() => {
+                                  setAssignTargetOrder(selectedOrderDetail);
+                                  setSelectedAssignHelperId('');
+                                  setShowAssignModal(true);
+                                }}
+                              >
+                                👤 Assign Helper
+                              </button>
+                            </div>
+                          )}
+
+                          {/* HELPER_ASSIGNED */}
+                          {currentStatus === 'HELPER_ASSIGNED' && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                              <div>
+                                <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>Step 2: Helper Arrival at Location</div>
+                                <div style={{ fontSize: '12px', color: '#64748b' }}>
+                                  Helper will call when reaching customer's house. Click below to notify customer on WhatsApp & dispatch Start OTP.
+                                </div>
+                              </div>
+                              <button
+                                className="btn"
+                                style={{ fontSize: '12.5px', background: '#f59e0b', color: '#fff', border: 'none', fontWeight: 700, padding: '7px 16px' }}
+                                onClick={() => handleAssistedArrived(selectedOrderDetail.id)}
+                              >
+                                📍 Mark Helper Arrived
+                              </button>
+                            </div>
+                          )}
+
+                          {/* ARRIVED */}
+                          {currentStatus === 'ARRIVED' && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                              <div>
+                                <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
+                                  Step 3: Verify Start OTP & Start Service
+                                </div>
+                                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                                  Customer sends OTP directly on WhatsApp (auto-verified), or read it to admin.
+                                  {startOtpVal && (
+                                    <span style={{ marginLeft: '6px', fontWeight: 700, color: '#2563eb' }}>
+                                      Active Start OTP: <strong>{startOtpVal}</strong>
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <button
+                                className="btn"
+                                style={{ fontSize: '12.5px', background: '#3b82f6', color: '#fff', border: 'none', fontWeight: 700, padding: '7px 16px' }}
+                                onClick={() => handleAssistedVerifyStartOtp(selectedOrderDetail.id, startOtpVal)}
+                              >
+                                🔐 Verify Start OTP ({startOtpVal || 'Enter'})
+                              </button>
+                            </div>
+                          )}
+
+                          {/* SERVICE_STARTED */}
+                          {currentStatus === 'SERVICE_STARTED' && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                              <div>
+                                <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
+                                  Step 4: Service In Progress
+                                </div>
+                                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                                  Scheduled duration running. When helper finishes, click to send End OTP to customer WhatsApp.
+                                </div>
+                              </div>
+                              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                <button
+                                  className="btn"
+                                  style={{ fontSize: '12.5px', background: '#10b981', color: '#fff', border: 'none', fontWeight: 700, padding: '7px 14px' }}
+                                  onClick={() => handleAssistedRequestEndOtp(selectedOrderDetail.id)}
+                                >
+                                  🏁 Request End OTP
+                                </button>
+                                {endOtpVal && (
+                                  <button
+                                    className="btn btn-primary"
+                                    style={{ fontSize: '12.5px', padding: '7px 14px' }}
+                                    onClick={() => handleAssistedVerifyEndOtp(selectedOrderDetail.id, endOtpVal)}
+                                  >
+                                    Verify End OTP ({endOtpVal})
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* END_OTP_REQUESTED */}
+                          {currentStatus === 'END_OTP_REQUESTED' && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                              <div>
+                                <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
+                                  Step 4: Awaiting End OTP from Customer
+                                </div>
+                                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                                  Customer can reply with End OTP on WhatsApp.
+                                  {endOtpVal && (
+                                    <span style={{ marginLeft: '6px', fontWeight: 700, color: '#059669' }}>
+                                      Dispatched End OTP: <strong>{endOtpVal}</strong>
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <button
+                                className="btn"
+                                style={{ fontSize: '12.5px', background: '#10b981', color: '#fff', border: 'none', fontWeight: 700, padding: '7px 16px' }}
+                                onClick={() => handleAssistedVerifyEndOtp(selectedOrderDetail.id, endOtpVal)}
+                              >
+                                🏁 Verify End OTP ({endOtpVal || 'Enter'})
+                              </button>
+                            </div>
+                          )}
+
+                          {/* COMPLETED */}
+                          {(currentStatus === 'COMPLETED' || currentStatus === 'PAID') && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                              <div>
+                                <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
+                                  Step 5: Physical Cash Payout
+                                </div>
+                                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                                  {isSettled
+                                    ? '✅ Helper has been physically paid in cash. Payout settlement completed.'
+                                    : 'Aged helper payout is pending physical cash settlement.'}
+                                </div>
+                              </div>
+                              {isSettled ? (
+                                <span style={{ fontSize: '12.5px', color: '#16a34a', fontWeight: 800, padding: '5px 12px', background: '#dcfce7', borderRadius: '6px' }}>
+                                  ✓ Cash Paid & Settled
+                                </span>
+                              ) : (
+                                <button
+                                  className="btn"
+                                  style={{ fontSize: '12.5px', background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', fontWeight: 700, padding: '7px 16px' }}
+                                  onClick={() => handleAssistedSettleCash(selectedOrderDetail.id)}
+                                >
+                                  💵 Confirm Cash Paid to Helper
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* ── Assignment & Financial ── */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
 
@@ -1106,6 +1751,20 @@ export default function Dashboard() {
                       </h4>
                       <div style={{ fontSize: '13.5px', lineHeight: '1.75', color: '#334155' }}>
                         <div><strong>Helper:</strong> {selectedOrderDetail.helper_name ? `${selectedOrderDetail.helper_name} (${selectedOrderDetail.helper_phone})` : <span style={{ color: '#94a3b8' }}>Unassigned</span>}</div>
+                        {selectedOrderDetail.helper_name && (
+                          <div>
+                            <strong>Helper Device:</strong>{' '}
+                            {selectedOrderDetail.helper_device_type === 'KEYPAD' ? (
+                              <span style={{ color: '#b45309', fontWeight: 700, background: '#fef3c7', padding: '1px 6px', borderRadius: '4px', fontSize: '12px' }}>
+                                📞 Keypad / Old Phone
+                              </span>
+                            ) : (
+                              <span style={{ color: '#1d4ed8', fontWeight: 700, background: '#eff6ff', padding: '1px 6px', borderRadius: '4px', fontSize: '12px' }}>
+                                📱 Smartphone
+                              </span>
+                            )}
+                          </div>
+                        )}
                         <div><strong>Vendor:</strong> {selectedOrderDetail.vendor_name ? `${selectedOrderDetail.vendor_name} (${selectedOrderDetail.vendor_phone})` : <span style={{ color: '#94a3b8' }}>None</span>}</div>
                         {selectedOrderDetail.otp && (
                           <div style={{ marginTop: '6px' }}>
@@ -1139,10 +1798,19 @@ export default function Dashboard() {
                         <div>
                           <strong>Payment Status:</strong>{' '}
                           {selectedOrderDetail.status === 'COMPLETED' || selectedOrderDetail.status === 'PAID'
-                            ? <span style={{ color: '#059669', fontWeight: 700 }}>PAID âœ“</span>
+                            ? <span style={{ color: '#059669', fontWeight: 700 }}>PAID ✓</span>
                             : <span style={{ color: '#d97706', fontWeight: 700 }}>PENDING</span>
                           }
                         </div>
+                        {selectedOrderDetail.payout_method && (
+                          <div style={{ marginTop: '4px' }}>
+                            <strong>Helper Payout:</strong>{' '}
+                            <span style={{ fontWeight: 700, color: selectedOrderDetail.payout_settled ? '#059669' : '#d97706' }}>
+                              {selectedOrderDetail.payout_method === 'PHYSICAL_CASH' ? '💵 Physical Cash' : selectedOrderDetail.payout_method}
+                              {' '}({selectedOrderDetail.payout_settled ? 'Settled ✓' : 'Pending Settlement'})
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
