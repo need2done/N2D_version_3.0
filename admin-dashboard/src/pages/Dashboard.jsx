@@ -3,6 +3,7 @@ import { LayoutDashboard, Users, MapPin, Activity, Download, FileText, Calendar,
 import { exportToExcel, exportToPDF } from '../utils/exportUtils';
 import { formatOrderDateTime, formatDateTimeIST, formatTimeIST, formatDateIST } from '../utils/dateUtils';
 import { API_URL } from '../config';
+import CallOrderModal from '../components/CallOrderModal';
 
 
 const StatCard = ({ title, value, Icon, color, bgColor, trend }) => (
@@ -118,6 +119,9 @@ export default function Dashboard() {
   // Order Details Modal State
   const [selectedOrderDetail, setSelectedOrderDetail] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+
+  // Quick Call Order Modal State
+  const [showCallOrderModal, setShowCallOrderModal] = useState(false);
 
   const openOrderDetails = async (orderIdOrDbId) => {
     setLoadingDetail(true);
@@ -622,6 +626,28 @@ export default function Dashboard() {
           </button>
           <button className="btn btn-export-pdf" onClick={handleExportPDF} title="Export Printable PDF Report">
             <FileText size={16} /> PDF Report
+          </button>
+
+          {/* Quick Call Order Button */}
+          <button
+            className="btn btn-primary"
+            onClick={() => setShowCallOrderModal(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              backgroundColor: '#0284c7',
+              color: '#ffffff',
+              fontWeight: 800,
+              padding: '7px 15px',
+              borderRadius: '10px',
+              boxShadow: '0 2px 8px rgba(2, 132, 199, 0.3)',
+              border: 'none',
+              cursor: 'pointer'
+            }}
+            title="Create quick order while on call with customer"
+          >
+            <PhoneCall size={15} /> New Call Order
           </button>
         </div>
       </div>
@@ -1843,6 +1869,15 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* Quick Call Order Modal */}
+      <CallOrderModal
+        isOpen={showCallOrderModal}
+        onClose={() => setShowCallOrderModal(false)}
+        onOrderCreated={() => {
+          fetchData();
+        }}
+      />
 
     </div>
   );

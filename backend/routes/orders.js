@@ -961,4 +961,235 @@ router.post('/:id/assisted/settle-cash', authenticateAdmin, async (req, res) => 
     }
 });
 
+// ==========================================
+// 7. POST /api/orders/call-order — Admin places phone order
+// Body: { customer_phone, customer_name, service, engine_type, vehicle_type,
+//         service_title, pickup_location, drop_location, distance_km,
+//         total_amount, helper_charge, platform_fee, bill_amount,
+//         payment_method, helper_id, notes, booking_date, booking_slot }
+// ==========================================
+router.post('/call-order', authenticateAdmin, async (req, res) => {
+    try {
+        const {
+            customer_phone,
+            customer_name,
+            service = 'Service',
+            engine_type = 'TASK',
+            vehicle_type = 'BIKE',
+            service_title = 'Phone Booking',
+            pickup_location = '',
+            drop_location = '',
+            distance_km = 0,
+            total_amount = 0,
+            helper_charge = 0,
+            platform_fee = 5,
+            bill_amount = 0,
+            payment_method = 'CASH',
+            helper_id = null,
+            notes = '',
+            booking_date = null,
+            booking_slot = null
+        } = req.body;
+
+        if (!customer_phone) {
+            return res.status(400).json({ success: false, error: 'Customer phone number is required' });
+        }
+
+        // Normalize phone number
+        let rawPhone = String(customer_phone).replace(/\D/g, '');
+        if (rawPhone.length === 10) rawPhone = '91' + rawPhone;
+        const normalizedPhone = rawPhone;
+
+        // 1. Get or create customer
+        let [custRows] = await db.query('SELECT id FROM customers WHERE phone = ?', [normalizedPhone]);
+        let customerId;
+        const finalCustomerName = customer_name && customer_name.trim() ? customer_name.trim() : 'Phone Caller';
+
+        if (custRows.length === 0) {
+            const [newCust] = await db.query('INSERT INTO customers (phone, name) VALUES (?, ?)', [normalizedPhone, finalCustomerName]);
+            customerId = newCust.insertId;
+        } else {
+            customerId = custRows[0].id;
+            if (customer_name && customer_name.trim()) {
+                await db.query('UPDATE customers SET name = ? WHERE id = ?', [customer_name.trim(), customerId]);
+            }
+        }
+
+        // 2. Determine Order ID code based on engine/service
+        const cleanService = (service || '').toLowerCase();
+        let prefix = 'N2D_CALL_';
+        if (engine_type === 'RIDE' || cleanService.includes('ride')) {
+            prefix = 'N2DRD_CALL_';
+        } else if (cleanService.includes('custom') || cleanService.includes('anywork') || cleanService.includes('errand')) {
+            prefix = 'N2DCW_CALL_';
+        } else if (cleanService.includes('home')) {
+            prefix = 'N2DHS_CALL_';
+        }
+
+        const timestampCode = Date.now().toString().slice(-6);
+        const randomNum = Math.floor(100 + Math.random() * 900);
+        const orderIdStr = `${prefix}${timestampCode}${randomNum}`;
+
+        const startOtp = String(Math.floor(1000 + Math.random() * 9000));
+        const endOtp = String(Math.floor(1000 + Math.random() * 9000));
+
+        const payloadObj = {
+            call_order: true,
+            source: 'PHONE_CALL',
+            created_by: 'ADMIN',
+            service_title,
+            pickup_location,
+            drop_location,
+            distance_km: parseFloat(distance_km) || 0,
+            vehicle_type: engine_type === 'RIDE' ? vehicle_type : null,
+            notes: notes || '',
+            start_otp: startOtp,
+            end_otp: endOtp,
+            bookingDate: booking_date,
+            bookingSlot: booking_slot
+        };
+
+        const initialStatus = helper_id ? 'HELPER_ACCEPTED' : 'CONFIRMED';
+        const parsedTotal = parseFloat(total_amount) || 0;
+        const parsedHelper = parseFloat(helper_charge) || 0;
+        const parsedPlatform = parseFloat(platform_fee) || 0;
+        const parsedBill = parseFloat(bill_amount) || 0;
+
+        // 3. Insert into orders table
+        const [orderResult] = await db.query(`
+            INSERT INTO orders (
+                order_id, engine_type, customer_id, customer_number, customer_name,
+                service, status, payment_method, payment_status,
+                total_amount, helper_charge, platform_fee, bill_amount,
+                helper_id, assigned_at, payload, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?, ?, ?, ${helper_id ? 'NOW()' : 'NULL'}, ?, NOW())
+        `, [
+            orderIdStr,
+            engine_type,
+            customerId,
+            normalizedPhone,
+            finalCustomerName,
+            service,
+            initialStatus,
+            payment_method || 'CASH',
+            parsedTotal,
+            parsedHelper,
+            parsedPlatform,
+            parsedBill,
+            helper_id ? parseInt(helper_id) : null,
+            JSON.stringify(payloadObj)
+        ]);
+
+        const orderDbId = orderResult.insertId;
+
+        // 4. Engine Specific tables
+        if (engine_type === 'RIDE') {
+            await db.query(`
+                INSERT INTO order_rides (
+                    order_id, vehicle_type, start_otp, end_otp, otp_attempts, locked
+                ) VALUES (?, ?, ?, ?, 0, 0)
+            `, [orderDbId, vehicle_type || 'BIKE', startOtp, endOtp]);
+        }
+
+        const itemsSummaryText = `📞 [Call Order] ${service_title}\n` +
+            (pickup_location ? `📍 Pickup: ${pickup_location}\n` : '') +
+            (drop_location ? `🏁 Drop: ${drop_location}\n` : '') +
+            (distance_km > 0 ? `📏 Distance: ${distance_km} km\n` : '') +
+            (notes ? `📝 Note: ${notes}` : '');
+
+        await db.query(`
+            INSERT INTO order_tasks (order_id, items_text, bill_amount)
+            VALUES (?, ?, ?)
+        `, [orderDbId, itemsSummaryText, parsedBill > 0 ? parsedBill : parsedTotal]);
+
+        await db.query(`
+            INSERT INTO order_items (order_id, item_text)
+            VALUES (?, ?)
+        `, [orderDbId, `${service_title}${distance_km > 0 ? ` (${distance_km} km)` : ''}`]);
+
+        // 5. Timeline
+        await db.query(`
+            INSERT INTO order_timeline (order_id, event_type, event_text, triggered_by)
+            VALUES (?, 'CALL_ORDER_CREATED', ?, 'ADMIN')
+        `, [orderDbId, `Order #${orderIdStr} created by Admin via Phone Call for ${finalCustomerName} (${normalizedPhone})`]);
+
+        // 6. Handle Helper Assignment if helper_id provided
+        let helperInfo = null;
+        if (helper_id) {
+            const [hRows] = await db.query('SELECT id, name, phone, device_type FROM helpers WHERE id = ?', [helper_id]);
+            if (hRows.length > 0) {
+                helperInfo = hRows[0];
+                await db.query('UPDATE helpers SET status = "BUSY" WHERE id = ?', [helper_id]);
+                await db.query('UPDATE helper_status SET status = "UNAVAILABLE" WHERE helper_id = ?', [helper_id]);
+
+                await db.query(`
+                    INSERT INTO order_timeline (order_id, event_type, event_text, triggered_by)
+                    VALUES (?, 'HELPER_ASSIGNED', ?, 'ADMIN')
+                `, [orderDbId, `Directly assigned to Helper ${helperInfo.name} (${helperInfo.device_type})`]);
+
+                // Send assignment notification to helper WhatsApp if smartphone
+                if (helperInfo.device_type !== 'KEYPAD' && helperInfo.phone) {
+                    const helperMsg = `📣 *New Assigned Call Order!* 🛵\n\n` +
+                        `🆔 *Order:* #${orderIdStr}\n` +
+                        `🛠 *Service:* ${service_title}\n` +
+                        `👤 *Customer:* ${finalCustomerName}\n` +
+                        `📞 *Phone:* ${normalizedPhone}\n` +
+                        (pickup_location ? `📍 *Pickup:* ${pickup_location}\n` : '') +
+                        (drop_location ? `🏁 *Drop:* ${drop_location}\n` : '') +
+                        `💰 *Your Payout:* ₹${parsedHelper}\n` +
+                        `💵 *Payment Mode:* ${payment_method === 'CASH' ? 'Collect Cash from Customer' : 'Customer paying online'}\n\n` +
+                        `Please proceed to serve this customer immediately!`;
+                    
+                    await sendWhatsAppText(helperInfo.phone, helperMsg);
+                }
+            }
+        }
+
+        // 7. Send WhatsApp Confirmation to Customer
+        const trackUrl = `https://need2done.in/track/${orderIdStr}`;
+        const payText = payment_method === 'CASH' ? '💵 Cash to Helper on Delivery' : '💳 Online Payment (UPI)';
+        
+        const customerMsg = `🎉 *Need2Done Order Confirmed!*\n\n` +
+            `Hello *${finalCustomerName}*, your booking made by phone call is confirmed.\n\n` +
+            `🆔 *Order ID:* #${orderIdStr}\n` +
+            `🛠️ *Service:* ${service_title}\n` +
+            (pickup_location ? `📍 *Pickup:* ${pickup_location}\n` : '') +
+            (drop_location ? `🏁 *Drop:* ${drop_location}\n` : '') +
+            `💰 *Total Amount:* ₹${parsedTotal}\n` +
+            `💳 *Payment Mode:* ${payText}\n` +
+            (helperInfo ? `🛵 *Assigned Helper:* ${helperInfo.name}\n` : `🛵 *Helper:* Assigning shortly...\n`) +
+            `\n📲 *Live Tracking Link:*\n${trackUrl}\n\n` +
+            `📞 Need help? Call Support: 7095849056\n` +
+            `Thank you for choosing Need2Done!`;
+
+        await sendWhatsAppText(normalizedPhone, customerMsg);
+
+        // 8. Notify Admin WhatsApp
+        if (ADMIN_NUMBER) {
+            await sendWhatsAppText(ADMIN_NUMBER, 
+                `🔔 *New Call Order Placed!* #${orderIdStr}\n` +
+                `👤 Customer: ${finalCustomerName} (${normalizedPhone})\n` +
+                `🛠️ Service: ${service_title}\n` +
+                `💰 Fare: ₹${parsedTotal} | Helper: ₹${parsedHelper} | N2D: ₹${parsedPlatform}\n` +
+                `🛵 Assigned: ${helperInfo ? helperInfo.name : 'Auto-Broadcast'}`
+            );
+        }
+
+        res.json({
+            success: true,
+            order_id: orderDbId,
+            display_id: orderIdStr,
+            customer_name: finalCustomerName,
+            customer_phone: normalizedPhone,
+            total_amount: parsedTotal,
+            helper_charge: parsedHelper,
+            platform_fee: parsedPlatform,
+            message: 'Call order created successfully and customer intimated via WhatsApp!'
+        });
+    } catch (err) {
+        console.error('Error creating call order:', err);
+        res.status(500).json({ success: false, error: err.message || 'DB error' });
+    }
+});
+
 module.exports = router;

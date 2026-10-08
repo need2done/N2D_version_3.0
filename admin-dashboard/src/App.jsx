@@ -19,10 +19,11 @@ import Vendors           from './pages/Vendors';
 import WalletPage        from './pages/Wallet';
 import CustomWorkAdmin   from './pages/CustomWorkAdmin';
 import HomeServicesPage  from './pages/HomeServicesPage';
+import FareCalculatorPage from './pages/FareCalculatorPage';
 
 import {
   LayoutDashboard, BarChart3,
-  Layers, Home, Briefcase,
+  Layers, Home, Briefcase, Calculator,
   MapPinned, Activity,
   Users, Wrench, Store,
   DollarSign, Wallet, Bell,
@@ -142,6 +143,7 @@ const ROUTE_LABELS = {
   'services':     'Services',
   'home-services':'Home Services',
   'custom-work':  'Custom Work Admin',
+  'fare-calculator': 'Fare Calculator',
   'earnings':     'Payments & Earnings',
   'analysis':     'Analytics',
   'map':          'Live Tracking',
@@ -291,6 +293,9 @@ const DashboardLayout = () => {
           <NavItem to="/custom-work" icon={Briefcase} onClick={closeSidebar}>
             Custom Work Admin
           </NavItem>
+          <NavItem to="/fare-calculator" icon={Calculator} onClick={closeSidebar}>
+            Fare Calculator
+          </NavItem>
 
           {/* FULFILLMENT & TRACK */}
           <NavSection label="Fulfillment & Track" />
@@ -378,6 +383,7 @@ function App() {
             <Route path="/services"      element={<Services />} />
             <Route path="/home-services" element={<HomeServicesPage />} />
             <Route path="/custom-work"   element={<CustomWorkAdmin />} />
+            <Route path="/fare-calculator" element={<FareCalculatorPage />} />
             <Route path="/earnings"      element={<Earnings />} />
             <Route path="/analysis"      element={<Analysis />} />
             <Route path="/map"           element={<LiveMap />} />
