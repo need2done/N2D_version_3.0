@@ -95,7 +95,8 @@ export default function Support() {
           <span className="badge task">{filteredRequests.length} Support Tickets</span>
         </div>
 
-        <table>
+        <div className="table-responsive">
+          <table>
           <thead>
             <tr>
               <th>ID</th>
@@ -141,6 +142,7 @@ export default function Support() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

@@ -151,7 +151,8 @@ export default function HomeServiceHelpers() {
           <span className="badge task">{filteredHelpers.length} Home Service Technicians</span>
         </div>
 
-        <table>
+        <div className="table-responsive">
+          <table>
           <thead>
             <tr>
               <th>ID</th>
@@ -227,6 +228,7 @@ export default function HomeServiceHelpers() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Helper Profile Modal */}

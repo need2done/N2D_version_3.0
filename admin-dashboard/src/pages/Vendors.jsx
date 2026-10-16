@@ -148,7 +148,8 @@ export default function Vendors() {
                     <span className="badge task">{filteredVendors.length} Registered Vendors</span>
                 </div>
 
-                <table>
+                <div className="table-responsive">
+                    <table>
                     <thead>
                         <tr>
                             <th>Store Name</th>
@@ -217,6 +218,7 @@ export default function Vendors() {
                         )}
                     </tbody>
                 </table>
+                </div>
             </div>
 
             {/* Vendor Form Modal */}

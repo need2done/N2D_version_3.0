@@ -652,13 +652,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Stat Cards — 8px grid, card blocks */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-        gap: '16px',
-        marginBottom: '20px'
-      }}>
+      {/* Stat Cards — responsive grid */}
+      <div className="stat-cards-grid">
         <StatCard title="Total Orders"    value={orders.length}         Icon={LayoutDashboard} color="#2563eb" bgColor="rgba(37,99,235,0.09)" />
         <StatCard title="Online Helpers"  value={stats.onlineHelpers}   Icon={Users}           color="#059669" bgColor="rgba(5,150,105,0.09)" />
         <StatCard title="Active Trackers" value={stats.activeTrackers}  Icon={MapPin}          color="#d97706" bgColor="rgba(217,119,6,0.09)" />
@@ -849,7 +844,8 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <table>
+        <div className="table-responsive">
+          <table>
           <thead>
             <tr>
               <th>Order ID</th>
@@ -1119,6 +1115,7 @@ export default function Dashboard() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {showVendorModal && (
@@ -1298,24 +1295,8 @@ export default function Dashboard() {
 
       {/* ORDER DETAILS MODAL â€” Light Mode */}
       {(selectedOrderDetail || loadingDetail) && (
-        <div style={{
-          position: 'fixed', inset: 0,
-          background: 'rgba(15,23,42,0.5)',
-          backdropFilter: 'blur(6px)',
-          zIndex: 1000,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: '20px',
-          overflowY: 'auto',
-        }}>
-          <div style={{
-            background: '#fff',
-            border: '1px solid #e2e8f0',
-            borderRadius: '20px',
-            maxWidth: '780px', width: '100%',
-            maxHeight: '90vh', overflowY: 'auto',
-            boxShadow: '0 25px 60px -12px rgba(0,0,0,0.18)',
-            animation: 'slideInUp 0.3s cubic-bezier(0.16,1,0.3,1)',
-          }}>
+        <div className="modal-overlay">
+          <div className="modal-card order-details-modal animate-fade" style={{ borderRadius: '20px', padding: 0 }}>
 
             {loadingDetail ? (
               <div style={{ padding: '60px', textAlign: 'center', color: '#94a3b8' }}>
@@ -1392,7 +1373,7 @@ export default function Dashboard() {
                   </div>
 
                   {/* ── Customer & Location Grid ── */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
+                  <div className="order-details-grid">
 
                     {/* Customer Details */}
                     <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px' }}>
@@ -1768,7 +1749,7 @@ export default function Dashboard() {
                   })()}
 
                   {/* ── Assignment & Financial ── */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
+                  <div className="order-details-grid">
 
                     {/* Assignment */}
                     <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px' }}>

@@ -296,32 +296,8 @@ export default function CallOrderModal({ isOpen, onClose, onOrderCreated, initia
   };
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(15, 23, 42, 0.65)',
-      backdropFilter: 'blur(4px)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 9999,
-      padding: '16px'
-    }}>
-      <div style={{
-        backgroundColor: '#ffffff',
-        borderRadius: '20px',
-        width: '100%',
-        maxWidth: '720px',
-        maxHeight: '92vh',
-        overflowY: 'auto',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-        border: '1px solid #e2e8f0',
-        display: 'flex',
-        flexDirection: 'column'
-      }}>
+    <div className="modal-overlay" style={{ zIndex: 9999 }}>
+      <div className="modal-card call-order-modal animate-fade" style={{ borderRadius: '20px', padding: 0, display: 'flex', flexDirection: 'column' }}>
         {/* Header */}
         <div style={{
           padding: '18px 24px',
@@ -463,7 +439,7 @@ export default function CallOrderModal({ isOpen, onClose, onOrderCreated, initia
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', marginBottom: '8px' }}>
                 1. Caller / Customer Info
               </label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '12px' }}>
+              <div className="call-order-grid-2">
                 <div>
                   <div style={{ position: 'relative' }}>
                     <span style={{
@@ -519,7 +495,7 @@ export default function CallOrderModal({ isOpen, onClose, onOrderCreated, initia
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', marginBottom: '8px' }}>
                 2. Select Service Category
               </label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+              <div className="call-order-services-grid">
                 {[
                   { key: 'RIDE', label: 'Ride Booking', icon: Bike, desc: 'Bike / Auto / Car' },
                   { key: 'CUSTOM_WORK', label: 'Custom Work', icon: Sparkles, desc: 'Pick & Drop / Errand' },
@@ -623,7 +599,7 @@ export default function CallOrderModal({ isOpen, onClose, onOrderCreated, initia
 
               {serviceCategory === 'CUSTOM_WORK' && (
                 <div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', marginBottom: '10px' }}>
+                  <div className="call-order-tasks-grid" style={{ marginBottom: '10px' }}>
                     {[
                       { key: 'direct_pickup', label: '📦 Parcel Pick & Drop' },
                       { key: 'micro_errand', label: '⚡ Micro Errand (0-2km)' },
@@ -684,7 +660,7 @@ export default function CallOrderModal({ isOpen, onClose, onOrderCreated, initia
 
               {serviceCategory === 'SHOPPING' && (
                 <div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                  <div className="call-order-shopping-grid" style={{ marginBottom: '10px' }}>
                     <div>
                       <label style={{ fontSize: '11px', fontWeight: 700, color: '#64748b' }}>Store Category:</label>
                       <select
@@ -761,7 +737,7 @@ export default function CallOrderModal({ isOpen, onClose, onOrderCreated, initia
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', marginBottom: '8px' }}>
                 3. Pickup & Drop Locations
               </label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div className="call-order-locations-grid">
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
                     <MapPin size={14} color="#0284c7" />
@@ -835,7 +811,7 @@ export default function CallOrderModal({ isOpen, onClose, onOrderCreated, initia
                 </button>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', textAlign: 'center' }}>
+              <div className="call-order-quote-grid">
                 <div style={{ background: '#ffffff', padding: '10px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
                   <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Total Customer Fare</div>
                   {manualPriceOverride ? (
@@ -877,7 +853,7 @@ export default function CallOrderModal({ isOpen, onClose, onOrderCreated, initia
             </div>
 
             {/* 5. Payment & Assignment */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '18px' }}>
+            <div className="call-order-pay-grid" style={{ marginBottom: '18px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
                   Payment Method

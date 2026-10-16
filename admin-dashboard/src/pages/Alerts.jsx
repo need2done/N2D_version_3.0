@@ -88,39 +88,41 @@ export default function Alerts() {
             <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.9rem' }}>No GPS signal delays or dispatch bottlenecks detected at this time.</p>
           </div>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Type</th>
-                <th>Subject</th>
-                <th>Issue</th>
-                <th>Last Seen</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {alerts.map(alert => {
-                const alertId = `${alert.helper_id}-${alert.order_id}`;
-                return (
-                <tr key={alertId}>
-                  <td><span className="badge danger">GPS DELAY</span></td>
-                  <td><strong>#{alert.display_id}</strong> (Helper: {alert.helper_name})</td>
-                  <td style={{ color: 'var(--danger)', fontWeight: 600 }}>No GPS ping for {Math.round((new Date() - new Date(alert.last_seen)) / 1000 / 60)} mins</td>
-                  <td style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{formatTimeIST(alert.last_seen)}</td>
-                  <td style={{ textAlign: 'right' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                      <button className="btn btn-primary" style={{ padding: '0.3rem 0.75rem', fontSize: '0.8rem' }}>
-                        <Phone size={14} /> Call Helper
-                      </button>
-                      <button className="btn btn-outline" style={{ padding: '0.3rem 0.75rem', fontSize: '0.8rem' }} onClick={() => handleDismiss(alertId)}>
-                        <Trash2 size={14} /> Dismiss
-                      </button>
-                    </div>
-                  </td>
+          <div className="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Subject</th>
+                  <th>Issue</th>
+                  <th>Last Seen</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
-              )})}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {alerts.map(alert => {
+                  const alertId = `${alert.helper_id}-${alert.order_id}`;
+                  return (
+                  <tr key={alertId}>
+                    <td><span className="badge danger">GPS DELAY</span></td>
+                    <td><strong>#{alert.display_id}</strong> (Helper: {alert.helper_name})</td>
+                    <td style={{ color: 'var(--danger)', fontWeight: 600 }}>No GPS ping for {Math.round((new Date() - new Date(alert.last_seen)) / 1000 / 60)} mins</td>
+                    <td style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{formatTimeIST(alert.last_seen)}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                        <button className="btn btn-primary" style={{ padding: '0.3rem 0.75rem', fontSize: '0.8rem' }}>
+                          <Phone size={14} /> Call Helper
+                        </button>
+                        <button className="btn btn-outline" style={{ padding: '0.3rem 0.75rem', fontSize: '0.8rem' }} onClick={() => handleDismiss(alertId)}>
+                          <Trash2 size={14} /> Dismiss
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )})}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 

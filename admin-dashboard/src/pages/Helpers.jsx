@@ -126,7 +126,8 @@ export default function Helpers() {
           <span className="badge task">{filteredHelpers.length} Helpers Total</span>
         </div>
 
-        <table>
+        <div className="table-responsive">
+          <table>
           <thead>
             <tr>
               <th>ID</th>
@@ -182,6 +183,7 @@ export default function Helpers() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Helper Profile Modal */}

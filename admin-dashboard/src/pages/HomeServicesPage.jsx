@@ -305,7 +305,8 @@ export default function HomeServicesPage() {
         </div>
       ) : (
         <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
+          <div className="table-responsive" style={{ margin: 0 }}>
+            <table style={{ width: '100%', minWidth: '720px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
             <thead>
               <tr style={{ background: 'var(--bg-muted)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
                 <th style={{ padding: '1rem 1.2rem' }}>Service</th>
@@ -391,6 +392,7 @@ export default function HomeServicesPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 

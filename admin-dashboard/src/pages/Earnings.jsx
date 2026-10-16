@@ -5,7 +5,7 @@ import { API_URL } from '../config';
 
 
 const StatCard = ({ title, value, subtitle, Icon, color, bgColor }) => (
-  <div className="card" style={{ flex: 1, margin: '0 0.5rem 1rem 0.5rem', minWidth: '220px' }}>
+  <div className="stat-card">
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
       <div>
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{title}</p>
@@ -219,7 +219,7 @@ export default function Earnings() {
       </div>
 
       {/* Summary Cards */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', margin: '0 -0.5rem 1rem -0.5rem' }}>
+      <div className="stat-cards-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
         <StatCard 
           title="Total Platform Revenue" 
           value={`₹${parseFloat(summary.total_revenue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`} 
@@ -275,7 +275,8 @@ export default function Earnings() {
           <span className="badge task">{recent.length} Records</span>
         </div>
 
-        <table>
+        <div className="table-responsive">
+          <table>
           <thead>
             <tr>
               <th>Order ID</th>
@@ -323,6 +324,7 @@ export default function Earnings() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

@@ -60,44 +60,46 @@ export default function TrackingStatus() {
           <span className="badge active">{sessions.length} Sessions Live</span>
         </div>
 
-        <table>
-          <thead>
-            <tr>
-              <th>Order ID</th>
-              <th>Helper Agent</th>
-              <th>Service Engine</th>
-              <th>Latest Coordinates</th>
-              <th>Last Seen</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sessions.length === 0 && (
-              <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)' }}>No active live tracking sessions detected right now.</td></tr>
-            )}
-            {sessions.map(session => (
-              <tr key={`${session.helper_id}-${session.order_id}`}>
-                <td><strong>#{session.display_id}</strong></td>
-                <td><strong>{session.helper_name}</strong> <br/><small style={{ color: 'var(--text-muted)' }}>#ID: {session.helper_id}</small></td>
-                <td><span className="badge task">{session.service}</span></td>
-                <td style={{ fontSize: '0.85rem', color: 'var(--text-main)' }}>
-                  {session.lat ? (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                      <MapPin size={14} color="var(--primary)" />
-                      {parseFloat(session.lat).toFixed(5)}, {parseFloat(session.lng).toFixed(5)}
-                    </span>
-                  ) : 'No data'}
-                </td>
-                <td style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{formatTimeIST(session.last_seen)}</td>
-                <td>
-                  <span className="badge active" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                    <Radio size={12} className="animate-pulse" /> LIVE
-                  </span>
-                </td>
+        <div className="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Helper Agent</th>
+                <th>Service Engine</th>
+                <th>Latest Coordinates</th>
+                <th>Last Seen</th>
+                <th>Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {sessions.length === 0 && (
+                <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)' }}>No active live tracking sessions detected right now.</td></tr>
+              )}
+              {sessions.map(session => (
+                <tr key={`${session.helper_id}-${session.order_id}`}>
+                  <td><strong>#{session.display_id}</strong></td>
+                  <td><strong>{session.helper_name}</strong> <br/><small style={{ color: 'var(--text-muted)' }}>#ID: {session.helper_id}</small></td>
+                  <td><span className="badge task">{session.service}</span></td>
+                  <td style={{ fontSize: '0.85rem', color: 'var(--text-main)' }}>
+                    {session.lat ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <MapPin size={14} color="var(--primary)" />
+                        {parseFloat(session.lat).toFixed(5)}, {parseFloat(session.lng).toFixed(5)}
+                      </span>
+                    ) : 'No data'}
+                  </td>
+                  <td style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{formatTimeIST(session.last_seen)}</td>
+                  <td>
+                    <span className="badge active" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <Radio size={12} className="animate-pulse" /> LIVE
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
