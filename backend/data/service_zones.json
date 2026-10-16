@@ -1,0 +1,70 @@
+{
+  "global": {
+    "defaultRadiusKm": 30.0,
+    "defaultCenterLat": 17.5113,
+    "defaultCenterLng": 78.8899,
+    "primaryAreaName": "Bhongir and surrounding villages",
+    "comingSoonMessageTe": "మీరు ఎంచుకున్న లొకేషన్ మా సర్వీస్ పరిధి వెలుపల ఉంది. ప్రస్తుతానికి నీడ్2డన్ సేవలు భువనగిరి మరియు పరిసర గ్రామాలలో మాత్రమే అందుబాటులో ఉన్నాయి. త్వరలోనే మీ ప్రాంతానికి కూడా రాబోతున్నాము! 🚀",
+    "comingSoonMessageEn": "The selected location is outside our current operational zone. Need2Done is currently active in Bhongir and surrounding villages. We are expanding rapidly and coming soon to your location! ✨"
+  },
+  "zones": [
+    {
+      "id": "zone-bhongir-main",
+      "name": "Bhongir Town & Surrounding Villages (Main Hub)",
+      "centerLat": 17.5113,
+      "centerLng": 78.8899,
+      "radiusKm": 30.0,
+      "status": "ACTIVE",
+      "description": "Primary pilot zone covering Bhongir town center, local mandals, and all surrounding villages.",
+      "villagesCovered": [
+        "Bhongir Town",
+        "Raigir",
+        "Pagidipalli",
+        "Bibinagar",
+        "Yadagirigutta",
+        "Valigonda",
+        "Bommalaramaram",
+        "Bhoodan Pochampally",
+        "Alair"
+      ],
+      "createdAt": "2026-10-16T22:30:00.000Z",
+      "updatedAt": "2026-10-16T22:30:00.000Z"
+    },
+    {
+      "id": "zone-yadagirigutta",
+      "name": "Yadagirigutta Temple City & Alair Belt",
+      "centerLat": 17.5850,
+      "centerLng": 78.9450,
+      "radiusKm": 15.0,
+      "status": "ACTIVE",
+      "description": "High-demand temple corridor covering Yadadri hill town, pilgrim guest houses, and connecting villages.",
+      "villagesCovered": [
+        "Yadagirigutta",
+        "Gundlapally",
+        "Vangapally",
+        "Alair",
+        "Mallapur"
+      ],
+      "createdAt": "2026-10-16T22:30:00.000Z",
+      "updatedAt": "2026-10-16T22:30:00.000Z"
+    },
+    {
+      "id": "zone-ghatkesar-expansion",
+      "name": "Ghatkesar & ORR East Corridor",
+      "centerLat": 17.4475,
+      "centerLng": 78.6830,
+      "radiusKm": 15.0,
+      "status": "COMING_SOON",
+      "description": "Planned expansion corridor towards Outer Ring Road East and Ghatkesar junction.",
+      "villagesCovered": [
+        "Ghatkesar",
+        "Pocharam",
+        "Korremula",
+        "Ankushapur",
+        "Aushapur"
+      ],
+      "createdAt": "2026-10-16T22:30:00.000Z",
+      "updatedAt": "2026-10-16T22:30:00.000Z"
+    }
+  ]
+}

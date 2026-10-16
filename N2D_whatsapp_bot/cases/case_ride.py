@@ -3,7 +3,11 @@
 Need2Done – Ride Engine (Double OTP)
 =================================================
 """
-from utils.location import to_map_link, haversine, get_road_distance
+from utils.location import (
+    to_map_link, haversine, get_road_distance,
+    is_location_serviceable, is_address_text_out_of_region,
+    get_out_of_service_message, get_reselect_location_message
+)
 from whatsapp_client import send_reply_buttons, send_message
 import random
 
@@ -223,6 +227,20 @@ def handle(session, text, raw):
         data = session.get("data", {})
         btn = raw.get("interactive", {}).get("button_reply", {}).get("id") if isinstance(raw, dict) else None
 
+        if btn == "RIDE_CANCEL":
+            from session_store import reset_session
+            reset_session(user)
+            return "❌ Ride booking cancelled."
+
+        if btn in ["RIDE_RESELECT_PICKUP", "RIDE_RESELECT_DROP"]:
+            session["case_state"] = "ASK_PICKUP" if btn == "RIDE_RESELECT_PICKUP" else "ASK_DROP"
+            body = get_reselect_location_message()
+            buttons = [
+                {"id": "RIDE_CANCEL", "title": "❌ Cancel"}
+            ]
+            send_reply_buttons(to=user, body=body, buttons=buttons)
+            return None
+
         # INIT
         if not state:
             session["case_state"] = "ASK_PICKUP"
@@ -269,13 +287,36 @@ def handle(session, text, raw):
                         "💬 *Option 2:* Type your address / landmark below (e.g. *\"New bus stop bhongir\"*)"
                     )
                 # Automatic Geocoding for Typed Address
-                geo_lat, geo_lng, geo_name = geocode_address(text)
+                geo_lat, geo_lng, geo_name = geocode_address(text, ref_lat=17.5113, ref_lng=78.8899)
                 new_pickup_lat = geo_lat
                 new_pickup_lng = geo_lng
                 if geo_lat and geo_lng:
                     new_pickup_addr = to_map_link(geo_lat, geo_lng, name=text, address=geo_name)
                 else:
                     new_pickup_addr = text
+
+            # Service Boundary Check: Pickup MUST be in Bhongir & surrounding villages
+            if new_pickup_lat and new_pickup_lng:
+                is_valid, _ = is_location_serviceable(new_pickup_lat, new_pickup_lng)
+                if not is_valid:
+                    session.pop("latitude", None)
+                    session.pop("longitude", None)
+                    loc_label = loc_name or loc_addr or text or "Pickup Location"
+                    body = get_out_of_service_message(loc_label)
+                    buttons = [
+                        {"id": "RIDE_RESELECT_PICKUP", "title": "📍 Reselect Pickup"},
+                        {"id": "RIDE_CANCEL", "title": "❌ Cancel"}
+                    ]
+                    send_reply_buttons(to=user, body=body, buttons=buttons)
+                    return None
+            elif is_address_text_out_of_region(text):
+                body = get_out_of_service_message(text)
+                buttons = [
+                    {"id": "RIDE_RESELECT_PICKUP", "title": "📍 Reselect Pickup"},
+                    {"id": "RIDE_CANCEL", "title": "❌ Cancel"}
+                ]
+                send_reply_buttons(to=user, body=body, buttons=buttons)
+                return None
 
             # Validation: Pickup and Drop cannot be the same
             if data.get("drop") or data.get("drop_lat"):
@@ -331,13 +372,36 @@ def handle(session, text, raw):
                 # Automatic Geocoding for Typed Address (biased by pickup coordinates)
                 p_lat = data.get("pickup_lat")
                 p_lng = data.get("pickup_lng")
-                geo_lat, geo_lng, geo_name = geocode_address(text, ref_lat=p_lat, ref_lng=p_lng)
+                geo_lat, geo_lng, geo_name = geocode_address(text, ref_lat=p_lat or 17.5113, ref_lng=p_lng or 78.8899)
                 new_drop_lat = geo_lat
                 new_drop_lng = geo_lng
                 if geo_lat and geo_lng:
                     new_drop_addr = to_map_link(geo_lat, geo_lng, name=text, address=geo_name)
                 else:
                     new_drop_addr = text
+
+            # Service Boundary Check: Drop location limit (max 80 km from Bhongir, e.g. Hyderabad / Secunderabad, not out of state like Chennai)
+            if new_drop_lat and new_drop_lng:
+                is_valid, _ = is_location_serviceable(new_drop_lat, new_drop_lng, max_radius_km=80.0)
+                if not is_valid:
+                    session.pop("latitude", None)
+                    session.pop("longitude", None)
+                    loc_label = loc_name or loc_addr or text or "Drop Location"
+                    body = get_out_of_service_message(loc_label)
+                    buttons = [
+                        {"id": "RIDE_RESELECT_DROP", "title": "📍 Reselect Drop"},
+                        {"id": "RIDE_CANCEL", "title": "❌ Cancel"}
+                    ]
+                    send_reply_buttons(to=user, body=body, buttons=buttons)
+                    return None
+            elif is_address_text_out_of_region(text):
+                body = get_out_of_service_message(text)
+                buttons = [
+                    {"id": "RIDE_RESELECT_DROP", "title": "📍 Reselect Drop"},
+                    {"id": "RIDE_CANCEL", "title": "❌ Cancel"}
+                ]
+                send_reply_buttons(to=user, body=body, buttons=buttons)
+                return None
 
             # Validation: Pickup and Drop cannot be the same
             if check_same_location(data.get("pickup_lat"), data.get("pickup_lng"), data.get("pickup"),

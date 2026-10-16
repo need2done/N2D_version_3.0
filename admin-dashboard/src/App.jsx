@@ -20,10 +20,11 @@ import WalletPage        from './pages/Wallet';
 import CustomWorkAdmin   from './pages/CustomWorkAdmin';
 import HomeServicesPage  from './pages/HomeServicesPage';
 import FareCalculatorPage from './pages/FareCalculatorPage';
+import ServiceExpansionPage from './pages/ServiceExpansionPage';
 
 import {
   LayoutDashboard, BarChart3,
-  Layers, Home, Briefcase, Calculator,
+  Layers, Home, Briefcase, Calculator, Globe,
   MapPinned, Activity,
   Users, Wrench, Store,
   DollarSign, Wallet, Bell,
@@ -141,6 +142,7 @@ const SettingsAccordion = ({ closeSidebar }) => {
 const ROUTE_LABELS = {
   '':             'Dashboard',
   'services':     'Services',
+  'service-expansion': 'Service Expansion & Geofence',
   'home-services':'Home Services',
   'custom-work':  'Custom Work Admin',
   'fare-calculator': 'Fare Calculator',
@@ -287,6 +289,9 @@ const DashboardLayout = () => {
           <NavItem to="/services" icon={Layers} onClick={closeSidebar}>
             Services
           </NavItem>
+          <NavItem to="/service-expansion" icon={Globe} onClick={closeSidebar}>
+            Service Expansion
+          </NavItem>
           <NavItem to="/home-services" icon={Home} onClick={closeSidebar}>
             Home Services
           </NavItem>
@@ -381,6 +386,7 @@ function App() {
           <Route element={<DashboardLayout />}>
             <Route path="/"              element={<Dashboard />} />
             <Route path="/services"      element={<Services />} />
+            <Route path="/service-expansion" element={<ServiceExpansionPage />} />
             <Route path="/home-services" element={<HomeServicesPage />} />
             <Route path="/custom-work"   element={<CustomWorkAdmin />} />
             <Route path="/fare-calculator" element={<FareCalculatorPage />} />

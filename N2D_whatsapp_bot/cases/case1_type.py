@@ -11,7 +11,11 @@ GramioGO – Case 1 (Groceries / AnyWork)
 ✔ AnyWork has its own distinct flow
 """
 
-from utils.location import to_map_link, haversine
+from utils.location import (
+    to_map_link, haversine,
+    is_location_serviceable, is_address_text_out_of_region,
+    get_out_of_service_message, get_reselect_location_message
+)
 from core.order_finalizer import finalize_order
 from whatsapp_client import send_reply_buttons, send_message
 from session_store import reset_session
@@ -544,11 +548,32 @@ def handle(session: dict, text: str, raw: dict):
         # LOCATION
         # =================================================
         if state == "LOCATION":
+            if text in ["C1_RESELECT_LOC", "RESELECT_LOCATION"]:
+                session["case_state"] = "LOCATION"
+                body = get_reselect_location_message()
+                buttons = [
+                    {"id": "C1_CANCEL", "title": "❌ Cancel"}
+                ]
+                send_reply_buttons(to=user, body=body, buttons=buttons)
+                return None
 
             # ✅ Router already saved GPS → move forward
             if session.get("latitude") and session.get("longitude"):
                 lat = session["latitude"]
                 lng = session["longitude"]
+
+                is_valid, _ = is_location_serviceable(lat, lng)
+                if not is_valid:
+                    session.pop("latitude", None)
+                    session.pop("longitude", None)
+                    body = get_out_of_service_message("Delivery Location")
+                    buttons = [
+                        {"id": "C1_RESELECT_LOC", "title": "📍 Reselect Location"},
+                        {"id": "C1_CANCEL", "title": "❌ Cancel"}
+                    ]
+                    send_reply_buttons(to=user, body=body, buttons=buttons)
+                    return None
+
                 data["location"] = to_map_link(lat, lng, name=session.get("location_name"), address=session.get("location_address"))
 
                 if session.get("edit_mode") == "LOCATION":
@@ -600,6 +625,18 @@ def handle(session: dict, text: str, raw: dict):
 
                 if lat is None or lng is None:
                     return "❌ Invalid location. Please resend."
+
+                is_valid, _ = is_location_serviceable(lat, lng)
+                if not is_valid:
+                    session.pop("latitude", None)
+                    session.pop("longitude", None)
+                    body = get_out_of_service_message(loc.get("name") or loc.get("address") or "Delivery Location")
+                    buttons = [
+                        {"id": "C1_RESELECT_LOC", "title": "📍 Reselect Location"},
+                        {"id": "C1_CANCEL", "title": "❌ Cancel"}
+                    ]
+                    send_reply_buttons(to=user, body=body, buttons=buttons)
+                    return None
 
                 session["latitude"] = lat
                 session["longitude"] = lng

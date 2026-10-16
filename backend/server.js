@@ -113,6 +113,7 @@ const analyticsRoutes = require('./routes/analytics');
 const supportRoutes = require('./routes/support');
 const authRoutes = require('./routes/auth');
 const settingsRoutes = require('./routes/settings');
+const serviceZonesRoutes = require('./routes/serviceZones');
 const productsRoutes = require('./routes/products');
 const cartsRoutes = require('./routes/carts');
 const categoriesRoutes = require('./routes/categories');
@@ -153,6 +154,7 @@ app.use('/api/home-services', homeServicesRoutes);
 app.use('/api/fruits-vegetables', fruitsVegetablesRoutes);
 app.use('/api/ride', rideRoutes);
 app.use('/api/services', serviceRoutes);
+app.use('/api/service-zones', serviceZonesRoutes);
 
 
 // Groceries Backend Routes

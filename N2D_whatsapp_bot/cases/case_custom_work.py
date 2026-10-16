@@ -17,7 +17,12 @@ import re
 from typing import Optional, Dict, Any
 
 from utils.ai_service import classify_custom_work_intent_gemini, transcribe_audio_sarvam_or_whisper, process_voice_note_with_translation
-from utils.location import to_map_link, get_road_distance, haversine
+from utils.location import (
+    to_map_link, get_road_distance, haversine,
+    is_location_serviceable, is_address_text_out_of_region,
+    get_out_of_service_message, get_reselect_location_message
+)
+from utils.geocoding import geocode_address
 from whatsapp_client import download_whatsapp_media, send_reply_buttons, send_message, send_url_button
 from core.order_finalizer import finalize_order
 import os
@@ -51,6 +56,7 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
             address = loc_data.get("address") or loc_data.get("name") or "GPS Location Pin"
 
             if lat and lng:
+                # 1. Determine which location step this pin belongs to
                 if step not in ("WAITING_WORK_LOCATION", "WAITING_PICKUP_LOCATION", "WAITING_DROP_LOCATION"):
                     if session.get("pickup_location") and not session.get("drop_location"):
                         step = "WAITING_DROP_LOCATION"
@@ -58,6 +64,30 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                         step = "WAITING_WORK_LOCATION"
                     else:
                         step = "WAITING_PICKUP_LOCATION"
+                session["custom_work_step"] = step
+
+                # 2. Operational Boundary & Region Validation (Bhongir & surrounding villages)
+                is_valid, dist_km = is_location_serviceable(lat, lng)
+                loc_label = loc_data.get("name") or loc_data.get("address") or "Selected Location"
+                if is_valid and (is_address_text_out_of_region(loc_data.get("name", "")) or is_address_text_out_of_region(loc_data.get("address", ""))):
+                    is_valid = False
+
+                if not is_valid:
+                    session.pop("latitude", None)
+                    session.pop("longitude", None)
+                    session.pop("location_name", None)
+                    session.pop("location_address", None)
+                    
+                    body = get_out_of_service_message(loc_label)
+                    buttons = [
+                        {"id": "CW_RESELECT_LOC", "title": "📍 Reselect Location"},
+                        {"id": "CW_EDIT_TASK", "title": "✏️ Retype Task"},
+                        {"id": "CW_CANCEL_TASK", "title": "❌ Cancel"}
+                    ]
+                    if user:
+                        send_reply_buttons(to=user, body=body, buttons=buttons)
+                        return None
+                    return body
 
                 if step == "WAITING_WORK_LOCATION":
                     session["work_location"] = to_map_link(lat, lng, name="Work Location", address=address)
@@ -111,6 +141,19 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
         # =========================================================================
         # GLOBAL INTERACTIVE BUTTON ACTION HANDLERS (Direct Resolution)
         # =========================================================================
+        if text_clean in ["CW_RESELECT_LOC", "RESELECT_LOCATION", "CW_RESELECT_LOCATION"]:
+            step = session.get("custom_work_step") or "WAITING_DROP_LOCATION"
+            session["custom_work_step"] = step
+            body = get_reselect_location_message()
+            buttons = [
+                {"id": "CW_SEND_LOC_GUIDE", "title": "📍 Share Location Pin"},
+                {"id": "CW_CANCEL_TASK", "title": "❌ Cancel"}
+            ]
+            if user:
+                send_reply_buttons(to=user, body=body, buttons=buttons)
+                return None
+            return body
+
         if text_clean == "CW_CANCEL_TASK":
             session["custom_work_step"] = "INIT"
             session["stage"] = "MENU"
@@ -446,7 +489,38 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                     return None
 
             if len(text_clean) >= 3 and text_clean.upper() not in ["CW_CANCEL_TASK"]:
-                session["work_location"] = f"{text_clean}, Bhongir"
+                if is_address_text_out_of_region(text_clean):
+                    body = get_out_of_service_message(text_clean)
+                    buttons = [
+                        {"id": "CW_RESELECT_LOC", "title": "📍 Reselect Location"},
+                        {"id": "CW_EDIT_TASK", "title": "✏️ Retype Task"},
+                        {"id": "CW_CANCEL_TASK", "title": "❌ Cancel"}
+                    ]
+                    if user:
+                        send_reply_buttons(to=user, body=body, buttons=buttons)
+                        return None
+                    return body
+
+                g_lat, g_lng, g_name = geocode_address(text_clean, ref_lat=17.5113, ref_lng=78.8899)
+                if g_lat and g_lng:
+                    is_valid, _ = is_location_serviceable(g_lat, g_lng)
+                    if not is_valid:
+                        body = get_out_of_service_message(g_name or text_clean)
+                        buttons = [
+                            {"id": "CW_RESELECT_LOC", "title": "📍 Reselect Location"},
+                            {"id": "CW_EDIT_TASK", "title": "✏️ Retype Task"},
+                            {"id": "CW_CANCEL_TASK", "title": "❌ Cancel"}
+                        ]
+                        if user:
+                            send_reply_buttons(to=user, body=body, buttons=buttons)
+                            return None
+                        return body
+                    session["pickup_lat"] = g_lat
+                    session["pickup_lng"] = g_lng
+                    session["work_location"] = to_map_link(g_lat, g_lng, name=text_clean, address=g_name)
+                else:
+                    session["work_location"] = f"{text_clean}, Bhongir"
+
                 session["pickup_location"] = session["work_location"]
                 session["drop_location"] = "On-Site Work Location (No Drop Required)"
                 task_text = session.get("pending_task_text") or session.get("task_description") or "Custom Work Task"
@@ -471,7 +545,37 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                     )
                     return None
             elif len(text_clean) >= 3 and text_clean.upper() not in ["CW_CANCEL_TASK"]:
-                session["pickup_location"] = f"{text_clean}, Bhongir"
+                if is_address_text_out_of_region(text_clean):
+                    body = get_out_of_service_message(text_clean)
+                    buttons = [
+                        {"id": "CW_RESELECT_LOC", "title": "📍 Reselect Location"},
+                        {"id": "CW_EDIT_TASK", "title": "✏️ Retype Task"},
+                        {"id": "CW_CANCEL_TASK", "title": "❌ Cancel"}
+                    ]
+                    if user:
+                        send_reply_buttons(to=user, body=body, buttons=buttons)
+                        return None
+                    return body
+
+                g_lat, g_lng, g_name = geocode_address(text_clean, ref_lat=17.5113, ref_lng=78.8899)
+                if g_lat and g_lng:
+                    is_valid, _ = is_location_serviceable(g_lat, g_lng)
+                    if not is_valid:
+                        body = get_out_of_service_message(g_name or text_clean)
+                        buttons = [
+                            {"id": "CW_RESELECT_LOC", "title": "📍 Reselect Location"},
+                            {"id": "CW_EDIT_TASK", "title": "✏️ Retype Task"},
+                            {"id": "CW_CANCEL_TASK", "title": "❌ Cancel"}
+                        ]
+                        if user:
+                            send_reply_buttons(to=user, body=body, buttons=buttons)
+                            return None
+                        return body
+                    session["pickup_lat"] = g_lat
+                    session["pickup_lng"] = g_lng
+                    session["pickup_location"] = to_map_link(g_lat, g_lng, name=text_clean, address=g_name)
+                else:
+                    session["pickup_location"] = f"{text_clean}, Bhongir"
             else:
                 p_name = session.get("pickup_name_label", "Pickup Point")
                 return f"📍 Please type store/pickup location for '{p_name}', send a location pin, or tap 'Use Nearest Store'.\nదయచేసి పికప్ లోకేషన్ లేదా దుకాణం వివరాలు తెలపండి."
@@ -515,7 +619,37 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                     return None
 
             if len(text_clean) >= 3 and text_clean.upper() not in ["CW_CANCEL_TASK"]:
-                session["drop_location"] = f"{text_clean}, Bhongir"
+                if is_address_text_out_of_region(text_clean):
+                    body = get_out_of_service_message(text_clean)
+                    buttons = [
+                        {"id": "CW_RESELECT_LOC", "title": "📍 Reselect Location"},
+                        {"id": "CW_EDIT_TASK", "title": "✏️ Retype Task"},
+                        {"id": "CW_CANCEL_TASK", "title": "❌ Cancel"}
+                    ]
+                    if user:
+                        send_reply_buttons(to=user, body=body, buttons=buttons)
+                        return None
+                    return body
+
+                g_lat, g_lng, g_name = geocode_address(text_clean, ref_lat=17.5113, ref_lng=78.8899)
+                if g_lat and g_lng:
+                    is_valid, _ = is_location_serviceable(g_lat, g_lng)
+                    if not is_valid:
+                        body = get_out_of_service_message(g_name or text_clean)
+                        buttons = [
+                            {"id": "CW_RESELECT_LOC", "title": "📍 Reselect Location"},
+                            {"id": "CW_EDIT_TASK", "title": "✏️ Retype Task"},
+                            {"id": "CW_CANCEL_TASK", "title": "❌ Cancel"}
+                        ]
+                        if user:
+                            send_reply_buttons(to=user, body=body, buttons=buttons)
+                            return None
+                        return body
+                    session["drop_lat"] = g_lat
+                    session["drop_lng"] = g_lng
+                    session["drop_location"] = to_map_link(g_lat, g_lng, name=text_clean, address=g_name)
+                else:
+                    session["drop_location"] = f"{text_clean}, Bhongir"
             else:
                 d_name = session.get("drop_name_label", "Drop-off Point")
                 return f"🏁 Please type your exact drop-off address for '{d_name}' or send a location pin.\nదయచేసి డెలివరీ అడ్రస్ టైప్ చేయండి."
@@ -851,6 +985,43 @@ def _generate_price_quote(session: Dict[str, Any], task_text: str, user: Optiona
     p_lng = session.get("pickup_lng")
     d_lat = session.get("drop_lat")
     d_lng = session.get("drop_lng")
+
+    # Defense-in-depth: Never generate quote for an out-of-region location
+    if d_lat and d_lng:
+        is_valid, _ = is_location_serviceable(d_lat, d_lng)
+        if not is_valid:
+            session["custom_work_step"] = "WAITING_DROP_LOCATION"
+            session.pop("drop_lat", None)
+            session.pop("drop_lng", None)
+            session.pop("drop_location", None)
+            body = get_out_of_service_message("Delivery Location")
+            buttons = [
+                {"id": "CW_RESELECT_LOC", "title": "📍 Reselect Location"},
+                {"id": "CW_EDIT_TASK", "title": "✏️ Retype Task"},
+                {"id": "CW_CANCEL_TASK", "title": "❌ Cancel"}
+            ]
+            if user:
+                send_reply_buttons(to=user, body=body, buttons=buttons)
+                return None
+            return body
+
+    if p_lat and p_lng:
+        is_valid, _ = is_location_serviceable(p_lat, p_lng)
+        if not is_valid:
+            session["custom_work_step"] = "WAITING_PICKUP_LOCATION"
+            session.pop("pickup_lat", None)
+            session.pop("pickup_lng", None)
+            session.pop("pickup_location", None)
+            body = get_out_of_service_message("Pickup Location")
+            buttons = [
+                {"id": "CW_RESELECT_LOC", "title": "📍 Reselect Location"},
+                {"id": "CW_EDIT_TASK", "title": "✏️ Retype Task"},
+                {"id": "CW_CANCEL_TASK", "title": "❌ Cancel"}
+            ]
+            if user:
+                send_reply_buttons(to=user, body=body, buttons=buttons)
+                return None
+            return body
 
     est_dist = 2.5
     has_gps_coords = bool(p_lat and p_lng and d_lat and d_lng)

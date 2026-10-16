@@ -6,6 +6,10 @@ from typing import Optional, Dict, Any
 from db.mysql_conn import get_db, close_cursor, close_db
 from whatsapp_client import send_message, send_reply_buttons, send_payment_button
 from config import TRACKING_BASE_URL
+from utils.location import (
+    is_location_serviceable, is_address_text_out_of_region,
+    get_out_of_service_message, get_reselect_location_message
+)
 
 # Default constants
 DELIVERY_FEE = 20.0
@@ -279,6 +283,14 @@ def handle(
 
         # 5. ASK LOCATION: Expect coordinates
         if state == "ASK_LOCATION":
+            if text in ["VF_RESELECT_LOC", "RESELECT_LOCATION"]:
+                body = get_reselect_location_message()
+                buttons = [
+                    {"id": "CANCEL_CONFIRM_YES", "title": "❌ Cancel"}
+                ]
+                send_reply_buttons(to=user_phone, body=body, buttons=buttons)
+                return None
+
             msg_type = raw.get("type") if raw else None
             
             if msg_type == "location":
@@ -287,6 +299,19 @@ def handle(
                 lng = loc.get("longitude")
 
                 if lat is not None and lng is not None:
+                    is_valid, _ = is_location_serviceable(lat, lng)
+                    if not is_valid:
+                        session.pop("latitude", None)
+                        session.pop("longitude", None)
+                        loc_label = loc.get("name") or loc.get("address") or "Delivery Location"
+                        body = get_out_of_service_message(loc_label)
+                        buttons = [
+                            {"id": "VF_RESELECT_LOC", "title": "📍 Reselect Location"},
+                            {"id": "CANCEL_CONFIRM_YES", "title": "❌ Cancel"}
+                        ]
+                        send_reply_buttons(to=user_phone, body=body, buttons=buttons)
+                        return None
+
                     db = get_db()
                     cur = db.cursor()
                     cur.execute(
@@ -305,14 +330,21 @@ def handle(
 
             # If user typed text address directly instead of sending location pin
             if text and text.upper() != "LOCATION":
+                if is_address_text_out_of_region(text):
+                    body = get_out_of_service_message(text)
+                    buttons = [
+                        {"id": "VF_RESELECT_LOC", "title": "📍 Reselect Location"},
+                        {"id": "CANCEL_CONFIRM_YES", "title": "❌ Cancel"}
+                    ]
+                    send_reply_buttons(to=user_phone, body=body, buttons=buttons)
+                    return None
+
                 session["case_state"] = "ASK_ADDRESS_DETAILS"
                 send_message(user_phone, f"✅ Delivery location noted: *{text}*\n\nPlease enter your *detailed address / landmark*:\n_(e.g., House No, Building/Apartment name, Street, Landmark)_")
                 return None
             
             # If not location, prompt location sharing
             send_message(user_phone, "❗ Please share your location using WhatsApp location pin (📎 -> Location) or type your local address.")
-            return None
-            send_message(user_phone, "❗ Please share your location using the *location feature* in WhatsApp (tap 📎 -> Location).")
             return None
 
         # 6. ASK ADDRESS DETAILS

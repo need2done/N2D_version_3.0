@@ -935,7 +935,15 @@ def route_message(
                     send_message(user, reply)
                 return
 
-            # If user has no active order or service flow, acknowledge location and offer service list
+            # If user has no active order or service flow, check serviceability
+            from utils.location import is_location_serviceable, get_out_of_service_message
+            is_valid, _ = is_location_serviceable(lat, lng)
+            if not is_valid:
+                loc_label = location.get("name") or location.get("address") or "Selected Location"
+                body = get_out_of_service_message(loc_label)
+                send_message(user, body)
+                return
+
             send_message(user, "📍 Location pin received and saved! Select a service below to get started:")
             session["stage"] = "ASK_SERVICE"
             send_rich_service_list(user, session.get("name"))

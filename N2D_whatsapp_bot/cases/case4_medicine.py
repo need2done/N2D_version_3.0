@@ -1,7 +1,10 @@
 import random
 import re
 from typing import Optional, Tuple
-from utils.location import to_map_link
+from utils.location import (
+    to_map_link, is_location_serviceable, is_address_text_out_of_region,
+    get_out_of_service_message, get_reselect_location_message
+)
 from core.order_finalizer import finalize_order
 from whatsapp_client import send_reply_buttons, send_message
 from session_store import reset_session, start_confirming
@@ -504,16 +507,44 @@ def handle(session: dict, text: str, raw: dict) -> Optional[str]:
 
         # ---------- LOCATION ----------
         if state == "ASK_LOCATION":
+            if text in ["MED_RESELECT_LOC", "RESELECT_LOCATION"]:
+                body = get_reselect_location_message()
+                buttons = [
+                    {"id": "MED_CANCEL", "title": "❌ Cancel"}
+                ]
+                send_reply_buttons(to=user, body=body, buttons=buttons)
+                return None
+
             lat = raw.get("location", {}).get("latitude") or session.get("latitude")
             lng = raw.get("location", {}).get("longitude") or session.get("longitude")
             loc_name = raw.get("location", {}).get("name") or session.get("location_name")
             loc_addr = raw.get("location", {}).get("address") or session.get("location_address")
             
             if lat and lng:
+                is_valid, _ = is_location_serviceable(lat, lng)
+                if not is_valid:
+                    session.pop("latitude", None)
+                    session.pop("longitude", None)
+                    body = get_out_of_service_message(loc_name or loc_addr or "Delivery Location")
+                    buttons = [
+                        {"id": "MED_RESELECT_LOC", "title": "📍 Reselect Location"},
+                        {"id": "MED_CANCEL", "title": "❌ Cancel"}
+                    ]
+                    send_reply_buttons(to=user, body=body, buttons=buttons)
+                    return None
+
                 session["latitude"] = lat
                 session["longitude"] = lng
                 s["location"] = to_map_link(lat, lng, name=loc_name, address=loc_addr)
             elif text and text.upper() != "LOCATION":
+                if is_address_text_out_of_region(text):
+                    body = get_out_of_service_message(text)
+                    buttons = [
+                        {"id": "MED_RESELECT_LOC", "title": "📍 Reselect Location"},
+                        {"id": "MED_CANCEL", "title": "❌ Cancel"}
+                    ]
+                    send_reply_buttons(to=user, body=body, buttons=buttons)
+                    return None
                 s["location"] = text
             else:
                 return "📍 Please share your *delivery location* (send a location pin or type your local address)."
