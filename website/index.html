@@ -490,8 +490,8 @@
               <span style="color: #34D399; font-size: 1.1rem;">✔</span>
               <span>Auto-applied on all services</span>
             </div>
-            <!-- Admin Quick Edit Button -->
-            <button class="banner-edit-trigger-btn" onclick="openOfferAdminModal()" title="Edit Offer Banner (Admin)">
+            <!-- Admin Quick Edit Button (Hidden by default, visible ONLY to authenticated admin) -->
+            <button class="banner-edit-trigger-btn" id="bannerEditTriggerBtn" onclick="handleAdminEditOffer()" title="Edit Offer Banner (Admin)" style="display: none;">
               <span>⚙️</span>
               <span>Edit Offer</span>
             </button>
@@ -702,6 +702,7 @@
             <li><a href="https://wa.me/917989862623?text=Hi%20Need2Done" target="_blank">💬 Chat on WhatsApp</a></li>
             <li><a href="/help.html">Help & FAQs</a></li>
             <li><a href="/contact.html">Contact Us</a></li>
+            <li><a href="javascript:void(0)" onclick="handleAdminEditOffer()" style="opacity: 0.7;">⚙️ Admin Offer Editor</a></li>
             <li><a href="/admin-catalog.html">Admin Portal</a></li>
           </ul>
         </div>
@@ -818,6 +819,41 @@
         <div class="saved-location-item" onclick="selectLocation('Yadadri, Telangana')">📍 Yadadri, Telangana</div>
         <div class="saved-location-item" onclick="selectLocation('Hyderabad City')">📍 Hyderabad City, Telangana</div>
       </div>
+    </div>
+  </div>
+
+  <!-- --- ADMIN LOGIN VERIFICATION MODAL --- -->
+  <div class="modal-overlay" id="adminAuthModal">
+    <div class="modal codex-glass-card" style="max-width: 440px; text-align: left;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 1.3rem;">🔐</span>
+          <h3>Admin Verification</h3>
+        </div>
+        <button class="btn-modal-close" onclick="closeAdminLoginModal()">×</button>
+      </div>
+      <p style="color: var(--text-secondary); font-size: 0.86rem; margin-bottom: 18px;">
+        This section is restricted to administrators only. Please log in with your admin credentials to edit offers.
+      </p>
+
+      <form id="adminAuthForm" onsubmit="submitAdminAuth(event)">
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label style="display: block; font-size: 0.78rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase;">Admin Username</label>
+          <input type="text" id="adminAuthUser" required class="modal-input" placeholder="admin" autocomplete="username">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label style="display: block; font-size: 0.78rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase;">Admin Password</label>
+          <input type="password" id="adminAuthPass" required class="modal-input" placeholder="••••••••" autocomplete="current-password">
+        </div>
+
+        <div id="adminAuthError" style="display: none; color: #EF4444; font-size: 0.85rem; margin-bottom: 14px; font-weight: 600; background: rgba(239, 68, 68, 0.1); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.2);"></div>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+          <button type="button" class="btn-primary-codex" style="background: rgba(255,255,255,0.1); color: var(--text-primary);" onclick="closeAdminLoginModal()">Cancel</button>
+          <button type="submit" id="adminAuthSubmitBtn" class="btn-primary-codex" style="background: linear-gradient(135deg, var(--primary), var(--primary-hover)); font-weight: 800;">🔓 Verify & Open</button>
+        </div>
+      </form>
     </div>
   </div>
 

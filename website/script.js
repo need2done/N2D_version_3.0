@@ -509,6 +509,89 @@ function closeOfferAdminModal() {
   if (modal) modal.classList.remove('active');
 }
 
+// ─── ADMIN AUTHENTICATION & ACCESS CONTROL ───
+function isUserAdmin() {
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('admin') === '1' || urlParams.get('admin') === 'true' || window.location.hash === '#admin') {
+    return true;
+  }
+  const token = localStorage.getItem('n2d_admin_token') || localStorage.getItem('admin_token');
+  return !!token;
+}
+
+function handleAdminEditOffer() {
+  const token = localStorage.getItem('n2d_admin_token') || localStorage.getItem('admin_token');
+  if (token) {
+    openOfferAdminModal();
+  } else {
+    openAdminLoginModal();
+  }
+}
+
+function openAdminLoginModal() {
+  const modal = document.getElementById('adminAuthModal');
+  if (!modal) return;
+  const errEl = document.getElementById('adminAuthError');
+  if (errEl) errEl.style.display = 'none';
+  const passEl = document.getElementById('adminAuthPass');
+  if (passEl) passEl.value = '';
+  modal.classList.add('active');
+}
+
+function closeAdminLoginModal() {
+  const modal = document.getElementById('adminAuthModal');
+  if (modal) modal.classList.remove('active');
+}
+
+async function submitAdminAuth(e) {
+  e.preventDefault();
+  const username = document.getElementById('adminAuthUser').value.trim();
+  const password = document.getElementById('adminAuthPass').value;
+  const submitBtn = document.getElementById('adminAuthSubmitBtn');
+  const errEl = document.getElementById('adminAuthError');
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '⏳ Verifying...';
+  }
+  if (errEl) errEl.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (data.success && data.token) {
+      localStorage.setItem('n2d_admin_token', data.token);
+      closeAdminLoginModal();
+      
+      // Reveal the admin edit button on the banner for this session
+      const editBtn = document.getElementById('bannerEditTriggerBtn');
+      if (editBtn) editBtn.style.display = 'inline-flex';
+      
+      openOfferAdminModal();
+      showOfferToast('🔓 Admin verified successfully');
+    } else {
+      if (errEl) {
+        errEl.innerText = data.error || data.message || 'Invalid admin username or password.';
+        errEl.style.display = 'block';
+      }
+    }
+  } catch (err) {
+    if (errEl) {
+      errEl.innerText = 'Authentication error. Please check server connection.';
+      errEl.style.display = 'block';
+    }
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '🔓 Verify & Open';
+    }
+  }
+}
+
 async function saveOfferBannerConfig(e) {
   e.preventDefault();
   const saveBtn = document.getElementById('saveOfferBtn');
@@ -544,10 +627,14 @@ async function saveOfferBannerConfig(e) {
     ]
   };
 
+  const headers = { 'Content-Type': 'application/json' };
+  const token = localStorage.getItem('n2d_admin_token') || localStorage.getItem('admin_token');
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
   try {
     const res = await fetch('/api/home-services/admin/banner-config', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ banner: updatedBanner, coupons: couponsPayload })
     });
     const result = await res.json();
@@ -603,9 +690,16 @@ async function init() {
   initParticlesCanvas();
   loadOfferBanner();
   
+  // Show admin edit button only if user is verified admin or in admin mode
+  if (isUserAdmin()) {
+    const editBtn = document.getElementById('bannerEditTriggerBtn');
+    if (editBtn) editBtn.style.display = 'inline-flex';
+  }
+  
   const cachedLocation = localStorage.getItem('selectedLocation') || 'Bhongir, Telangana';
   selectLocation(cachedLocation);
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
 
