@@ -168,22 +168,7 @@
       border: 1px solid rgba(255, 255, 255, 0.2);
     }
     .banner-edit-trigger-btn {
-      background: rgba(255, 255, 255, 0.18);
-      color: #FFFFFF !important;
-      border: 1px dashed rgba(255, 255, 255, 0.5);
-      padding: 11px 18px;
-      border-radius: 16px;
-      font-size: 0.85rem;
-      font-weight: 700;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-    .banner-edit-trigger-btn:hover {
-      background: rgba(255, 255, 255, 0.3);
-      border-color: #FFFFFF;
+      display: none !important;
     }
     .banner-coupon-box {
       position: relative;
@@ -490,11 +475,6 @@
               <span style="color: #34D399; font-size: 1.1rem;">✔</span>
               <span>Auto-applied on all services</span>
             </div>
-            <!-- Admin Quick Edit Button (Hidden by default, visible ONLY to authenticated admin) -->
-            <button class="banner-edit-trigger-btn" id="bannerEditTriggerBtn" onclick="handleAdminEditOffer()" title="Edit Offer Banner (Admin)" style="display: none;">
-              <span>⚙️</span>
-              <span>Edit Offer</span>
-            </button>
           </div>
         </div>
 
@@ -702,8 +682,7 @@
             <li><a href="https://wa.me/917989862623?text=Hi%20Need2Done" target="_blank">💬 Chat on WhatsApp</a></li>
             <li><a href="/help.html">Help & FAQs</a></li>
             <li><a href="/contact.html">Contact Us</a></li>
-            <li><a href="javascript:void(0)" onclick="handleAdminEditOffer()" style="opacity: 0.7;">⚙️ Admin Offer Editor</a></li>
-            <li><a href="/admin-catalog.html">Admin Portal</a></li>
+            <li><a href="/admin">Admin Portal</a></li>
           </ul>
         </div>
 
@@ -822,116 +801,6 @@
     </div>
   </div>
 
-  <!-- --- ADMIN LOGIN VERIFICATION MODAL --- -->
-  <div class="modal-overlay" id="adminAuthModal">
-    <div class="modal codex-glass-card" style="max-width: 440px; text-align: left;">
-      <div class="modal-header">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="font-size: 1.3rem;">🔐</span>
-          <h3>Admin Verification</h3>
-        </div>
-        <button class="btn-modal-close" onclick="closeAdminLoginModal()">×</button>
-      </div>
-      <p style="color: var(--text-secondary); font-size: 0.86rem; margin-bottom: 18px;">
-        This section is restricted to administrators only. Please log in with your admin credentials to edit offers.
-      </p>
-
-      <form id="adminAuthForm" onsubmit="submitAdminAuth(event)">
-        <div class="form-group" style="margin-bottom: 14px;">
-          <label style="display: block; font-size: 0.78rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase;">Admin Username</label>
-          <input type="text" id="adminAuthUser" required class="modal-input" placeholder="admin" autocomplete="username">
-        </div>
-
-        <div class="form-group" style="margin-bottom: 14px;">
-          <label style="display: block; font-size: 0.78rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase;">Admin Password</label>
-          <input type="password" id="adminAuthPass" required class="modal-input" placeholder="••••••••" autocomplete="current-password">
-        </div>
-
-        <div id="adminAuthError" style="display: none; color: #EF4444; font-size: 0.85rem; margin-bottom: 14px; font-weight: 600; background: rgba(239, 68, 68, 0.1); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.2);"></div>
-
-        <div style="display: flex; gap: 10px; justify-content: flex-end;">
-          <button type="button" class="btn-primary-codex" style="background: rgba(255,255,255,0.1); color: var(--text-primary);" onclick="closeAdminLoginModal()">Cancel</button>
-          <button type="submit" id="adminAuthSubmitBtn" class="btn-primary-codex" style="background: linear-gradient(135deg, var(--primary), var(--primary-hover)); font-weight: 800;">🔓 Verify & Open</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- --- OFFER BANNER ADMIN MODAL --- -->
-  <div class="modal-overlay" id="offerAdminModal">
-    <div class="modal codex-glass-card" style="max-width: 600px; text-align: left;">
-      <div class="modal-header">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="font-size: 1.3rem;">⚙️</span>
-          <h3>Edit Website Offer Banner</h3>
-        </div>
-        <button class="btn-modal-close" onclick="closeOfferAdminModal()">×</button>
-      </div>
-      <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 18px;">
-        Update the offer banner headline, discount percentage, festive coupon code, and theme colors in real-time across the main website and sub-services.
-      </p>
-
-      <form id="offerAdminForm" onsubmit="saveOfferBannerConfig(event)">
-        <!-- Enable / Disable Toggle -->
-        <div style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-glass); padding: 12px 16px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); margin-bottom: 14px;">
-          <span style="font-size: 0.9rem; font-weight: 700;">Show Banner on Website</span>
-          <label style="position: relative; display: inline-block; width: 46px; height: 24px; cursor: pointer;">
-            <input type="checkbox" id="adminBannerActive" checked style="opacity: 0; width: 0; height: 0;">
-            <span id="sliderToggle" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #475569; transition: .3s; border-radius: 24px;"></span>
-          </label>
-        </div>
-
-        <div class="form-group" style="margin-bottom: 12px;">
-          <label style="display: block; font-size: 0.78rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 5px; text-transform: uppercase;">Badge / Top Tagline</label>
-          <input type="text" id="adminBadgeText" required class="modal-input" placeholder="e.g. 🪔 FESTIVE SPECIAL • DUSSEHRA DHAMAKA 🏹">
-        </div>
-
-        <div class="form-group" style="margin-bottom: 12px;">
-          <label style="display: block; font-size: 0.78rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 5px; text-transform: uppercase;">Banner Headline</label>
-          <input type="text" id="adminBannerTitle" required class="modal-input" placeholder="e.g. Celebrate Dussehra with a Sparkling Clean Home">
-        </div>
-
-        <div class="form-group" style="margin-bottom: 12px;">
-          <label style="display: block; font-size: 0.78rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 5px; text-transform: uppercase;">Subtitle / Description</label>
-          <textarea id="adminBannerSubtitle" required rows="2" class="modal-input" placeholder="Detailed offer description..."></textarea>
-        </div>
-
-        <div class="offer-admin-grid-2">
-          <div class="form-group">
-            <label style="display: block; font-size: 0.78rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 5px; text-transform: uppercase;">Coupon Code</label>
-            <input type="text" id="adminCouponCode" required class="modal-input" style="font-family: monospace; font-weight: 800; text-transform: uppercase;" placeholder="DUSSEHRA">
-          </div>
-          <div class="form-group">
-            <label style="display: block; font-size: 0.78rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 5px; text-transform: uppercase;">Discount Badge Text</label>
-            <input type="text" id="adminDiscountBadge" required class="modal-input" placeholder="20% OFF">
-          </div>
-        </div>
-
-        <div class="offer-admin-grid-2" style="margin-bottom: 18px;">
-          <div class="form-group">
-            <label style="display: block; font-size: 0.78rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 5px; text-transform: uppercase;">Button (CTA) Text</label>
-            <input type="text" id="adminCtaText" required class="modal-input" placeholder="Book Service with 20% OFF">
-          </div>
-          <div class="form-group">
-            <label style="display: block; font-size: 0.78rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 5px; text-transform: uppercase;">Color Theme</label>
-            <select id="adminBannerTheme" class="modal-input" style="background: var(--bg-secondary); color: var(--text-primary); cursor: pointer;">
-              <option value="amber">🪔 Festive Amber (Orange/Gold)</option>
-              <option value="blue">💎 Royal Blue</option>
-              <option value="purple">✨ Mystic Purple</option>
-              <option value="emerald">🌿 Fresh Emerald Green</option>
-              <option value="rose">🌹 Vibrant Rose / Red</option>
-            </select>
-          </div>
-        </div>
-
-        <div style="display: flex; gap: 10px; justify-content: flex-end;">
-          <button type="button" class="btn-primary-codex" style="background: rgba(255,255,255,0.1); color: var(--text-primary);" onclick="closeOfferAdminModal()">Cancel</button>
-          <button type="submit" id="saveOfferBtn" class="btn-primary-codex" style="background: linear-gradient(135deg, #10B981, #059669); font-weight: 800;">💾 Save Changes</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <script src="/script.js?v=2.2"></script>
+  <script src="/script.js?v=2.3"></script>
 </body>
 </html>
