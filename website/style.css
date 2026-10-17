@@ -1924,19 +1924,105 @@ button {
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
+.offer-admin-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
 @media (max-width: 900px) {
   .offer-banner-card {
     flex-direction: column;
-    padding: 28px 22px;
+    padding: 30px 24px;
     text-align: center;
+    border-radius: 28px;
+    gap: 24px;
   }
   .banner-content-left {
     text-align: center;
+    max-width: 100%;
   }
   .banner-actions-row {
     justify-content: center;
   }
   .banner-title {
-    font-size: 1.7rem;
+    font-size: 1.85rem;
+  }
+  .banner-coupon-box {
+    width: 100%;
+    max-width: 360px;
+    margin: 0 auto;
   }
 }
+
+@media (max-width: 600px) {
+  .offer-banner-section {
+    padding: 6px 0 24px;
+  }
+  .offer-banner-card {
+    padding: 22px 18px;
+    border-radius: 22px;
+    gap: 20px;
+  }
+  .banner-badge-pill {
+    font-size: 0.72rem;
+    padding: 5px 12px;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.35;
+  }
+  .banner-title {
+    font-size: 1.45rem;
+    line-height: 1.25;
+    margin-bottom: 8px;
+  }
+  .banner-subtitle {
+    font-size: 0.88rem;
+    line-height: 1.45;
+    margin-bottom: 16px;
+  }
+  .banner-actions-row {
+    flex-direction: column;
+    width: 100%;
+    gap: 10px;
+  }
+  .banner-cta-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 12px 18px;
+    font-size: 0.92rem;
+  }
+  .banner-applied-badge {
+    width: 100%;
+    justify-content: center;
+    padding: 8px 14px;
+    font-size: 0.8rem;
+  }
+  .banner-edit-trigger-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 8px 14px;
+    font-size: 0.8rem;
+  }
+  .banner-coupon-box {
+    padding: 18px 16px;
+    border-radius: 20px;
+    min-width: 0;
+  }
+  .coupon-emblem {
+    font-size: 2.2rem;
+  }
+  .coupon-discount-text {
+    font-size: 1.85rem;
+  }
+  .coupon-code-pill {
+    font-size: 0.85rem;
+    padding: 5px 12px;
+  }
+  .offer-admin-grid-2 {
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+  }
+}
+
