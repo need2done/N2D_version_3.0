@@ -413,10 +413,195 @@ function submitAnyWorkTask(e) {
   window.open(waUrl, '_blank');
 }
 
+// ─── OFFER BANNER & ADMIN EDIT LOGIC ───
+let currentBannerConfig = {
+  isActive: true,
+  badgeText: '🪔 FESTIVE SPECIAL • DUSSEHRA DHAMAKA 🏹',
+  title: 'Celebrate Dussehra with a Sparkling Clean Home',
+  subtitle: 'Get FLAT 20% OFF on all professional cleaning, repairs, and kitchen deep-clean services. Code DUSSEHRA is automatically applied at checkout!',
+  discountBadge: '20% OFF',
+  couponCode: 'DUSSEHRA',
+  discountPercent: 20,
+  ctaText: 'Book Service with 20% OFF',
+  theme: 'amber'
+};
+
+async function loadOfferBanner() {
+  try {
+    const res = await fetch('/api/home-services/banner-config');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.success && data.banner) {
+      currentBannerConfig = { ...currentBannerConfig, ...data.banner };
+      renderOfferBanner(currentBannerConfig);
+    }
+  } catch (err) {
+    console.error('Error fetching offer banner configuration:', err);
+  }
+}
+
+function renderOfferBanner(cfg) {
+  const section = document.getElementById('offerBannerSection');
+  const banner = document.getElementById('mainOfferBanner');
+  if (!section || !banner) return;
+
+  if (cfg.isActive === false) {
+    section.style.display = 'none';
+    return;
+  } else {
+    section.style.display = 'block';
+  }
+
+  // Update theme class
+  banner.className = 'offer-banner-card theme-' + (cfg.theme || 'amber');
+
+  // Update DOM fields
+  const badgeEl = document.getElementById('bannerBadge');
+  if (badgeEl && cfg.badgeText) badgeEl.textContent = cfg.badgeText;
+
+  const titleEl = document.getElementById('bannerTitle');
+  if (titleEl && cfg.title) titleEl.textContent = cfg.title;
+
+  const subtitleEl = document.getElementById('bannerSubtitle');
+  if (subtitleEl && cfg.subtitle) subtitleEl.textContent = cfg.subtitle;
+
+  const discountEl = document.getElementById('bannerDiscountBadge');
+  if (discountEl && cfg.discountBadge) discountEl.textContent = cfg.discountBadge;
+
+  const couponEl = document.getElementById('bannerCouponCode');
+  if (couponEl && cfg.couponCode) couponEl.textContent = cfg.couponCode;
+
+  const ctaTextEl = document.getElementById('bannerCtaText');
+  if (ctaTextEl && cfg.ctaText) ctaTextEl.textContent = cfg.ctaText;
+
+  // Set theme emblem
+  const emblemEl = document.getElementById('bannerEmblem');
+  if (emblemEl) {
+    const emblems = {
+      amber: '🪔',
+      blue: '💎',
+      purple: '✨',
+      emerald: '🌿',
+      rose: '🌹'
+    };
+    emblemEl.textContent = emblems[cfg.theme] || '🎁';
+  }
+}
+
+function openOfferAdminModal() {
+  const modal = document.getElementById('offerAdminModal');
+  if (!modal) return;
+
+  document.getElementById('adminBannerActive').checked = currentBannerConfig.isActive !== false;
+  document.getElementById('adminBadgeText').value = currentBannerConfig.badgeText || '';
+  document.getElementById('adminBannerTitle').value = currentBannerConfig.title || '';
+  document.getElementById('adminBannerSubtitle').value = currentBannerConfig.subtitle || '';
+  document.getElementById('adminCouponCode').value = currentBannerConfig.couponCode || '';
+  document.getElementById('adminDiscountBadge').value = currentBannerConfig.discountBadge || '';
+  document.getElementById('adminCtaText').value = currentBannerConfig.ctaText || '';
+  document.getElementById('adminBannerTheme').value = currentBannerConfig.theme || 'amber';
+
+  modal.classList.add('active');
+}
+
+function closeOfferAdminModal() {
+  const modal = document.getElementById('offerAdminModal');
+  if (modal) modal.classList.remove('active');
+}
+
+async function saveOfferBannerConfig(e) {
+  e.preventDefault();
+  const saveBtn = document.getElementById('saveOfferBtn');
+  const originalBtnText = saveBtn ? saveBtn.innerHTML : '💾 Save Changes';
+
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '⏳ Saving...';
+  }
+
+  const updatedBanner = {
+    isActive: document.getElementById('adminBannerActive').checked,
+    badgeText: document.getElementById('adminBadgeText').value.trim(),
+    title: document.getElementById('adminBannerTitle').value.trim(),
+    subtitle: document.getElementById('adminBannerSubtitle').value.trim(),
+    couponCode: document.getElementById('adminCouponCode').value.trim().toUpperCase(),
+    discountBadge: document.getElementById('adminDiscountBadge').value.trim(),
+    ctaText: document.getElementById('adminCtaText').value.trim(),
+    theme: document.getElementById('adminBannerTheme').value
+  };
+
+  const match = updatedBanner.discountBadge.match(/\d+/);
+  const discountPercent = match ? parseInt(match[0], 10) : 20;
+  updatedBanner.discountPercent = discountPercent;
+
+  const couponsPayload = {
+    autoApply: true,
+    defaultCoupon: updatedBanner.couponCode,
+    coupons: [
+      { code: updatedBanner.couponCode, discountPercent: discountPercent, description: updatedBanner.badgeText },
+      { code: 'DUSSEHRA', discountPercent: 20, description: 'Festive Discount' },
+      { code: 'WELCOME10', discountPercent: 10, description: 'Welcome Discount' }
+    ]
+  };
+
+  try {
+    const res = await fetch('/api/home-services/admin/banner-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ banner: updatedBanner, coupons: couponsPayload })
+    });
+    const result = await res.json();
+    if (result.success) {
+      currentBannerConfig = updatedBanner;
+      renderOfferBanner(currentBannerConfig);
+      closeOfferAdminModal();
+      showOfferToast('✅ Offer banner updated successfully!');
+    } else {
+      alert('Error saving banner: ' + (result.error || 'Server error'));
+    }
+  } catch (err) {
+    console.error('Error saving banner config:', err);
+    alert('Failed to save banner config. Please check your internet connection.');
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = originalBtnText;
+    }
+  }
+}
+
+function showOfferToast(msg) {
+  let toast = document.getElementById('offerToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'offerToast';
+    toast.style.position = 'fixed';
+    toast.style.bottom = '24px';
+    toast.style.right = '24px';
+    toast.style.background = '#10B981';
+    toast.style.color = '#FFFFFF';
+    toast.style.padding = '12px 22px';
+    toast.style.borderRadius = '12px';
+    toast.style.boxShadow = '0 10px 25px rgba(0,0,0,0.3)';
+    toast.style.zIndex = '99999';
+    toast.style.fontWeight = '700';
+    toast.style.transition = 'all 0.3s ease';
+    document.body.appendChild(toast);
+  }
+  toast.innerText = msg;
+  toast.style.opacity = '1';
+  toast.style.transform = 'translateY(0)';
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(10px)';
+  }, 3500);
+}
+
 // ─── INITIALIZATION ───
 async function init() {
   initTheme();
   initParticlesCanvas();
+  loadOfferBanner();
   
   const cachedLocation = localStorage.getItem('selectedLocation') || 'Bhongir, Telangana';
   selectLocation(cachedLocation);

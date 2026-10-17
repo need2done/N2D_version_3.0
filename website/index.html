@@ -162,6 +162,45 @@
         </div>
       </div>
 
+  <!-- --- DYNAMIC FESTIVE & PROMOTIONAL OFFER BANNER --- -->
+  <section class="offer-banner-section" id="offerBannerSection">
+    <div class="container">
+      <div class="offer-banner-card theme-amber" id="mainOfferBanner">
+        <div class="banner-glow-1"></div>
+        <div class="banner-glow-2"></div>
+
+        <!-- Left Content -->
+        <div class="banner-content-left">
+          <div class="banner-badge-pill" id="bannerBadge">🪔 FESTIVE SPECIAL • DUSSEHRA DHAMAKA 🏹</div>
+          <h2 class="banner-title" id="bannerTitle">Celebrate Dussehra with a Sparkling Clean Home</h2>
+          <p class="banner-subtitle" id="bannerSubtitle">Get FLAT 20% OFF on all professional cleaning, repairs, and kitchen deep-clean services. Code DUSSEHRA is automatically applied at checkout!</p>
+          
+          <div class="banner-actions-row">
+            <a href="/home-services" class="banner-cta-btn" id="bannerCtaBtn">
+              <span id="bannerCtaText">Book Service with 20% OFF</span>
+              <span>→</span>
+            </a>
+            <div class="banner-applied-badge">
+              <span style="color: #34D399; font-size: 1.1rem;">✔</span>
+              <span>Auto-applied on all services</span>
+            </div>
+            <!-- Admin Quick Edit Button -->
+            <button class="banner-edit-trigger-btn" onclick="openOfferAdminModal()" title="Edit Offer Banner (Admin)">
+              <span>⚙️</span>
+              <span>Edit Offer</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Right Coupon Card -->
+        <div class="banner-coupon-box">
+          <div class="coupon-emblem" id="bannerEmblem">🪔</div>
+          <span style="color: rgba(255,255,255,0.75); font-size: 0.72rem; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase;">SPECIAL DISCOUNT</span>
+          <div class="coupon-discount-text" id="bannerDiscountBadge">20% OFF</div>
+          <span style="color: rgba(255,255,255,0.65); font-size: 0.75rem; font-weight: 600;">Coupon Code</span>
+          <div class="coupon-code-pill" id="bannerCouponCode">DUSSEHRA</div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -473,6 +512,79 @@
         <div class="saved-location-item" onclick="selectLocation('Yadadri, Telangana')">📍 Yadadri, Telangana</div>
         <div class="saved-location-item" onclick="selectLocation('Hyderabad City')">📍 Hyderabad City, Telangana</div>
       </div>
+    </div>
+  <!-- --- OFFER BANNER ADMIN MODAL --- -->
+  <div class="modal-overlay" id="offerAdminModal">
+    <div class="modal codex-glass-card" style="max-width: 600px; text-align: left;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 1.3rem;">⚙️</span>
+          <h3>Edit Website Offer Banner</h3>
+        </div>
+        <button class="btn-modal-close" onclick="closeOfferAdminModal()">×</button>
+      </div>
+      <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 18px;">
+        Update the offer banner headline, discount percentage, festive coupon code, and theme colors in real-time across the main website and sub-services.
+      </p>
+
+      <form id="offerAdminForm" onsubmit="saveOfferBannerConfig(event)">
+        <!-- Enable / Disable Toggle -->
+        <div style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-glass); padding: 12px 16px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); margin-bottom: 14px;">
+          <span style="font-size: 0.9rem; font-weight: 700;">Show Banner on Website</span>
+          <label style="position: relative; display: inline-block; width: 46px; height: 24px; cursor: pointer;">
+            <input type="checkbox" id="adminBannerActive" checked style="opacity: 0; width: 0; height: 0;">
+            <span id="sliderToggle" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #475569; transition: .3s; border-radius: 24px;"></span>
+          </label>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label style="display: block; font-size: 0.78rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 5px; text-transform: uppercase;">Badge / Top Tagline</label>
+          <input type="text" id="adminBadgeText" required class="modal-input" placeholder="e.g. 🪔 FESTIVE SPECIAL • DUSSEHRA DHAMAKA 🏹">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label style="display: block; font-size: 0.78rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 5px; text-transform: uppercase;">Banner Headline</label>
+          <input type="text" id="adminBannerTitle" required class="modal-input" placeholder="e.g. Celebrate Dussehra with a Sparkling Clean Home">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label style="display: block; font-size: 0.78rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 5px; text-transform: uppercase;">Subtitle / Description</label>
+          <textarea id="adminBannerSubtitle" required rows="2" class="modal-input" placeholder="Detailed offer description..."></textarea>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+          <div class="form-group">
+            <label style="display: block; font-size: 0.78rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 5px; text-transform: uppercase;">Coupon Code</label>
+            <input type="text" id="adminCouponCode" required class="modal-input" style="font-family: monospace; font-weight: 800; text-transform: uppercase;" placeholder="DUSSEHRA">
+          </div>
+          <div class="form-group">
+            <label style="display: block; font-size: 0.78rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 5px; text-transform: uppercase;">Discount Badge Text</label>
+            <input type="text" id="adminDiscountBadge" required class="modal-input" placeholder="20% OFF">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px;">
+          <div class="form-group">
+            <label style="display: block; font-size: 0.78rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 5px; text-transform: uppercase;">Button (CTA) Text</label>
+            <input type="text" id="adminCtaText" required class="modal-input" placeholder="Book Service with 20% OFF">
+          </div>
+          <div class="form-group">
+            <label style="display: block; font-size: 0.78rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 5px; text-transform: uppercase;">Color Theme</label>
+            <select id="adminBannerTheme" class="modal-input" style="background: var(--bg-secondary); color: var(--text-primary); cursor: pointer;">
+              <option value="amber">🪔 Festive Amber (Orange/Gold)</option>
+              <option value="blue">💎 Royal Blue</option>
+              <option value="purple">✨ Mystic Purple</option>
+              <option value="emerald">🌿 Fresh Emerald Green</option>
+              <option value="rose">🌹 Vibrant Rose / Red</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+          <button type="button" class="btn-primary-codex" style="background: rgba(255,255,255,0.1); color: var(--text-primary);" onclick="closeOfferAdminModal()">Cancel</button>
+          <button type="submit" id="saveOfferBtn" class="btn-primary-codex" style="background: linear-gradient(135deg, #10B981, #059669); font-weight: 800;">💾 Save Changes</button>
+        </div>
+      </form>
     </div>
   </div>
 
