@@ -2277,6 +2277,13 @@ Share this with helper."""
                     f"🟢 You are now back ONLINE and available for new orders!"
                 )
 
+                # Trigger official payment invoice & receipt dispatch to Customer
+                try:
+                    import requests
+                    requests.post(f"http://localhost:5000/api/orders/{active['id']}/send-invoice", timeout=2)
+                except Exception as _inv_err:
+                    logger.warning(f"Failed to dispatch invoice via API: {_inv_err}")
+
                 # Send rating feedback buttons to Customer
                 od_img = os.getenv("ORDER_DELIVERED_IMAGE_MEDIA_ID") or ORDER_DELIVERED_IMAGE_MEDIA_ID or os.getenv("ORDER_DELIVERED_IMAGE_URL") or ORDER_DELIVERED_IMAGE_URL
                 send_reply_buttons(
@@ -2320,6 +2327,13 @@ Share this with helper."""
                 log_event(active["id"], "ORDER_AUTO_COMPLETED", "Order completed via OTP", "SYSTEM")
                 send_message(phone, "✅ OTP verified.\n🎉 *Order Completed!*\n\nYou are now back ONLINE and ready for new orders.")
                 
+                # Trigger official payment invoice & receipt dispatch to Customer
+                try:
+                    import requests
+                    requests.post(f"http://localhost:5000/api/orders/{active['id']}/send-invoice", timeout=2)
+                except Exception as _inv_err:
+                    logger.warning(f"Failed to dispatch invoice via API: {_inv_err}")
+
                 # ------------------------------------------------
                 # CUSTOMER THANK YOU & FEEDBACK
                 # ------------------------------------------------

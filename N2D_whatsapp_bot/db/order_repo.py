@@ -530,6 +530,13 @@ def complete_order(order_id: str) -> bool:
 
         db.commit()
 
+        # Trigger official payment invoice & receipt dispatch to Customer
+        try:
+            import requests
+            requests.post(f"http://localhost:5000/api/orders/{order['id']}/send-invoice", timeout=2)
+        except Exception:
+            pass
+
         return True
 
     except Exception:

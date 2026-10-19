@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const Razorpay = require('razorpay');
 const axios = require('axios');
 const pool = require('../config/db');
+const { sendOrderInvoiceReceipt } = require('../services/invoiceService');
 
 // Helper to notify Python bot of payment success
 const notifyBotPaymentSuccess = async (orderId, paymentId) => {
@@ -150,44 +151,72 @@ router.post('/verify', async (req, res) => {
 /**
  * POST /api/payments/webhook
  * Webhook handler for async payment events from Razorpay server
+ * Webhook URL: https://need2done.in/api/payments/webhook
+ * Secret: N2done@2 (configured in .env RAZORPAY_WEBHOOK_SECRET)
  */
 router.post('/webhook', async (req, res) => {
   try {
-    const secret = process.env.RAZORPAY_WEBHOOK_SECRET || process.env.RAZORPAY_KEY_SECRET;
+    const secret = process.env.RAZORPAY_WEBHOOK_SECRET || 'N2done@2';
     const signature = req.headers['x-razorpay-signature'];
 
-    if (signature && secret) {
-      const shasum = crypto.createHmac('sha256', secret);
-      shasum.update(JSON.stringify(req.body));
-      const digest = shasum.digest('hex');
+    if (!signature) {
+      console.warn('[Razorpay Webhook] Missing x-razorpay-signature header from request');
+      return res.status(400).json({ status: 'missing_signature', error: 'x-razorpay-signature header is required' });
+    }
 
-      if (digest !== signature) {
-        return res.status(400).json({ status: 'invalid_signature' });
-      }
+    const payloadBody = req.rawBody ? req.rawBody : JSON.stringify(req.body);
+    const expectedSignature = crypto
+      .createHmac('sha256', secret)
+      .update(payloadBody)
+      .digest('hex');
+
+    if (expectedSignature !== signature) {
+      console.error('[Razorpay Webhook] Signature mismatch. Received:', signature, 'Expected:', expectedSignature);
+      return res.status(400).json({ status: 'invalid_signature', error: 'Webhook signature verification failed' });
     }
 
     const event = req.body.event;
     const payload = req.body.payload;
+    console.log(`[Razorpay Webhook] Verified event: ${event}`);
 
     if (event === 'payment.captured' || event === 'order.paid') {
-      const paymentEntity = payload.payment?.entity;
+      const paymentEntity = payload?.payment?.entity;
       const receiptId = paymentEntity?.notes?.orderId || paymentEntity?.receipt;
+      const paymentId = paymentEntity?.id;
 
       if (receiptId) {
         if (pool) {
-          await pool.query(
-            `UPDATE orders SET payment_status = 'PAID', payment_method = 'RAZORPAY', updated_at = NOW() WHERE id = ? OR order_id = ?`,
-            [receiptId, receiptId]
-          );
+          try {
+            await pool.query(
+              `UPDATE orders 
+               SET payment_status = 'PAID', 
+                   payment_method = 'RAZORPAY', 
+                   razorpay_payment_id = ?, 
+                   updated_at = NOW() 
+               WHERE id = ? OR order_id = ?`,
+              [paymentId || null, receiptId, receiptId]
+            );
+
+            // Check if order is already completed; if so, dispatch invoice receipt
+            const [orders] = await pool.query(
+              `SELECT * FROM orders WHERE id = ? OR order_id = ?`,
+              [receiptId, receiptId]
+            );
+            if (orders.length > 0 && orders[0].status === 'COMPLETED') {
+              await sendOrderInvoiceReceipt(orders[0]);
+            }
+          } catch (dbErr) {
+            console.error('[Razorpay Webhook DB Error]:', dbErr.message);
+          }
         }
         notifyBotPaymentSuccess(receiptId, paymentEntity?.id);
       }
     }
 
-    return res.json({ status: 'ok' });
+    return res.json({ status: 'ok', event, received: true });
   } catch (err) {
     console.error('[Razorpay Webhook Error]:', err);
-    return res.status(500).json({ status: 'error' });
+    return res.status(500).json({ status: 'error', error: err.message });
   }
 });
 

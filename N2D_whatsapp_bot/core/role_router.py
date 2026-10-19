@@ -786,7 +786,14 @@ def route_message(
                                 db.commit()
                                 log_event(hs_order["id"], "COMPLETED", f"Customer verified End OTP ({candidate_otp}) on WhatsApp", "CUSTOMER")
 
-                                send_message(user, "🎉 *Service Completed Successfully!*\n\nThank you for choosing Need2Done Home Services. We hope your experience was wonderful!\n\nPlease rate your service (1 to 5).")
+                                send_message(user, "🎉 *Service Completed Successfully!*\n\nThank you for choosing Need2Done Services. We hope your experience was wonderful!\n\nPlease rate your service (1 to 5).")
+
+                                # Trigger official payment invoice & receipt dispatch to Customer
+                                try:
+                                    import requests
+                                    requests.post(f"http://localhost:5000/api/orders/{hs_order['id']}/send-invoice", timeout=2)
+                                except Exception as _inv_err:
+                                    print("Failed to dispatch invoice via API:", _inv_err)
 
                                 if ADMIN_NUMBER:
                                     h_charge = hs_order.get('helper_charge') or 0

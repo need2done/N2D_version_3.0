@@ -46,7 +46,11 @@ app.use('/api/', apiRateLimiter);
 // Centralized Request Logger (Logs to backend/logs/backend.log with file rotation)
 app.use(requestLogger);
 
-app.use(express.json());
+app.use(express.json({
+    verify: (req, res, buf) => {
+        req.rawBody = buf;
+    }
+}));
 
 // Catch JSON parsing errors to prevent server crash
 app.use((err, req, res, next) => {

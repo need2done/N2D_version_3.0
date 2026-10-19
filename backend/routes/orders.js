@@ -4,6 +4,7 @@ const db = require('../config/db');
 const axios = require('axios');
 
 const { authenticateAdmin, authenticateToken, authenticateInternalOrToken } = require('../middleware/auth');
+const { sendOrderInvoiceReceipt, buildInvoiceData, buildHtmlInvoice } = require('../services/invoiceService');
 
 
 // ==========================================
@@ -927,9 +928,16 @@ router.post('/:id/assisted/verify-end-otp', authenticateAdmin, async (req, res) 
         if (customerPhone) {
             await sendWhatsAppText(customerPhone, 
                 `🎉 *Service Completed Successfully!*\n\n` +
-                `Thank you for using Need2Done Home Services. We hope your experience was wonderful!\n\n` +
+                `Thank you for using Need2Done Services. We hope your experience was wonderful!\n\n` +
                 `Rate your service (1-5) by replying directly with a number.`
             );
+        }
+
+        // 🧾 Dispatch Official Payment Invoice & Receipt to Customer (WhatsApp + Email)
+        try {
+            await sendOrderInvoiceReceipt(order.id);
+        } catch (invErr) {
+            console.error('[Verify End OTP] Invoice delivery error:', invErr.message);
         }
 
         if (ADMIN_NUMBER) {
@@ -940,7 +948,7 @@ router.post('/:id/assisted/verify-end-otp', authenticateAdmin, async (req, res) 
             );
         }
 
-        res.json({ success: true, message: 'Order completed successfully! Helper payout tagged as Physical Cash.' });
+        res.json({ success: true, message: 'Order completed successfully! Invoice dispatched to customer.' });
     } catch (err) {
         console.error('Error verifying end otp:', err);
         res.status(500).json({ success: false, error: err.message || 'DB error' });
@@ -1189,6 +1197,54 @@ router.post('/call-order', authenticateAdmin, async (req, res) => {
     } catch (err) {
         console.error('Error creating call order:', err);
         res.status(500).json({ success: false, error: err.message || 'DB error' });
+    }
+});
+
+// ==========================================
+// 8. GET /api/orders/:id/invoice — Retrieve or view tax invoice
+// ==========================================
+router.get('/:id/invoice', async (req, res) => {
+    try {
+        const [orders] = await db.query(`
+            SELECT o.*, h.name as helper_name, h.phone as helper_phone, c.name as customer_name, c.phone as customer_phone
+            FROM orders o
+            LEFT JOIN helpers h ON o.helper_id = h.id
+            LEFT JOIN customers c ON o.customer_id = c.id
+            WHERE o.id = ? OR o.order_id = ?
+        `, [req.params.id, req.params.id]);
+
+        if (orders.length === 0) {
+            return res.status(404).json({ success: false, error: 'Order not found' });
+        }
+
+        const invoiceData = buildInvoiceData(orders[0]);
+
+        if (req.query.format === 'html' || (req.headers.accept && req.headers.accept.includes('text/html'))) {
+            const html = buildHtmlInvoice(invoiceData);
+            res.setHeader('Content-Type', 'text/html');
+            return res.send(html);
+        }
+
+        return res.json({ success: true, invoice: invoiceData });
+    } catch (err) {
+        console.error('Error fetching invoice:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// ==========================================
+// 9. POST /api/orders/:id/send-invoice — Trigger invoice dispatch to customer
+// ==========================================
+router.post('/:id/send-invoice', async (req, res) => {
+    try {
+        const result = await sendOrderInvoiceReceipt(req.params.id);
+        if (!result) {
+            return res.status(404).json({ success: false, error: 'Order not found or invoice dispatch failed' });
+        }
+        res.json({ success: true, message: 'Invoice dispatched to customer successfully!', invoice: result });
+    } catch (err) {
+        console.error('Error sending invoice:', err);
+        res.status(500).json({ success: false, error: err.message });
     }
 });
 
