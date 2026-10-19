@@ -21,12 +21,13 @@ import CustomWorkAdmin   from './pages/CustomWorkAdmin';
 import HomeServicesPage  from './pages/HomeServicesPage';
 import FareCalculatorPage from './pages/FareCalculatorPage';
 import ServiceExpansionPage from './pages/ServiceExpansionPage';
+import Applications from './pages/Applications';
 
 import {
   LayoutDashboard, BarChart3,
   Layers, Home, Briefcase, Calculator, Globe,
   MapPinned, Activity,
-  Users, Wrench, Store,
+  Users, Wrench, Store, ClipboardCheck,
   DollarSign, Wallet, Bell,
   Settings, ChevronDown, ChevronRight,
   LogOut, Menu, X, Search,
@@ -149,6 +150,7 @@ const ROUTE_LABELS = {
   'earnings':     'Payments & Earnings',
   'analysis':     'Analytics',
   'map':          'Live Tracking',
+  'applications': 'Helper / Vendor Applications',
   'helpers':      'Helpers',
   'hs-helpers':   'HS Helpers',
   'vendors':      'Vendors',
@@ -313,6 +315,9 @@ const DashboardLayout = () => {
 
           {/* MANAGEMENT */}
           <NavSection label="Management" />
+          <NavItem to="/applications" icon={ClipboardCheck} onClick={closeSidebar}>
+            Applications
+          </NavItem>
           <NavItem to="/helpers" icon={Users} onClick={closeSidebar}>
             Helpers
           </NavItem>
@@ -393,6 +398,7 @@ function App() {
             <Route path="/earnings"      element={<Earnings />} />
             <Route path="/analysis"      element={<Analysis />} />
             <Route path="/map"           element={<LiveMap />} />
+            <Route path="/applications"  element={<Applications />} />
             <Route path="/helpers"       element={<Helpers />} />
             <Route path="/hs-helpers"    element={<HomeServiceHelpers />} />
             <Route path="/vendors"       element={<Vendors />} />

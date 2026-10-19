@@ -125,6 +125,7 @@ const homeServicesRoutes = require('./routes/homeServices');
 const fruitsVegetablesRoutes = require('./routes/fruitsVegetables');
 const rideRoutes = require('./routes/ride');
 const serviceRoutes = require('./routes/serviceRoutes');
+const applicationRoutes = require('./routes/applications');
 
 // Groceries Backend Routers
 const groceryCategoryRoutes = require('../modules/N2D_GROCERIES_CS_Dashboard/backend/src/routes/categoryRoutes');
@@ -155,6 +156,7 @@ app.use('/api/fruits-vegetables', fruitsVegetablesRoutes);
 app.use('/api/ride', rideRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/service-zones', serviceZonesRoutes);
+app.use('/api/applications', applicationRoutes);
 
 
 // Groceries Backend Routes
@@ -175,6 +177,10 @@ app.use('/api/custom-work', customWorkRoutes);
 // Razorpay Payment Routes
 const paymentRoutes = require('./routes/payments');
 app.use('/api/payments', paymentRoutes);
+
+// Location & Maps Autocomplete Routes (Google Places + OSM)
+const mapsRoutes = require('./routes/maps');
+app.use('/api/maps', mapsRoutes);
 
 
 
@@ -232,6 +238,53 @@ app.get('/api/health', async (req, res) => {
         });
     } catch (err) {
         res.status(500).json({ success: false, error: 'Health check failed' });
+    }
+});
+
+// Dedicated health endpoints for granular monitoring (Uptime Kuma)
+app.get('/api/health/system', (req, res) => {
+    try {
+        const totalMem = os.totalmem();
+        const freeMem = os.freemem();
+        const memoryUsage = ((totalMem - freeMem) / totalMem) * 100;
+        let cpuUsage = 0;
+        const cpus = os.cpus();
+        if (cpus && cpus.length > 0) {
+            let totalIdle = 0, totalTick = 0;
+            for(let i = 0; i < cpus.length; i++) {
+                let cpu = cpus[i];
+                for(let type in cpu.times) {
+                    totalTick += cpu.times[type];
+                }     
+                totalIdle += cpu.times.idle;
+            }
+            cpuUsage = 100 - ~~(100 * totalIdle / totalTick);
+        }
+        res.json({ success: true, status: 'OK', cpu: cpuUsage, memory: parseFloat(memoryUsage.toFixed(1)) });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+app.get('/api/health/db', async (req, res) => {
+    try {
+        const db = require('./config/db');
+        await db.query('SELECT 1');
+        res.json({ success: true, status: 'OK', database: 'ONLINE' });
+    } catch (e) {
+        res.status(500).json({ success: false, status: 'ERROR', database: 'OFFLINE', error: e.message });
+    }
+});
+
+app.get('/api/health/bot', async (req, res) => {
+    try {
+        const botMeta = await axios.get('http://127.0.0.1:8000/health', { timeout: 2000 });
+        if (botMeta.status === 200) {
+            return res.json({ success: true, status: 'OK', whatsappBot: 'ONLINE', details: botMeta.data });
+        }
+        res.status(502).json({ success: false, status: 'DEGRADED', whatsappBot: 'UNEXPECTED_STATUS' });
+    } catch (e) {
+        res.status(503).json({ success: false, status: 'ERROR', whatsappBot: 'OFFLINE', error: e.message });
     }
 });
 
@@ -362,8 +415,10 @@ app.get(/^\/admin(\/.*)?$/, (req, res) => {
     }
 });
 
-// Redirect old admin-catalog page to admin dashboard
-app.get('/admin-catalog.html', (req, res) => res.redirect('/admin'));
+// Register Portal Page
+app.get('/register', (req, res) => {
+    res.sendFile('register.html', { root: path.resolve(__dirname, '../website') });
+});
 
 app.use('/', express.static(path.resolve(__dirname, '../website')));
 
