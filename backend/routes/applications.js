@@ -159,10 +159,17 @@ router.post('/submit', uploadFields, async (req, res) => {
             }
 
             // 2. Vehicle & Driving Experience Checks
-            const vehicleType = (body.vehicle_type || 'Bicycle').toLowerCase();
+            const serviceCat = (body.service_category || '').toLowerCase();
+            const isNonVehicleRole = serviceCat.includes('home service') || 
+                                     serviceCat.includes('helper service') || 
+                                     serviceCat.includes('custom work') ||
+                                     serviceCat.includes('errand');
+
+            const vehicleType = (body.vehicle_type || 'none').toLowerCase();
             const isMotorized = ['bike', 'two-wheeler', 'auto', 'auto-rickshaw', 'car', 'cab'].some(v => vehicleType.includes(v));
 
-            if (isMotorized) {
+            // Only enforce motorized driving experience & DL for transport/delivery roles
+            if (isMotorized && !isNonVehicleRole) {
                 drivingExp = parseInt(body.driving_experience_years || '0', 10);
                 if (isNaN(drivingExp) || drivingExp < 2) {
                     return res.status(400).json({
@@ -190,6 +197,10 @@ router.post('/submit', uploadFields, async (req, res) => {
                         });
                     }
                 }
+            } else if (isMotorized && isNonVehicleRole) {
+                // If optional vehicle info is provided for HS / Helper / Custom Work
+                if (body.vehicle_year) vehicleYear = parseInt(body.vehicle_year, 10);
+                if (body.driving_experience_years) drivingExp = parseInt(body.driving_experience_years, 10);
             }
 
             // 3. Legal and Driving Record Declarations Check
@@ -724,4 +735,100 @@ router.post('/:applicationId/notes', authenticateAdmin, async (req, res) => {
     }
 });
 
+// ============================================================
+// 7. ADMIN: PUT /api/applications/:applicationId/bank
+// Update Payout & Banking Details (Post-Onboarding)
+// ============================================================
+router.put('/:applicationId/bank', authenticateAdmin, async (req, res) => {
+    try {
+        const { applicationId } = req.params;
+        const { bank_holder_name, bank_name, account_number, ifsc_code, upi_id } = req.body;
+
+        const [apps] = await db.query(
+            'SELECT id, application_id, bank_account_last4 FROM registration_applications WHERE application_id = ? LIMIT 1',
+            [applicationId]
+        );
+        if (apps.length === 0) {
+            return res.status(404).json({ success: false, error: 'Application not found.' });
+        }
+
+        let encryptedAccount = undefined;
+        let last4 = undefined;
+
+        if (account_number && account_number.trim().length > 0) {
+            const cleanAcc = account_number.trim();
+            encryptedAccount = cryptoService.encrypt(cleanAcc);
+            last4 = cleanAcc.slice(-4);
+        }
+
+        const updateFields = [];
+        const updateParams = [];
+
+        if (bank_holder_name !== undefined) {
+            updateFields.push('bank_holder_name = ?');
+            updateParams.push(bank_holder_name ? bank_holder_name.trim() : null);
+        }
+        if (bank_name !== undefined) {
+            updateFields.push('bank_name = ?');
+            updateParams.push(bank_name ? bank_name.trim() : null);
+        }
+        if (encryptedAccount !== undefined) {
+            updateFields.push('bank_account_number_encrypted = ?');
+            updateParams.push(encryptedAccount);
+            updateFields.push('bank_account_last4 = ?');
+            updateParams.push(last4);
+        }
+        if (ifsc_code !== undefined) {
+            updateFields.push('ifsc_code = ?');
+            updateParams.push(ifsc_code ? ifsc_code.trim().toUpperCase() : null);
+        }
+        if (upi_id !== undefined) {
+            updateFields.push('upi_id = ?');
+            updateParams.push(upi_id ? upi_id.trim() : null);
+        }
+
+        if (updateFields.length === 0) {
+            return res.status(400).json({ success: false, error: 'No bank details provided to update.' });
+        }
+
+        updateFields.push('updated_at = NOW()');
+        updateParams.push(applicationId);
+
+        await db.query(
+            `UPDATE registration_applications SET ${updateFields.join(', ')} WHERE application_id = ?`,
+            updateParams
+        );
+
+        // Record audit note
+        const reviewer = req.user.username || req.user.email || 'Admin';
+        await db.query(
+            'INSERT INTO application_notes (application_id, author, note) VALUES (?, ?, ?)',
+            [applicationId, reviewer, `Banking & payout details updated by ${reviewer}.`]
+        );
+
+        // Fetch updated details to return
+        const [updatedRows] = await db.query(
+            'SELECT bank_holder_name, bank_name, bank_account_last4, ifsc_code, upi_id FROM registration_applications WHERE application_id = ? LIMIT 1',
+            [applicationId]
+        );
+        const updated = updatedRows[0];
+
+        return res.json({
+            success: true,
+            message: 'Bank and payout details updated successfully.',
+            bank_details: {
+                bank_holder_name: updated.bank_holder_name,
+                bank_name: updated.bank_name,
+                bank_account_masked: updated.bank_account_last4 ? `••••••••${updated.bank_account_last4}` : null,
+                ifsc_code: updated.ifsc_code,
+                upi_id: updated.upi_id
+            }
+        });
+    } catch (err) {
+        console.error('Error updating bank details:', err);
+        return res.status(500).json({ success: false, error: 'Failed to update bank details' });
+    }
+});
+
 module.exports = router;
+

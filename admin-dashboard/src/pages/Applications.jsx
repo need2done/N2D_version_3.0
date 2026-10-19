@@ -3,7 +3,7 @@ import {
   ClipboardCheck, Search, Filter, RefreshCw, Eye, CheckCircle2,
   XCircle, AlertCircle, Clock, FileText, Download, User, Store,
   Phone, Mail, MapPin, Calendar, ShieldCheck, ChevronLeft, ChevronRight,
-  MessageSquare, AlertTriangle, Send, X
+  MessageSquare, AlertTriangle, Send, X, Edit, CreditCard
 } from 'lucide-react';
 import { API_URL } from '../config';
 
@@ -31,6 +31,18 @@ export default function Applications() {
   const [modalReason, setModalReason] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [newNote, setNewNote] = useState('');
+
+  // Bank Details Modal State
+  const [showBankModal, setShowBankModal] = useState(false);
+  const [bankFormData, setBankFormData] = useState({
+    bank_holder_name: '',
+    bank_name: '',
+    account_number: '',
+    ifsc_code: '',
+    upi_id: ''
+  });
+  const [bankSubmitting, setBankSubmitting] = useState(false);
+  const [bankError, setBankError] = useState('');
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
@@ -172,6 +184,56 @@ export default function Applications() {
     } catch (err) {
       console.error(err);
       alert('Failed to add note');
+    }
+  };
+
+  const openBankModal = () => {
+    if (!selectedApp) return;
+    const app = selectedApp.application;
+    setBankFormData({
+      bank_holder_name: app.bank_holder_name || '',
+      bank_name: app.bank_name || '',
+      account_number: '',
+      ifsc_code: app.ifsc_code || '',
+      upi_id: app.upi_id || ''
+    });
+    setBankError('');
+    setShowBankModal(true);
+  };
+
+  const handleUpdateBankDetails = async (e) => {
+    e.preventDefault();
+    if (!selectedApp) return;
+    setBankSubmitting(true);
+    setBankError('');
+    try {
+      const res = await fetch(`${API_URL}/applications/${selectedApp.application.application_id}/bank`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify(bankFormData)
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSelectedApp(prev => ({
+          ...prev,
+          application: {
+            ...prev.application,
+            ...data.bank_details
+          }
+        }));
+        setShowBankModal(false);
+        viewApplicationDetails(selectedApp.application.application_id);
+      } else {
+        setBankError(data.error || 'Failed to update bank details');
+      }
+    } catch (err) {
+      console.error(err);
+      setBankError('Failed to communicate with server.');
+    } finally {
+      setBankSubmitting(false);
     }
   };
 
@@ -583,15 +645,24 @@ export default function Applications() {
 
             {/* Section 3: Bank & Payout Details (Masked) */}
             <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px', marginBottom: '20px', backgroundColor: '#fcfcfd' }}>
-              <h4 style={{ margin: '0 0 10px', fontSize: '0.9rem', color: '#0284c7' }}>
-                💳 Payout & Banking Details (Protected & Masked)
-              </h4>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#0284c7', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <CreditCard size={16} /> Payout & Banking Details (Protected & Masked)
+                </h4>
+                <button
+                  className="btn btn-outline"
+                  onClick={openBankModal}
+                  style={{ padding: '4px 10px', fontSize: '0.76rem', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                >
+                  <Edit size={13} /> {selectedApp.application.bank_holder_name ? 'Edit Bank Details' : '+ Add Bank Details'}
+                </button>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', fontSize: '0.82rem' }}>
-                <div><strong>Account Holder:</strong> {selectedApp.application.bank_holder_name || 'N/A'}</div>
-                <div><strong>Bank Name:</strong> {selectedApp.application.bank_name || 'N/A'}</div>
-                <div><strong>Account Number:</strong> <span style={{ fontFamily: 'monospace' }}>{selectedApp.application.bank_account_masked || 'N/A'}</span></div>
-                <div><strong>IFSC Code:</strong> <span style={{ fontFamily: 'monospace' }}>{selectedApp.application.ifsc_code || 'N/A'}</span></div>
-                <div><strong>UPI ID:</strong> {selectedApp.application.upi_id || 'N/A'}</div>
+                <div><strong>Account Holder:</strong> {selectedApp.application.bank_holder_name || <span style={{ color: '#94a3b8' }}>Not provided</span>}</div>
+                <div><strong>Bank Name:</strong> {selectedApp.application.bank_name || <span style={{ color: '#94a3b8' }}>Not provided</span>}</div>
+                <div><strong>Account Number:</strong> <span style={{ fontFamily: 'monospace' }}>{selectedApp.application.bank_account_masked || <span style={{ color: '#94a3b8' }}>Not provided</span>}</span></div>
+                <div><strong>IFSC Code:</strong> <span style={{ fontFamily: 'monospace' }}>{selectedApp.application.ifsc_code || <span style={{ color: '#94a3b8' }}>Not provided</span>}</span></div>
+                <div><strong>UPI ID:</strong> {selectedApp.application.upi_id || <span style={{ color: '#94a3b8' }}>Not provided</span>}</div>
               </div>
             </div>
 
@@ -758,6 +829,128 @@ export default function Applications() {
                 {actionLoading ? 'Updating...' : 'Confirm Status Update'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit / Add Bank Details Modal */}
+      {showBankModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 1100,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px'
+        }}>
+          <div style={{
+            backgroundColor: '#ffffff', borderRadius: '12px', width: '100%', maxWidth: '500px',
+            padding: '24px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <h3 style={{ margin: 0, fontSize: '1.15rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <CreditCard size={20} color="#0284c7" />
+                Manage Payout & Bank Details
+              </h3>
+              <button
+                onClick={() => setShowBankModal(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <p style={{ color: '#64748b', fontSize: '0.84rem', margin: '0 0 16px' }}>
+              Securely record or update verified bank account and payout details for candidate <strong>{selectedApp?.application?.application_id}</strong>.
+            </p>
+
+            {bankError && (
+              <div style={{ backgroundColor: '#fee2e2', color: '#b91c1c', padding: '8px 12px', borderRadius: '6px', marginBottom: '12px', fontSize: '0.82rem' }}>
+                {bankError}
+              </div>
+            )}
+
+            <form onSubmit={handleUpdateBankDetails}>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                  ACCOUNT HOLDER NAME
+                </label>
+                <input
+                  type="text"
+                  value={bankFormData.bank_holder_name}
+                  onChange={(e) => setBankFormData({ ...bankFormData, bank_holder_name: e.target.value })}
+                  placeholder="Legal name on bank record"
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                  BANK NAME
+                </label>
+                <input
+                  type="text"
+                  value={bankFormData.bank_name}
+                  onChange={(e) => setBankFormData({ ...bankFormData, bank_name: e.target.value })}
+                  placeholder="e.g. State Bank of India / HDFC Bank"
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                  ACCOUNT NUMBER {selectedApp?.application?.bank_account_masked && `(Current: ${selectedApp.application.bank_account_masked})`}
+                </label>
+                <input
+                  type="text"
+                  value={bankFormData.account_number}
+                  onChange={(e) => setBankFormData({ ...bankFormData, account_number: e.target.value })}
+                  placeholder={selectedApp?.application?.bank_account_masked ? 'Enter new number to update' : 'Full account number'}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                    IFSC CODE
+                  </label>
+                  <input
+                    type="text"
+                    value={bankFormData.ifsc_code}
+                    onChange={(e) => setBankFormData({ ...bankFormData, ifsc_code: e.target.value.toUpperCase() })}
+                    placeholder="e.g. SBIN0020123"
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', textTransform: 'uppercase' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                    UPI ID (OPTIONAL)
+                  </label>
+                  <input
+                    type="text"
+                    value={bankFormData.upi_id}
+                    onChange={(e) => setBankFormData({ ...bankFormData, upi_id: e.target.value })}
+                    placeholder="e.g. name@oksbi"
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  disabled={bankSubmitting}
+                  onClick={() => setShowBankModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={bankSubmitting}
+                >
+                  {bankSubmitting ? 'Saving...' : 'Save Bank Details'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

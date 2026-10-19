@@ -617,22 +617,24 @@
           <div class="form-row-2">
             <div class="form-group">
               <label class="form-label">Primary Service Category <span class="req">*</span></label>
-              <select name="service_category" required class="form-control" id="helperServiceCat" onchange="handleVehicleFieldVisibility()">
+              <select name="service_category" required class="form-control" id="helperServiceCat" onchange="handleVehicleFieldVisibility(true)">
                 <option value="Delivery / Parcel">📦 Delivery & Parcel Dispatch</option>
                 <option value="Ride / Transportation">🛵 Ride & Passenger Transportation</option>
                 <option value="Grocery / Medicine Delivery">💊 Grocery & Medicine Delivery</option>
                 <option value="Village Helper / Errand Services">🏃 Village Helper & Errand Tasks</option>
-                <option value="Home Services & Repairs">🏠 Home Services (Cleaning & Tech)</option>
+                <option value="Home Services (Cleaning & Tech)">🏠 Home Services (Cleaning & Tech)</option>
+                <option value="Helper Service">🤝 Helper Service</option>
+                <option value="Custom Work">🛠️ Custom Work</option>
               </select>
             </div>
             <div class="form-group">
-              <label class="form-label">Vehicle Type <span class="req">*</span></label>
-              <select name="vehicle_type" id="helperVehicleType" required class="form-control" onchange="handleVehicleFieldVisibility()">
+              <label class="form-label">Vehicle Type <span class="req" id="vehicleReqStar">*</span></label>
+              <select name="vehicle_type" id="helperVehicleType" class="form-control" onchange="handleVehicleFieldVisibility(false)">
                 <option value="Bike / Two-wheeler">Bike / Motorcycle / Scooter</option>
+                <option value="None / Not Required">None / Not Required (On-Foot / Public Transport)</option>
                 <option value="Bicycle">Bicycle (Non-Motorized)</option>
                 <option value="Auto-rickshaw">Auto-rickshaw (3-Wheeler)</option>
                 <option value="Car / Cab">Car / Cab (4-Wheeler)</option>
-                <option value="None / Walking Helper">None (Domestic Home Helper)</option>
               </select>
             </div>
           </div>
@@ -689,38 +691,38 @@
 
           <!-- Section C: Bank and Payout Details -->
           <div class="form-section-title">
-            <span class="section-icon-badge">3</span> Bank & Payout Details (Protected)
+            <span class="section-icon-badge">3</span> Bank & Payout Details (Optional)
           </div>
           <p style="color: var(--text-secondary); font-size: 0.82rem; margin-bottom: 14px;">
-            🔒 Payout disbursements are deposited directly to your bank account or UPI weekly. Sensitive numbers are strictly encrypted.
+            🔒 (Optional at registration) Payout details can be provided now or added after onboarding by our team in the Admin Dashboard. All banking data is encrypted.
           </p>
 
           <div class="form-row-2">
             <div class="form-group">
-              <label class="form-label">Account Holder Name <span class="req">*</span></label>
-              <input type="text" name="bank_holder_name" required placeholder="Must match your legal identity proof" class="form-control">
+              <label class="form-label">Account Holder Name</label>
+              <input type="text" name="bank_holder_name" placeholder="Must match your legal identity proof" class="form-control">
             </div>
             <div class="form-group">
-              <label class="form-label">Bank Name <span class="req">*</span></label>
-              <input type="text" name="bank_name" required placeholder="e.g. State Bank of India" class="form-control">
-            </div>
-          </div>
-
-          <div class="form-row-2">
-            <div class="form-group">
-              <label class="form-label">Bank Account Number <span class="req">*</span></label>
-              <input type="password" name="account_number" id="hAccNo" required placeholder="Enter full bank account number" class="form-control">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Confirm Bank Account Number <span class="req">*</span></label>
-              <input type="text" id="hAccNoConfirm" required placeholder="Re-enter bank account number" class="form-control" onpaste="return false">
+              <label class="form-label">Bank Name</label>
+              <input type="text" name="bank_name" placeholder="e.g. State Bank of India" class="form-control">
             </div>
           </div>
 
           <div class="form-row-2">
             <div class="form-group">
-              <label class="form-label">IFSC Code <span class="req">*</span></label>
-              <input type="text" name="ifsc_code" required placeholder="e.g. SBIN0020123" class="form-control" maxlength="11" style="text-transform: uppercase;">
+              <label class="form-label">Bank Account Number</label>
+              <input type="password" name="account_number" id="hAccNo" placeholder="Enter full bank account number" class="form-control">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Confirm Bank Account Number</label>
+              <input type="text" id="hAccNoConfirm" placeholder="Re-enter bank account number" class="form-control" onpaste="return false">
+            </div>
+          </div>
+
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label">IFSC Code</label>
+              <input type="text" name="ifsc_code" placeholder="e.g. SBIN0020123" class="form-control" maxlength="11" style="text-transform: uppercase;">
             </div>
             <div class="form-group">
               <label class="form-label">UPI ID (Optional)</label>
@@ -1187,31 +1189,71 @@
     }
 
     // Vehicle Dynamic Visibility
-    function handleVehicleFieldVisibility() {
-      const vehicleType = document.getElementById('helperVehicleType').value.toLowerCase();
+    function handleVehicleFieldVisibility(isCategoryChange = false) {
+      const serviceCat = (document.getElementById('helperServiceCat').value || '').toLowerCase();
+      const vehicleSelect = document.getElementById('helperVehicleType');
+      const vehicleReqStar = document.getElementById('vehicleReqStar');
       const motorizedSection = document.getElementById('motorizedVehicleFields');
       const dlCard = document.getElementById('dropDl');
       const rcCard = document.getElementById('dropRc');
+      const dlReqStar = document.getElementById('dlReqStar');
+      const rcReqStar = document.getElementById('rcReqStar');
+
+      // HS (Home Services), Helper Service, and Custom Work: Vehicle is NOT mandatory!
+      const isNonVehicleRole = serviceCat.includes('home service') || 
+                               serviceCat.includes('helper service') || 
+                               serviceCat.includes('custom work') ||
+                               serviceCat.includes('errand');
+
+      if (isNonVehicleRole) {
+        if (vehicleReqStar) vehicleReqStar.style.display = 'none';
+        vehicleSelect.required = false;
+        // If switched to a non-vehicle role and vehicle was still default Bike, switch to None
+        if (isCategoryChange && vehicleSelect.value === 'Bike / Two-wheeler') {
+          vehicleSelect.value = 'None / Not Required';
+        }
+      } else {
+        if (vehicleReqStar) vehicleReqStar.style.display = 'inline';
+        vehicleSelect.required = true;
+        // If switched back to delivery/ride and was None, default to Bike
+        if (isCategoryChange && vehicleSelect.value === 'None / Not Required') {
+          vehicleSelect.value = 'Bike / Two-wheeler';
+        }
+      }
+
+      const vehicleType = (vehicleSelect.value || '').toLowerCase();
       const isMotorized = ['bike', 'auto', 'car'].some(v => vehicleType.includes(v));
 
-      if (isMotorized) {
+      if (isMotorized && !isNonVehicleRole) {
+        // Motorized Delivery or Ride: Mandatory vehicle fields, DL and RC
         motorizedSection.style.display = 'block';
         document.getElementById('vRegNo').required = true;
         document.getElementById('vMakeModel').required = true;
         document.getElementById('vYear').required = true;
         document.getElementById('vDrivingExp').required = true;
         document.getElementById('vDlNumber').required = true;
-        document.getElementById('dlReqStar').style.display = 'inline';
-        document.getElementById('rcReqStar').style.display = 'inline';
+        if (dlReqStar) dlReqStar.style.display = 'inline';
+        if (rcReqStar) rcReqStar.style.display = 'inline';
+      } else if (isMotorized && isNonVehicleRole) {
+        // Optional vehicle details for Home Services / Helper Service / Custom Work
+        motorizedSection.style.display = 'block';
+        document.getElementById('vRegNo').required = false;
+        document.getElementById('vMakeModel').required = false;
+        document.getElementById('vYear').required = false;
+        document.getElementById('vDrivingExp').required = false;
+        document.getElementById('vDlNumber').required = false;
+        if (dlReqStar) dlReqStar.style.display = 'none';
+        if (rcReqStar) rcReqStar.style.display = 'none';
       } else {
+        // None / Bicycle
         motorizedSection.style.display = 'none';
         document.getElementById('vRegNo').required = false;
         document.getElementById('vMakeModel').required = false;
         document.getElementById('vYear').required = false;
         document.getElementById('vDrivingExp').required = false;
         document.getElementById('vDlNumber').required = false;
-        document.getElementById('dlReqStar').style.display = 'none';
-        document.getElementById('rcReqStar').style.display = 'none';
+        if (dlReqStar) dlReqStar.style.display = 'none';
+        if (rcReqStar) rcReqStar.style.display = 'none';
       }
     }
 
@@ -1296,14 +1338,16 @@
 
       // Helper Specific Validations
       if (isHelper) {
-        // Account Number match check
-        const acc = document.getElementById('hAccNo').value;
-        const confirmAcc = document.getElementById('hAccNoConfirm').value;
-        if (acc !== confirmAcc) {
-          errorBanner.textContent = 'Bank account numbers do not match. Please verify.';
-          errorBanner.style.display = 'block';
-          errorBanner.scrollIntoView({ behavior: 'smooth' });
-          return;
+        // Account Number match check (only if bank account number is entered)
+        const acc = (document.getElementById('hAccNo').value || '').trim();
+        const confirmAcc = (document.getElementById('hAccNoConfirm').value || '').trim();
+        if (acc || confirmAcc) {
+          if (acc !== confirmAcc) {
+            errorBanner.textContent = 'Bank account numbers do not match. Please verify.';
+            errorBanner.style.display = 'block';
+            errorBanner.scrollIntoView({ behavior: 'smooth' });
+            return;
+          }
         }
 
         // Aadhaar file required
@@ -1324,14 +1368,20 @@
           return;
         }
 
-        // DL & RC required if motorized
-        const vType = document.getElementById('helperVehicleType').value.toLowerCase();
+        // DL & RC required only for motorized delivery/ride roles (NOT required for HS, Helper Service, Custom Work)
+        const serviceCat = (document.getElementById('helperServiceCat').value || '').toLowerCase();
+        const isNonVehicleRole = serviceCat.includes('home service') || 
+                                 serviceCat.includes('helper service') || 
+                                 serviceCat.includes('custom work') ||
+                                 serviceCat.includes('errand');
+        const vType = (document.getElementById('helperVehicleType').value || '').toLowerCase();
         const isMotorized = ['bike', 'auto', 'car'].some(v => vType.includes(v));
-        if (isMotorized) {
+
+        if (isMotorized && !isNonVehicleRole) {
           const dlFile = document.getElementById('fileDl').files[0];
           const rcFile = document.getElementById('fileRc').files[0];
           if (!dlFile || !rcFile) {
-            errorBanner.textContent = 'Driving Licence (DL) and Vehicle Registration (RC) are mandatory for motorized vehicle partners.';
+            errorBanner.textContent = 'Driving Licence (DL) and Vehicle Registration (RC) are mandatory for motorized delivery partners.';
             errorBanner.style.display = 'block';
             errorBanner.scrollIntoView({ behavior: 'smooth' });
             return;
