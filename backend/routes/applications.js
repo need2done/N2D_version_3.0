@@ -161,9 +161,7 @@ router.post('/submit', uploadFields, async (req, res) => {
             // 2. Vehicle & Driving Experience Checks
             const serviceCat = (body.service_category || '').toLowerCase();
             const isNonVehicleRole = serviceCat.includes('home service') || 
-                                     serviceCat.includes('helper service') || 
-                                     serviceCat.includes('custom work') ||
-                                     serviceCat.includes('errand');
+                                     serviceCat.includes('custom work');
 
             const vehicleType = (body.vehicle_type || 'none').toLowerCase();
             const isMotorized = ['bike', 'two-wheeler', 'auto', 'auto-rickshaw', 'car', 'cab'].some(v => vehicleType.includes(v));

@@ -618,20 +618,16 @@
             <div class="form-group">
               <label class="form-label">Primary Service Category <span class="req">*</span></label>
               <select name="service_category" required class="form-control" id="helperServiceCat" onchange="handleVehicleFieldVisibility(true)">
-                <option value="Delivery / Parcel">📦 Delivery & Parcel Dispatch</option>
-                <option value="Ride / Transportation">🛵 Ride & Passenger Transportation</option>
-                <option value="Grocery / Medicine Delivery">💊 Grocery & Medicine Delivery</option>
-                <option value="Village Helper / Errand Services">🏃 Village Helper & Errand Tasks</option>
-                <option value="Home Services (Cleaning & Tech)">🏠 Home Services (Cleaning & Tech)</option>
-                <option value="Helper Service">🤝 Helper Service</option>
                 <option value="Custom Work">🛠️ Custom Work</option>
+                <option value="Home Services">🏠 Home Services</option>
+                <option value="Medicine Delivery">💊 Medicine Delivery</option>
               </select>
             </div>
             <div class="form-group">
               <label class="form-label">Vehicle Type <span class="req" id="vehicleReqStar">*</span></label>
               <select name="vehicle_type" id="helperVehicleType" class="form-control" onchange="handleVehicleFieldVisibility(false)">
-                <option value="Bike / Two-wheeler">Bike / Motorcycle / Scooter</option>
                 <option value="None / Not Required">None / Not Required (On-Foot / Public Transport)</option>
+                <option value="Bike / Two-wheeler">Bike / Motorcycle / Scooter</option>
                 <option value="Bicycle">Bicycle (Non-Motorized)</option>
                 <option value="Auto-rickshaw">Auto-rickshaw (3-Wheeler)</option>
                 <option value="Car / Cab">Car / Cab (4-Wheeler)</option>
@@ -672,11 +668,11 @@
 
           <div class="form-row-3">
             <div class="form-group">
-              <label class="form-label">Preferred Working Area <span class="req">*</span></label>
-              <input type="text" name="preferred_area" required placeholder="e.g. Bhongir Town & Surroundings" class="form-control">
+              <label class="form-label">Preferred Working Area <span class="req" id="areaReqStar">*</span></label>
+              <input type="text" name="preferred_area" id="helperPreferredArea" placeholder="e.g. Bhongir Town & Surroundings" class="form-control">
             </div>
             <div class="form-group">
-              <label class="form-label">Availability <span class="req">*</span></label>
+              <label class="form-label">Availability</label>
               <select name="availability_type" class="form-control">
                 <option value="Full-time">Full-time (8-10 Hours/Day)</option>
                 <option value="Part-time">Part-time (4-5 Hours/Day)</option>
@@ -808,25 +804,28 @@
             </div>
 
             <label class="checkbox-label">
-              <input type="checkbox" id="chkLegalClean" checked>
+              <input type="checkbox" id="chkLegalClean" onchange="checkHelperDeclarations()">
               <span>I confirm that I have <strong>NO</strong> pending DUI cases, serious criminal convictions within the past 3 years, or active vehicle impound notices. <em>(If you have any pending matters, uncheck this box to request an authorized administrative review — applications are not rejected automatically).</em></span>
             </label>
 
             <label class="checkbox-label">
-              <input type="checkbox" id="chkHelperAccuracy" required>
+              <input type="checkbox" id="chkHelperAccuracy" onchange="checkHelperDeclarations()">
               <span>I confirm that all personal, vehicle, banking, and document information provided is true and accurate.</span>
             </label>
 
             <label class="checkbox-label">
-              <input type="checkbox" id="chkHelperTerms" required>
+              <input type="checkbox" id="chkHelperTerms" onchange="checkHelperDeclarations()">
               <span>I agree to the <a href="/terms.html" target="_blank" style="color: #0284C7; text-decoration: underline;">Need2Done Partner Terms</a>, <a href="/privacy.html" target="_blank" style="color: #0284C7; text-decoration: underline;">Privacy Policy</a>, and background KYC verification procedures.</span>
             </label>
           </div>
 
-          <div class="submit-btn-row">
-            <button type="submit" class="btn-submit-reg" id="btnSubmitHelper">
+          <div class="submit-btn-row" style="flex-direction: column; align-items: center;">
+            <button type="submit" class="btn-submit-reg" id="btnSubmitHelper" disabled>
               <span>Submit Helper Registration ↗</span>
             </button>
+            <div id="declarationHint" style="font-size: 0.8rem; color: #EF4444; margin-top: 10px; font-weight: 600;">
+              🔒 Please select all 3 Statutory Background & Legal Declarations above to enable submission.
+            </div>
           </div>
         </form>
 
@@ -1188,34 +1187,69 @@
       statusLabel.textContent = `✓ ${file.name} (${(file.size / 1024).toFixed(0)} KB)`;
     }
 
+    // Statutory Declarations enabler for Helper submit button
+    function checkHelperDeclarations() {
+      const c1 = document.getElementById('chkLegalClean').checked;
+      const c2 = document.getElementById('chkHelperAccuracy').checked;
+      const c3 = document.getElementById('chkHelperTerms').checked;
+      const btn = document.getElementById('btnSubmitHelper');
+      const hint = document.getElementById('declarationHint');
+      const allSelected = c1 && c2 && c3;
+      if (btn) {
+        btn.disabled = !allSelected;
+      }
+      if (hint) {
+        if (allSelected) {
+          hint.style.color = '#10B981';
+          hint.textContent = '✓ All 3 statutory declarations confirmed. Submission enabled!';
+        } else {
+          hint.style.color = '#EF4444';
+          hint.textContent = '🔒 Please select all 3 Statutory Background & Legal Declarations above to enable submission.';
+        }
+      }
+    }
+
     // Vehicle Dynamic Visibility
     function handleVehicleFieldVisibility(isCategoryChange = false) {
       const serviceCat = (document.getElementById('helperServiceCat').value || '').toLowerCase();
       const vehicleSelect = document.getElementById('helperVehicleType');
       const vehicleReqStar = document.getElementById('vehicleReqStar');
+      const areaReqStar = document.getElementById('areaReqStar');
+      const areaInput = document.getElementById('helperPreferredArea');
       const motorizedSection = document.getElementById('motorizedVehicleFields');
       const dlCard = document.getElementById('dropDl');
       const rcCard = document.getElementById('dropRc');
       const dlReqStar = document.getElementById('dlReqStar');
       const rcReqStar = document.getElementById('rcReqStar');
 
-      // HS (Home Services), Helper Service, and Custom Work: Vehicle is NOT mandatory!
-      const isNonVehicleRole = serviceCat.includes('home service') || 
-                               serviceCat.includes('helper service') || 
-                               serviceCat.includes('custom work') ||
-                               serviceCat.includes('errand');
+      // Home Services: Bank and Service & Vehicle Details fields are NOT mandatory!
+      const isHomeServices = serviceCat.includes('home service');
+      // Custom Work: Bank details not mandatory, vehicle details optional
+      const isCustomWork = serviceCat.includes('custom work');
+      const isNonVehicleRole = isHomeServices || isCustomWork;
 
-      if (isNonVehicleRole) {
+      if (isHomeServices) {
         if (vehicleReqStar) vehicleReqStar.style.display = 'none';
+        if (areaReqStar) areaReqStar.style.display = 'none';
+        if (areaInput) areaInput.required = false;
         vehicleSelect.required = false;
-        // If switched to a non-vehicle role and vehicle was still default Bike, switch to None
+        if (isCategoryChange) {
+          vehicleSelect.value = 'None / Not Required';
+        }
+      } else if (isCustomWork) {
+        if (vehicleReqStar) vehicleReqStar.style.display = 'none';
+        if (areaReqStar) areaReqStar.style.display = 'inline';
+        if (areaInput) areaInput.required = true;
+        vehicleSelect.required = false;
         if (isCategoryChange && vehicleSelect.value === 'Bike / Two-wheeler') {
           vehicleSelect.value = 'None / Not Required';
         }
       } else {
+        // Medicine Delivery
         if (vehicleReqStar) vehicleReqStar.style.display = 'inline';
+        if (areaReqStar) areaReqStar.style.display = 'inline';
+        if (areaInput) areaInput.required = true;
         vehicleSelect.required = true;
-        // If switched back to delivery/ride and was None, default to Bike
         if (isCategoryChange && vehicleSelect.value === 'None / Not Required') {
           vehicleSelect.value = 'Bike / Two-wheeler';
         }
@@ -1225,7 +1259,7 @@
       const isMotorized = ['bike', 'auto', 'car'].some(v => vehicleType.includes(v));
 
       if (isMotorized && !isNonVehicleRole) {
-        // Motorized Delivery or Ride: Mandatory vehicle fields, DL and RC
+        // Motorized Delivery (Medicine): Mandatory vehicle fields, DL and RC
         motorizedSection.style.display = 'block';
         document.getElementById('vRegNo').required = true;
         document.getElementById('vMakeModel').required = true;
@@ -1235,7 +1269,7 @@
         if (dlReqStar) dlReqStar.style.display = 'inline';
         if (rcReqStar) rcReqStar.style.display = 'inline';
       } else if (isMotorized && isNonVehicleRole) {
-        // Optional vehicle details for Home Services / Helper Service / Custom Work
+        // Optional vehicle details for Home Services / Custom Work
         motorizedSection.style.display = 'block';
         document.getElementById('vRegNo').required = false;
         document.getElementById('vMakeModel').required = false;
@@ -1368,12 +1402,9 @@
           return;
         }
 
-        // DL & RC required only for motorized delivery/ride roles (NOT required for HS, Helper Service, Custom Work)
+        // DL & RC required only for motorized delivery roles (NOT required for Home Services or Custom Work)
         const serviceCat = (document.getElementById('helperServiceCat').value || '').toLowerCase();
-        const isNonVehicleRole = serviceCat.includes('home service') || 
-                                 serviceCat.includes('helper service') || 
-                                 serviceCat.includes('custom work') ||
-                                 serviceCat.includes('errand');
+        const isNonVehicleRole = serviceCat.includes('home service') || serviceCat.includes('custom work');
         const vType = (document.getElementById('helperVehicleType').value || '').toLowerCase();
         const isMotorized = ['bike', 'auto', 'car'].some(v => vType.includes(v));
 
@@ -1467,8 +1498,9 @@
       });
     }
 
-    // Initialize vehicle field visibility on load
+    // Initialize vehicle field visibility and declaration button state on load
     handleVehicleFieldVisibility();
+    checkHelperDeclarations();
   </script>
 </body>
 </html>
