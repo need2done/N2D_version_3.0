@@ -618,6 +618,7 @@
             <div class="form-group">
               <label class="form-label">Primary Service Category <span class="req">*</span></label>
               <select name="service_category" required class="form-control" id="helperServiceCat" onchange="handleVehicleFieldVisibility(true)">
+                <option value="All">🌟 All (All Services)</option>
                 <option value="Custom Work">🛠️ Custom Work</option>
                 <option value="Home Services">🏠 Home Services</option>
                 <option value="Medicine Delivery">💊 Medicine Delivery</option>
@@ -1226,6 +1227,7 @@
       const isHomeServices = serviceCat.includes('home service');
       // Custom Work: Bank details not mandatory, vehicle details optional
       const isCustomWork = serviceCat.includes('custom work');
+      const isAll = serviceCat.includes('all');
       const isNonVehicleRole = isHomeServices || isCustomWork;
 
       if (isHomeServices) {
@@ -1244,6 +1246,11 @@
         if (isCategoryChange && vehicleSelect.value === 'Bike / Two-wheeler') {
           vehicleSelect.value = 'None / Not Required';
         }
+      } else if (isAll) {
+        if (vehicleReqStar) vehicleReqStar.style.display = 'none';
+        if (areaReqStar) areaReqStar.style.display = 'inline';
+        if (areaInput) areaInput.required = true;
+        vehicleSelect.required = false;
       } else {
         // Medicine Delivery
         if (vehicleReqStar) vehicleReqStar.style.display = 'inline';

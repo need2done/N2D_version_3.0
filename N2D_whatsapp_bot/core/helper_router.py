@@ -16,7 +16,7 @@ from urllib.parse import quote
 from typing import Optional, Dict, Any
 
 
-from whatsapp_client import send_message, send_reply_buttons, send_image, send_interactive_list, send_url_button
+from whatsapp_client import send_message, send_reply_buttons, send_image, send_document, send_customer_media, send_interactive_list, send_url_button
 from utils.tracking_link import generate_tracking_link, generate_helper_tracking_link
 from utils.timeline import log_event
 
@@ -161,6 +161,17 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
         btn_id = ""
         msg_type = msg.get("type") if isinstance(msg, dict) else None
 
+        if msg_type == "interactive" and isinstance(msg, dict):
+            interactive = msg.get("interactive", {})
+            btn = interactive.get("button_reply")
+            lst = interactive.get("list_reply")
+            btn_id = (btn.get("id") if btn else lst.get("id") if lst else "").strip()
+            btn_title = (btn.get("title") if btn else lst.get("title") if lst else "").strip()
+            if btn_title:
+                text_clean = btn_title
+        elif text and ("|" in text or text.startswith("H_") or text.startswith("CW_") or text.startswith("ACCEPT_") or text.startswith("REJECT_") or text.startswith("ARRIVED")):
+            btn_id = text.strip()
+
         print("\nHELPER MESSAGE:", phone, text, msg_type)
 
         helper = get_helper_by_phone(phone)
@@ -262,7 +273,6 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                         mid = image_obj.get("id")
                         caption = image_obj.get("caption", "")
                         if mid:
-                            from whatsapp_client import send_image
                             send_image(cust_phone, mid, f"📸 *Photo from Helper ({h_name}) – Order #{order_code}:*\n{caption}")
                             send_reply_buttons(
                                 to=cust_phone,
@@ -853,6 +863,12 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                     f"{ride_safety_rider}"
                 )
 
+                is_medicine = (
+                    order.get("service") in ("Medicines", "Medicine Delivery", 4, 12)
+                    or str(order.get("service", "")).lower() == "medicines"
+                    or str(order.get("order_id", "")).startswith("N2DMD_")
+                )
+
                 if is_anywork:
                     # Custom Work: Helper first taps "Arrived at Store"
                     send_reply_buttons(phone, accept_body, [
@@ -865,6 +881,13 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                         {"id": f"ARRIVED|{order['id']}", "title": "📍 Arrived"},
                         {"id": f"MSG_CUST|{order['id']}", "title": "💬 Message Customer"}
                     ])
+                elif is_medicine:
+                    # Medicines: Helper can mark arrived at pharmacy, upload bill directly, or message customer
+                    send_reply_buttons(phone, accept_body, [
+                        {"id": f"ARRIVED_STORE|{order['id']}", "title": "📍 At Pharmacy"},
+                        {"id": f"PROMPT_BILL_UPLOAD|{order['id']}", "title": "📷 Upload Bill"},
+                        {"id": f"MSG_CUST|{order['id']}", "title": "💬 Message Cust"}
+                    ])
                 elif order.get("status") == "ADMIN_APPROVED_BILL":
                     # Needs "Picked Up" button first
                     send_reply_buttons(phone, accept_body, [
@@ -872,9 +895,11 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                         {"id": f"MSG_CUST|{order['id']}", "title": "💬 Message Customer"}
                     ])
                 else:
-                    # TASK (No vendor): Send with Message Customer button
+                    # General TASK: Helper can mark arrived, upload bill, or message customer
                     send_reply_buttons(phone, accept_body, [
-                        {"id": f"MSG_CUST|{order['id']}", "title": "💬 Message Customer"}
+                        {"id": f"ARRIVED_STORE|{order['id']}", "title": "📍 Arrived at Store"},
+                        {"id": f"PROMPT_BILL_UPLOAD|{order['id']}", "title": "📷 Upload Bill"},
+                        {"id": f"MSG_CUST|{order['id']}", "title": "💬 Message Cust"}
                     ])
 
                 # ------------------------------------------------
@@ -925,11 +950,11 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                 if order.get("engine_type") == "TASK":
                     images = get_order_images(order["id"], 'ITEM')
                     if images:
-                        send_message(phone, "📸 *Customer uploaded item photos:*")
+                        send_message(phone, "📸 *Customer uploaded prescription / item photos:*")
                         for img in images:
                             mid = img.get("media_id") or img.get("image_url")
                             if mid:
-                                send_image(phone, mid, f"Order: {order['order_id']}")
+                                send_customer_media(phone, mid, f"Order: {order['order_id']}")
 
                 send_message(
                     ADMIN_NUMBER,

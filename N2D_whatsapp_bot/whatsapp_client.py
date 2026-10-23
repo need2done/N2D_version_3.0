@@ -104,30 +104,93 @@ def download_whatsapp_media(media_id: str) -> Optional[bytes]:
         print(f"[WA_MEDIA_ERROR] Failed downloading media {media_id}: {e}")
     return None
 
-def send_image(to: str, media_id: str):
+def get_media_info(media_id: str) -> Optional[dict]:
     """
-    Sends an image using Meta's media_id.
+    Retrieves media metadata (mime_type, file_size, url) from Meta Graph API.
+    """
+    if not media_id or str(media_id).startswith("http"):
+        return None
+    try:
+        token = get_access_token()
+        headers = {"Authorization": f"Bearer {token}"}
+        url = f"https://graph.facebook.com/{GRAPH_API_VERSION}/{media_id}"
+        res = _http.get(url, headers=headers, timeout=8)
+        if res.status_code == 200:
+            return res.json()
+    except Exception as e:
+        print(f"[WA_MEDIA_INFO_ERR] {media_id}: {e}")
+    return None
+
+def send_image(to: str, media_id: str, caption: str = None):
+    """
+    Sends an image using Meta media_id or URL, with optional caption.
     """
     if not to or not media_id:
         return None
+    media_str = str(media_id).strip()
+    img_obj = {"link": media_str} if (media_str.startswith("http://") or media_str.startswith("https://")) else {"id": media_str}
+    if caption:
+        img_obj["caption"] = str(caption)
     payload = {
         "messaging_product": "whatsapp",
         "to": normalize_number(to),
         "type": "image",
-        "image": {
-            "id": media_id
-        }
+        "image": img_obj
     }
-    headers = {
-        "Authorization": f"Bearer {get_access_token()}",
-        "Content-Type": "application/json"
-    }
-    try:
-        res = _http.post(message_url(), headers=headers, json=payload, timeout=10)
-        return res.json()
-    except Exception as e:
-        print("[WA_IMAGE_ERROR] Failed sending image:", e)
+    return _post(payload)
+
+def send_document(to: str, media_id: str, filename: str = None, caption: str = None):
+    """
+    Sends a document / PDF using Meta media_id or URL, with optional filename and caption.
+    """
+    if not to or not media_id:
         return None
+    media_str = str(media_id).strip()
+    doc_obj = {"link": media_str} if (media_str.startswith("http://") or media_str.startswith("https://")) else {"id": media_str}
+    if filename:
+        doc_obj["filename"] = str(filename)
+    else:
+        doc_obj["filename"] = "Prescription.pdf" if "pdf" in media_str.lower() else "Document.pdf"
+    if caption:
+        doc_obj["caption"] = str(caption)
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": normalize_number(to),
+        "type": "document",
+        "document": doc_obj
+    }
+    return _post(payload)
+
+def send_customer_media(to: str, media_id_or_url: str, caption: str = None, fallback_filename: str = None):
+    """
+    Smart media sender: detects whether media is an image or PDF/document and sends accordingly.
+    Includes automatic fallback if one type fails.
+    """
+    if not to or not media_id_or_url:
+        return None
+    m_str = str(media_id_or_url).strip()
+    is_pdf = False
+    
+    if m_str.lower().endswith(".pdf") or "pdf" in m_str.lower():
+        is_pdf = True
+    elif not (m_str.startswith("http://") or m_str.startswith("https://")):
+        info = get_media_info(m_str)
+        if info:
+            mime = (info.get("mime_type") or "").lower()
+            if "pdf" in mime or "document" in mime or "octet-stream" in mime:
+                is_pdf = True
+
+    fn = fallback_filename or "Prescription.pdf"
+    if is_pdf:
+        res = send_document(to, m_str, filename=fn, caption=caption)
+        if res is None or (hasattr(res, "status_code") and res.status_code >= 400):
+            return send_image(to, m_str, caption=caption)
+        return res
+    else:
+        res = send_image(to, m_str, caption=caption)
+        if res is None or (hasattr(res, "status_code") and res.status_code >= 400):
+            return send_document(to, m_str, filename=fn, caption=caption)
+        return res
 
 
 def send_audio(to: str, media_id: str):

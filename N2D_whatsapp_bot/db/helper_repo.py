@@ -406,9 +406,9 @@ def get_available_helpers(engine_type: str = 'TASK', service: str = None) -> Lis
     try:
         # Filtering logic based on user request:
         if engine_type == 'TASK':
-            category_filter = "('TASK', 'BOTH', 'FOOD', 'VEG_FRUITS', 'MEDICINES', 'ANYWORK', 'HOME_SERVICES')"
+            category_filter = "('TASK', 'BOTH', 'ALL', 'FOOD', 'VEG_FRUITS', 'MEDICINES', 'ANYWORK', 'HOME_SERVICES')"
         else:
-            category_filter = "('RIDE', 'BOTH')"
+            category_filter = "('RIDE', 'BOTH', 'ALL')"
 
         cur.execute(
             f"""
