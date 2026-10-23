@@ -313,17 +313,26 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                 cust_phone = order.get("customer_number")
                 order_code = order.get("order_id")
                 
+                is_med = (
+                    order.get("service") in ("Medicines", "Medicine Delivery", 4, 12)
+                    or str(order.get("service", "")).lower() == "medicines"
+                    or str(order.get("order_id", "")).startswith("N2DMD_")
+                )
+
                 if pending_act == "WAITING_UNAVAIL_DESC":
-                    unavail_text = text_clean or "Requested medicine/item is out of stock at pharmacy."
+                    default_unavail = "Requested medicine is out of stock at pharmacy." if is_med else "Requested item is out of stock at store."
+                    unavail_text = text_clean or default_unavail
                     log_event(order["id"], "ITEM_UNAVAILABLE_REPORTED", f"Helper reported unavailable: {unavail_text}", "HELPER")
                     
                     if cust_phone:
+                        title_line = f"💊 *Medicine Update for Order #{order_code}*" if is_med else f"⚠️ *Item Update for Order #{order_code}*"
+                        loc_line = f"👤 Helper *{helper['name']}* at pharmacy reports:" if is_med else f"👤 Helper *{helper['name']}* reports:"
                         send_reply_buttons(
                             to=cust_phone,
                             body=(
-                                f"⚠️ *Medicine / Item Update for Order #{order_code}*\n"
+                                f"{title_line}\n"
                                 f"━━━━━━━━━━━━━━━━━━━━━\n"
-                                f"👤 Helper *{helper['name']}* at pharmacy reports:\n"
+                                f"{loc_line}\n"
                                 f"• *\"{unavail_text}\"*\n\n"
                                 f"How would you like to proceed?"
                             ),
@@ -336,17 +345,20 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                     return
 
                 elif pending_act == "WAITING_ALT_DESC":
-                    alt_text = text_clean or "Alternative brand or dosage is available at pharmacy."
+                    default_alt = "Alternative brand or dosage is available at pharmacy." if is_med else "Alternative item or brand is available at store."
+                    alt_text = text_clean or default_alt
                     log_event(order["id"], "ITEM_ALTERNATIVE_SUGGESTED", f"Helper suggested alternative: {alt_text}", "HELPER")
                     
                     if cust_phone:
                         alt_summary = alt_text[:20].replace("|", " ")
+                        title_line = f"💊 *Alternative Medicine Suggested for Order #{order_code}*" if is_med else f"📦 *Alternative Item Suggested for Order #{order_code}*"
+                        loc_line = f"👤 Helper *{helper['name']}* at pharmacy suggests:" if is_med else f"👤 Helper *{helper['name']}* suggests:"
                         send_reply_buttons(
                             to=cust_phone,
                             body=(
-                                f"💊 *Alternative Medicine Suggested for Order #{order_code}*\n"
+                                f"{title_line}\n"
                                 f"━━━━━━━━━━━━━━━━━━━━━\n"
-                                f"👤 Helper *{helper['name']}* at pharmacy suggests:\n"
+                                f"{loc_line}\n"
                                 f"• *\"{alt_text}\"*\n\n"
                                 f"Would you like to accept this alternative?"
                             ),
@@ -1423,30 +1435,58 @@ Share this with helper."""
 
                 log_event(order_db_id, "ARRIVED_AT_STORE", "Helper arrived at store", "HELPER")
 
-                # Notify Customer
-                send_message(
-                    order["customer_number"],
-                    f"📍 *Your Helper has arrived at the store!*\n\n"
-                    f"👤 Helper {helper['name']} is purchasing your requested items..."
+                is_med = (
+                    order.get("service") in ("Medicines", "Medicine Delivery", 4, 12)
+                    or str(order.get("service", "")).lower() == "medicines"
+                    or str(order.get("order_id", "")).startswith("N2DMD_")
                 )
 
-                # Prompt Helper to upload Bill Photo or report item/medicine availability issue
+                # Notify Customer
+                store_label = "the pharmacy" if is_med else "the store"
+                item_label = "prescribed medicines" if is_med else "requested items"
+                send_message(
+                    order["customer_number"],
+                    f"📍 *Your Helper has arrived at {store_label}!*\n\n"
+                    f"👤 Helper {helper['name']} is purchasing your {item_label}..."
+                )
+
+                # Prompt Helper to upload Bill Photo or report item issue
+                if is_med:
+                    prompt_text = (
+                        "📍 *Marked as ARRIVED AT PHARMACY.*\n\n"
+                        "🧾 Please purchase medicines and upload **PHARMACY BILL PHOTO** once bought, or report any medicine issue below:"
+                    )
+                    issue_btn_title = "💊 Medicine Issue"
+                else:
+                    prompt_text = (
+                        "📍 *Marked as ARRIVED AT STORE.*\n\n"
+                        "🧾 Please purchase items and upload **STORE RECEIPT BILL PHOTO** once bought, or report any item issue below:"
+                    )
+                    issue_btn_title = "⚠️ Item Issue"
+
                 send_reply_buttons(
                     phone,
-                    "📍 *Marked as ARRIVED AT STORE.*\n\n"
-                    "🧾 Please purchase items and upload **STORE RECEIPT BILL PHOTO** once bought, or report any item/medicine issue below:",
+                    prompt_text,
                     [
                         {"id": f"PROMPT_BILL_UPLOAD|{order_db_id}", "title": "📷 Upload Bill Photo"},
-                        {"id": f"ITEM_ISSUE_PROMPT|{order_db_id}", "title": "💊 Medicine/Item Issue"}
+                        {"id": f"ITEM_ISSUE_PROMPT|{order_db_id}", "title": issue_btn_title}
                     ]
                 )
                 return
 
             if btn_id.startswith("ITEM_ISSUE_PROMPT|"):
                 order_db_id = int(btn_id.split("|")[1])
+                order = get_order_by_db_id(order_db_id)
+                is_med = (
+                    order.get("service") in ("Medicines", "Medicine Delivery", 4, 12)
+                    or str(order.get("service", "")).lower() == "medicines"
+                    or str(order.get("order_id", "")).startswith("N2DMD_")
+                ) if order else False
+
+                title_text = "💊 *Medicine Availability Issue*" if is_med else "⚠️ *Item Availability Issue*"
                 send_reply_buttons(
                     phone,
-                    "💊 *Medicine / Item Availability Issue*\n"
+                    f"{title_text}\n"
                     "━━━━━━━━━━━━━━━━━━━━━\n"
                     "Please select the issue type:",
                     [
@@ -1458,28 +1498,60 @@ Share this with helper."""
 
             if btn_id.startswith("ITEM_NOT_AVAIL|"):
                 order_db_id = int(btn_id.split("|")[1])
+                order = get_order_by_db_id(order_db_id)
+                is_med = (
+                    order.get("service") in ("Medicines", "Medicine Delivery", 4, 12)
+                    or str(order.get("service", "")).lower() == "medicines"
+                    or str(order.get("order_id", "")).startswith("N2DMD_")
+                ) if order else False
+
                 from session_store import update_session
                 update_session(phone, helper_pending_action="WAITING_UNAVAIL_DESC", helper_order_id=order_db_id)
-                send_message(
-                    phone,
-                    "❌ *Item Out of Stock / వస్తువు లభ్యం కాలేదు*\n"
-                    "━━━━━━━━━━━━━━━━━━━━━\n"
-                    "Please type or record a voice note specifying which medicine/item is out of stock:\n"
-                    "_(e.g., 'Dolo 650 is out of stock at pharmacy')_"
-                )
+                
+                if is_med:
+                    prompt_msg = (
+                        "❌ *Report Out of Stock / లభించని ఔషధం*\n"
+                        "━━━━━━━━━━━━━━━━━━━━━\n"
+                        "Please type or record a voice note specifying which medicine is out of stock:\n"
+                        "_(e.g., 'Dolo 650 is out of stock at pharmacy')_"
+                    )
+                else:
+                    prompt_msg = (
+                        "❌ *Report Out of Stock / వస్తువు లభ్యం కాలేదు*\n"
+                        "━━━━━━━━━━━━━━━━━━━━━\n"
+                        "Please type or record a voice note specifying which item is out of stock:\n"
+                        "_(e.g., '10 litres of Milk is out of stock at store')_"
+                    )
+                send_message(phone, prompt_msg)
                 return
 
             if btn_id.startswith("ITEM_ALT_PROMPT|"):
                 order_db_id = int(btn_id.split("|")[1])
+                order = get_order_by_db_id(order_db_id)
+                is_med = (
+                    order.get("service") in ("Medicines", "Medicine Delivery", 4, 12)
+                    or str(order.get("service", "")).lower() == "medicines"
+                    or str(order.get("order_id", "")).startswith("N2DMD_")
+                ) if order else False
+
                 from session_store import update_session
                 update_session(phone, helper_pending_action="WAITING_ALT_DESC", helper_order_id=order_db_id)
-                send_message(
-                    phone,
-                    "🔄 *Suggest Alternative Medicine / ప్రత్యామ్నాయ ఔషధం*\n"
-                    "━━━━━━━━━━━━━━━━━━━━━\n"
-                    "Please snap a photo of the alternative medicine or type the details & price:\n"
-                    "_(e.g., 'Dolo 650 out of stock. Alternative Calpol 650 available for ₹30')_"
-                )
+                
+                if is_med:
+                    prompt_msg = (
+                        "🔄 *Suggest Alternative Medicine / ప్రత్యామ్నాయ ఔషధం*\n"
+                        "━━━━━━━━━━━━━━━━━━━━━\n"
+                        "Please snap a photo of the alternative medicine or type the details & price:\n"
+                        "_(e.g., 'Dolo 650 out of stock. Alternative Calpol 650 available for ₹30')_"
+                    )
+                else:
+                    prompt_msg = (
+                        "🔄 *Suggest Alternative Item / ప్రత్యామ్నాయ వస్తువు*\n"
+                        "━━━━━━━━━━━━━━━━━━━━━\n"
+                        "Please snap a photo of the alternative item or type the details & price:\n"
+                        "_(e.g., 'Milk out of stock. Curd packet available for ₹35')_"
+                    )
+                send_message(phone, prompt_msg)
                 return
 
             # ------------------------------------------------

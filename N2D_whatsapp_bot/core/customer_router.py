@@ -17,11 +17,13 @@ from typing import Dict, Any
 from whatsapp_client import send_message, send_reply_buttons, send_payment_button, send_url_button
 
 from db.order_repo import (
+    get_order,
     get_order_by_db_id,
     mark_payment_received,
     mark_payment_method,
     save_order_rating,
-    complete_ride_order
+    complete_ride_order,
+    update_vendor_status
 )
 
 from config import ADMIN_NUMBER, UPI_ID, TRACKING_BASE_URL
@@ -65,6 +67,43 @@ def handle_customer_interactive(
 
 
         # =================================================
+        # 💬 PROXY CHAT WITH HELPER (MASKED RELAY)
+        # =================================================
+        if btn_id.startswith("MSG_HELPER|") or btn_id.startswith("REPLY_HELPER|"):
+            parts = btn_id.split("|")
+            order_identifier = parts[1] if len(parts) > 1 else ""
+            from session_store import update_session
+            update_session(from_number, stage="RELAY_TO_HELPER", relay_order_id=order_identifier)
+            send_reply_buttons(
+                to=from_number,
+                body=(
+                    "💬 *Send Message to Helper*\n\n"
+                    "Please type your message, delivery instruction, or question below (or send a voice note):\n"
+                    "We will relay it to your helper immediately while keeping your phone numbers private."
+                ),
+                buttons=[
+                    {"id": f"EXIT_CHAT|{order_identifier}", "title": "❌ Exit Chat"}
+                ]
+            )
+            return True
+
+        if btn_id.startswith("EXIT_CHAT"):
+            parts = btn_id.split("|")
+            order_identifier = parts[1] if len(parts) > 1 else ""
+            from session_store import update_session
+            update_session(from_number, stage="", relay_order_id=None)
+            exit_buttons = []
+            if order_identifier:
+                exit_buttons.append({"id": f"MSG_HELPER|{order_identifier}", "title": "💬 Reply to Helper"})
+            exit_buttons.append({"id": "SERVICES", "title": "📋 Main Menu"})
+            send_reply_buttons(
+                to=from_number,
+                body="👋 *Chat Closed*\n\nYou have exited the conversation with your helper. Your order is still active!",
+                buttons=exit_buttons
+            )
+            return True
+
+        # =================================================
         # EXTENSION HANDLING
         # =================================================
         if btn_id.startswith("CUST_"):
@@ -94,7 +133,17 @@ def handle_customer_interactive(
                     helper_phone = order.get("helper_phone")
                     send_message(from_number, "▶️ Continuing your order with available items. Your helper has been notified.")
                     if helper_phone:
-                        send_message(helper_phone, f"▶️ *Customer Update for Order #{order_code}:*\nCustomer agreed to CONTINUE without the missing item. Please purchase remaining items and upload store bill photo.")
+                        send_reply_buttons(
+                            to=helper_phone,
+                            body=(
+                                f"▶️ *Customer Update for Order #{order_code}:*\n\n"
+                                f"Customer agreed to CONTINUE without the missing item. Please purchase remaining items and upload store bill photo:"
+                            ),
+                            buttons=[
+                                {"id": f"PROMPT_BILL_UPLOAD|{order['id']}", "title": "📷 Upload Bill Photo"},
+                                {"id": f"MSG_CUST|{order['id']}", "title": "💬 Message Cust"}
+                            ]
+                        )
                 return True
 
             if action == "CUST_CANCEL_ORDER":
@@ -119,13 +168,24 @@ def handle_customer_interactive(
 
             if action == "CUST_ACCEPT_ALT":
                 order_code = parts[1]
-                alt_summary = parts[2] if len(parts) > 2 else "Alternative Medicine"
+                alt_summary = parts[2] if len(parts) > 2 else "Alternative Item"
                 order = get_order(order_code)
                 if order:
                     helper_phone = order.get("helper_phone")
                     send_message(from_number, f"✅ *Alternative Accepted!*\nWe notified your helper to purchase *{alt_summary}*.")
                     if helper_phone:
-                        send_message(helper_phone, f"✅ *Customer ACCEPTED Alternative for Order #{order_code}!*\nPlease purchase: *{alt_summary}* and upload store bill photo once bought.")
+                        send_reply_buttons(
+                            to=helper_phone,
+                            body=(
+                                f"✅ *Customer ACCEPTED Alternative for Order #{order_code}!*\n\n"
+                                f"Please purchase: *{alt_summary}*\n\n"
+                                f"Once purchased, tap below to upload the store receipt bill photo:"
+                            ),
+                            buttons=[
+                                {"id": f"PROMPT_BILL_UPLOAD|{order['id']}", "title": "📷 Upload Bill Photo"},
+                                {"id": f"MSG_CUST|{order['id']}", "title": "💬 Message Cust"}
+                            ]
+                        )
                 return True
 
             if action == "CUST_SKIP_ALT":
@@ -135,12 +195,21 @@ def handle_customer_interactive(
                     helper_phone = order.get("helper_phone")
                     send_message(from_number, "❌ Skipped alternative item. Your helper will proceed with the remaining items.")
                     if helper_phone:
-                        send_message(helper_phone, f"ℹ️ *Customer SKIPPED Alternative for Order #{order_code}.*\nPlease proceed with remaining available items.")
+                        send_reply_buttons(
+                            to=helper_phone,
+                            body=(
+                                f"ℹ️ *Customer SKIPPED Alternative for Order #{order_code}.*\n\n"
+                                f"Please proceed with the remaining items and upload the bill photo:"
+                            ),
+                            buttons=[
+                                {"id": f"PROMPT_BILL_UPLOAD|{order['id']}", "title": "📷 Upload Bill Photo"},
+                                {"id": f"MSG_CUST|{order['id']}", "title": "💬 Message Cust"}
+                            ]
+                        )
                 return True
 
             if action == "CUST_ALT_ACCEPT":
                 order_code = parts[1]
-                from db.order_repo import update_vendor_status, get_order
                 update_vendor_status(order_code, "ACCEPTED")
                 send_message(from_number, f"✅ *Alternative Accepted!*\n\nPharmacy is packing your order. A delivery helper is being assigned for pickup.")
                 
@@ -165,7 +234,6 @@ def handle_customer_interactive(
 
             if action == "CUST_ALT_SKIP":
                 order_code = parts[1]
-                from db.order_repo import update_vendor_status, get_order
                 update_vendor_status(order_code, "ACCEPTED")
                 send_message(from_number, f"▶️ *Order Updated!*\n\nProceeding with remaining available items. A delivery helper is being assigned for pickup.")
                 
@@ -190,7 +258,6 @@ def handle_customer_interactive(
 
             if action == "CUST_ALT_CANCEL":
                 order_code = parts[1]
-                from db.order_repo import update_vendor_status, get_order
                 from db.mysql_conn import get_db
                 db = get_db()
                 cur = db.cursor()
