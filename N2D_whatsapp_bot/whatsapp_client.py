@@ -188,6 +188,10 @@ def build_headers() -> Dict[str, str]:
 
 def _post(payload: Dict[str, Any]) -> Optional[requests.Response]:
     try:
+        to_num = payload.get("to")
+        bot_phone = os.getenv("BOT_PHONE_NUMBER", "917989862623")
+        if to_num and normalize_number(to_num) == normalize_number(bot_phone):
+            return None
         url = message_url()
         headers = build_headers()
         token = headers.get("Authorization", "")

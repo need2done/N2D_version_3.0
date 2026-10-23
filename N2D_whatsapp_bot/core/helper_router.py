@@ -206,6 +206,93 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
         from session_store import get_session, update_session
         sess = get_session(phone)
         pending_act = sess.get("helper_pending_action")
+        # =================================================
+        # 💬 HELPER RELAY TO CUSTOMER (ANONYMOUS PROXY)
+        # =================================================
+        if pending_act == "RELAY_TO_CUSTOMER":
+            if (msg_type == "interactive" and btn_id.startswith("EXIT_CHAT_HELPER")) or text_clean.upper() in ("CANCEL", "EXIT", "GO", "MENU", "BACK"):
+                h_order_id = sess.get("helper_order_id")
+                update_session(phone, helper_pending_action="", helper_order_id=None)
+                buttons = []
+                if h_order_id:
+                    buttons.append({"id": f"MSG_CUST|{h_order_id}", "title": "💬 Reply to Cust"})
+                buttons.append({"id": "H_ACTIVE", "title": "📦 View Order"})
+                send_reply_buttons(
+                    phone,
+                    "👋 *Chat Closed*\n\nYou have exited chat with customer. Your active order is still in progress!",
+                    buttons
+                )
+                return
+
+            if msg_type == "interactive" and btn_id.startswith("H_"):
+                update_session(phone, helper_pending_action="", helper_order_id=None)
+            else:
+                h_order_id = sess.get("helper_order_id")
+                update_session(phone, helper_pending_action="", helper_order_id=None)
+
+                order = get_order_by_db_id(h_order_id) if h_order_id else get_active_order_for_helper(helper_id)
+                if not order or (order.get("status") or "").upper() in ("COMPLETED", "CANCELLED", "EXPIRED", "DELIVERED"):
+                    send_message(phone, "⚠️ This order is no longer active. Message could not be delivered.")
+                    return
+
+                cust_phone = order.get("customer_number")
+                order_code = order.get("order_id", "N/A")
+                h_name = helper.get("name", "Helper")
+
+                if cust_phone:
+                    cust_chat_buttons = [
+                        {"id": f"MSG_HELPER|{order['id']}", "title": "💬 Reply to Helper"},
+                        {"id": f"EXIT_CHAT|{order['id']}", "title": "❌ Exit Chat"}
+                    ]
+
+                    if msg_type in ("audio", "voice"):
+                        audio_obj = msg.get("audio", {}) or msg.get("voice", {})
+                        mid = audio_obj.get("id")
+                        if mid:
+                            from whatsapp_client import send_audio
+                            send_message(cust_phone, f"🎤 *Voice note from your Helper ({h_name}) – Order #{order_code}:*")
+                            send_audio(cust_phone, mid)
+                            send_reply_buttons(
+                                to=cust_phone,
+                                body="Tap below to respond to your helper:",
+                                buttons=cust_chat_buttons
+                            )
+                    elif msg_type == "image":
+                        image_obj = msg.get("image", {})
+                        mid = image_obj.get("id")
+                        caption = image_obj.get("caption", "")
+                        if mid:
+                            from whatsapp_client import send_image
+                            send_image(cust_phone, mid, f"📸 *Photo from Helper ({h_name}) – Order #{order_code}:*\n{caption}")
+                            send_reply_buttons(
+                                to=cust_phone,
+                                body="Tap below to respond to your helper:",
+                                buttons=cust_chat_buttons
+                            )
+                    else:
+                        relay_body = (
+                            f"💬 *Message from your Helper ({h_name}) – Order #{order_code}:*\n\n"
+                            f"\"{text_clean}\"\n\n"
+                            f"Tap below to reply directly:"
+                        )
+                        send_reply_buttons(
+                            to=cust_phone,
+                            body=relay_body,
+                            buttons=cust_chat_buttons
+                        )
+
+                    send_reply_buttons(
+                        phone,
+                        f"✅ Message delivered to customer for Order #{order_code}.",
+                        [
+                            {"id": f"MSG_CUST|{order['id']}", "title": "💬 Reply to Cust"},
+                            {"id": f"EXIT_CHAT_HELPER|{order['id']}", "title": "❌ Exit Chat"}
+                        ]
+                    )
+                    return
+                else:
+                    send_message(phone, "❌ Could not find customer details for this order.")
+                    return
 
         if pending_act in ("WAITING_UNAVAIL_DESC", "WAITING_ALT_DESC") and not (msg_type == "interactive" and btn_id.startswith("H_")):
             h_order_id = sess.get("helper_order_id")
@@ -382,13 +469,13 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                 is_ride = active.get('engine_type') == 'RIDE'
 
                 # Retroactive fast-track for catalog/vendor or paid bill orders
-                if status in ("CONFIRMED", "HELPER_ACCEPTED", "BILL_IMAGE_UPLOADED", "BILL_PENDING_ONLINE_PAYMENT"):
+                is_anywork = active.get("service") in ("AnyWork", "Custom Work", 3, 5, 11) or str(active.get("order_id", "")).startswith("N2DCW_")
+                if not is_anywork and status in ("CONFIRMED", "HELPER_ACCEPTED", "BILL_IMAGE_UPLOADED", "BILL_PENDING_ONLINE_PAYMENT"):
                     has_catalog_bill = (active.get("bill_amount") is not None and float(active.get("bill_amount")) > 0)
-                    has_total_amount = (active.get("total_amount") is not None and float(active.get("total_amount")) > 0)
                     has_vendor = active.get("vendor_id") is not None
                     is_paid = active.get("payment_status") == "PAID"
 
-                    if (has_catalog_bill and is_paid) or (active.get("engine_type") == "TASK" and (has_catalog_bill or has_vendor)):
+                    if (has_catalog_bill and is_paid) or (active.get("engine_type") == "TASK" and has_vendor and is_paid):
                         from db.mysql_conn import get_db
                         fast_db = get_db()
                         fast_cur = fast_db.cursor()
@@ -407,33 +494,38 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                     f"📦 *Active Order*\n\n"
                     f"🆔 Order  : {order_id}\n"
                     f"👤 Customer: {active.get('customer_name', 'N/A')}\n"
-                    f"📞 Phone  : {active.get('customer_number', 'N/A')}\n"
+                    f"📞 Phone  : 🔒 Protected (Tap 'Message Customer' below)\n"
                     f"📍 Status : {status}\n"
                 )
 
                 # Context-sensitive action buttons
-                is_anywork = active.get("service") in ("AnyWork", 3, 5) or str(active.get("order_id", "")).startswith("N2DCW_")
+                is_anywork = active.get("service") in ("AnyWork", "Custom Work", 3, 5, 11) or str(active.get("order_id", "")).startswith("N2DCW_")
 
                 if status in ("CONFIRMED", "HELPER_ACCEPTED"):
                     is_home_service = active.get("service") == "Home Services" or str(active.get("service")) == "10"
                     if is_anywork:
                         info += "\n🏁 Navigate to store location. Tap *Arrived at Store* once there."
                         send_reply_buttons(phone, info, [
-                            {"id": f"ARRIVED_STORE|{active['id']}", "title": "📍 Arrived at Store"}
+                            {"id": f"ARRIVED_STORE|{active['id']}", "title": "📍 Arrived at Store"},
+                            {"id": f"MSG_CUST|{active['id']}", "title": "💬 Message Customer"}
                         ])
                     elif is_ride or is_home_service:
                         info += "\n🏁 Navigate to location. Tap *Arrived* when there."
                         send_reply_buttons(phone, info, [
-                            {"id": f"ARRIVED|{active['id']}", "title": "📍 Arrived"}
+                            {"id": f"ARRIVED|{active['id']}", "title": "📍 Arrived"},
+                            {"id": f"MSG_CUST|{active['id']}", "title": "💬 Message Customer"}
                         ])
                     else:
                         info += "\n🧾 Upload BILL IMAGE after purchase."
-                        send_message(phone, info)
+                        send_reply_buttons(phone, info, [
+                            {"id": f"MSG_CUST|{active['id']}", "title": "💬 Message Customer"}
+                        ])
 
                 elif status == "ARRIVED_AT_STORE":
                     info += "\n🧾 Please purchase requested items and upload store receipt bill photo once bought:"
                     send_reply_buttons(phone, info, [
-                        {"id": f"PROMPT_BILL_UPLOAD|{active['id']}", "title": "📷 Upload Bill Photo"}
+                        {"id": f"PROMPT_BILL_UPLOAD|{active['id']}", "title": "📷 Upload Bill Photo"},
+                        {"id": f"MSG_CUST|{active['id']}", "title": "💬 Message Customer"}
                     ])
 
                 elif status == "BILL_IMAGE_UPLOADED":
@@ -529,6 +621,37 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                 return
 
             # =================================================
+            # 💬 MESSAGE / REPLY CUSTOMER (MASKED PROXY)
+            # =================================================
+            if btn_id.startswith("MSG_CUST|") or btn_id.startswith("REPLY_CUST|"):
+                order_id_part = btn_id.split("|", 1)[1]
+                update_session(phone, helper_pending_action="RELAY_TO_CUSTOMER", helper_order_id=order_id_part)
+                send_reply_buttons(
+                    phone,
+                    "💬 *Send Message to Customer*\n\n"
+                    "Please type your message below (or send a voice note / photo):\n"
+                    "We will relay it to the customer while keeping your phone numbers private.",
+                    [
+                        {"id": f"EXIT_CHAT_HELPER|{order_id_part}", "title": "❌ Exit Chat"}
+                    ]
+                )
+                return
+
+            if btn_id.startswith("EXIT_CHAT_HELPER"):
+                order_id_part = btn_id.split("|", 1)[1] if "|" in btn_id else None
+                update_session(phone, helper_pending_action="", helper_order_id=None)
+                buttons = []
+                if order_id_part:
+                    buttons.append({"id": f"MSG_CUST|{order_id_part}", "title": "💬 Reply to Cust"})
+                buttons.append({"id": "H_ACTIVE", "title": "📦 View Order"})
+                send_reply_buttons(
+                    phone,
+                    "👋 *Chat Closed*\n\nYou have exited chat with customer. Your active order is still in progress!",
+                    buttons
+                )
+                return
+
+            # =================================================
             # ❌ REJECT ORDER
             # =================================================
 
@@ -547,10 +670,6 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
 
                 print("LOG: ACCEPT REQUEST:", order_code)
 
-                if helper_state != "AVAILABLE":
-                    send_message(phone, "❌ You must be ONLINE to accept orders.")
-                    return
-
                 # 🔥 EXTRA CHECK BEFORE DB CALL
                 existing_order = get_order(order_code)
 
@@ -562,13 +681,20 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                     send_message(phone, "❌ Order already assigned to another helper")
                     return
 
-                # 🔥 ATOMIC ACCEPT
-                ok, reason = accept_order_atomic(order_code, helper_id)
+                # If already assigned to this helper (e.g. re-tapped or recovery), skip atomic accept
+                already_assigned_to_me = (existing_order.get("helper_id") == helper_id)
+                if not already_assigned_to_me:
+                    if helper_state != "AVAILABLE":
+                        send_message(phone, "❌ You must be ONLINE to accept orders.")
+                        return
 
-                if not ok:
-                    print("ERROR: ACCEPT FAILED:", reason)
-                    send_message(phone, f"❌ {reason}")
-                    return
+                    # 🔥 ATOMIC ACCEPT
+                    ok, reason = accept_order_atomic(order_code, helper_id)
+
+                    if not ok:
+                        print("ERROR: ACCEPT FAILED:", reason)
+                        send_message(phone, f"❌ {reason}")
+                        return
 
                 order = get_order(order_code)
 
@@ -587,33 +713,37 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                 # ------------------------------------------------
                 # AUTO FAST-TRACK FOR CATALOG/VENDOR ORDERS
                 # ------------------------------------------------
+                is_anywork = order.get("service") in ("AnyWork", "Custom Work", 3, 5, 11) or str(order.get("order_id", "")).startswith("N2DCW_")
+                is_home_service = (
+                    order.get("service") == "Home Services" 
+                    or str(order.get("service")) == "10" 
+                    or str(order.get("order_id", "")).startswith("N2D_HS_")
+                )
                 has_catalog_bill = (order.get("bill_amount") is not None and float(order.get("bill_amount")) > 0)
-                has_total_amount = (order.get("total_amount") is not None and float(order.get("total_amount")) > 0)
                 has_vendor = order.get("vendor_id") is not None
+                is_paid = (order.get("payment_status") == "PAID")
 
-                if order.get("engine_type") == "TASK" and (has_catalog_bill or has_total_amount or has_vendor):
-                    is_home_service = order.get("service") == "Home Services" or str(order.get("service")) == "10"
-                    if not is_home_service:
-                        from db.mysql_conn import get_db
-                        fast_db = get_db()
-                        fast_cur = fast_db.cursor()
-                        fast_cur.execute(
-                            "UPDATE orders SET status = 'ADMIN_APPROVED_BILL', approved_at = NOW() WHERE id = %s",
-                            (order["id"],)
-                        )
-                        fast_db.commit()
-                        fast_cur.close()
-                        fast_db.close()
-                        
-                        # Refresh order state locally so messaging logic sees the new state
-                        order["status"] = "ADMIN_APPROVED_BILL"
+                # Only fast-track catalog/vendor orders that are already paid or prepared by vendor, NEVER AnyWork/Custom Work or Home Services!
+                if not is_anywork and not is_home_service and order.get("engine_type") == "TASK" and (has_vendor or (has_catalog_bill and is_paid)):
+                    from db.mysql_conn import get_db
+                    fast_db = get_db()
+                    fast_cur = fast_db.cursor()
+                    fast_cur.execute(
+                        "UPDATE orders SET status = 'ADMIN_APPROVED_BILL', approved_at = NOW() WHERE id = %s",
+                        (order["id"],)
+                    )
+                    fast_db.commit()
+                    fast_cur.close()
+                    fast_db.close()
+                    
+                    # Refresh order state locally so messaging logic sees the new state
+                    order["status"] = "ADMIN_APPROVED_BILL"
 
                 # ------------------------------------------------
                 # MESSAGES
                 # ------------------------------------------------
 
                 # Determine next instruction based on engine
-                is_anywork = order.get("service") in ("AnyWork", 3, 5)
                 if order.get("engine_type") == "RIDE":
                     instr = "🏁 Go to Pickup location. Tap 'ARRIVED' once there."
                 elif is_anywork:
@@ -632,7 +762,6 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                 # ------------------------------------------------
                 # 📍 LOCATION LINK
                 # ------------------------------------------------
-                is_home_service = order.get("service") == "Home Services" or str(order.get("service")) == "10"
                 if order.get("engine_type") == "RIDE":
                     loc_label = "📍 *Pickup location:*"
                 elif is_home_service:
@@ -678,8 +807,8 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
 
                 is_home_service = order.get("service") == "Home Services" or str(order.get("service")) == "10"
                 
-                # Hide customer contact number completely for Home Services (use blank or ID)
-                phone_line = f"📞 Phone    : {order['customer_number']}\n\n" if not is_home_service else "\n"
+                # Mask customer contact number completely for all services
+                phone_line = "📞 Phone    : 🔒 Protected (Tap 'Message Customer' below)\n\n"
                 
                 if is_home_service:
                     instr = "🏁 Go to customer location to perform the service. Tap 'ARRIVED' once there."
@@ -694,6 +823,8 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                     )
 
                 service_title = order.get('service', 'General Service')
+                if service_title in ("AnyWork", "Any Work") or str(service_title) in ("3", "5", "11"):
+                    service_title = "Custom Work"
                 earnings_val = order.get('helper_charge')
                 if is_home_service:
                     tot_amt = float(order.get('total_amount') or 0.0)
@@ -725,59 +856,67 @@ def handle_helper(phone: str, text: str, msg: Optional[Dict[str, Any]]):
                 if is_anywork:
                     # Custom Work: Helper first taps "Arrived at Store"
                     send_reply_buttons(phone, accept_body, [
-                        {"id": f"ARRIVED_STORE|{order['id']}", "title": "📍 Arrived at Store"}
+                        {"id": f"ARRIVED_STORE|{order['id']}", "title": "📍 Arrived at Store"},
+                        {"id": f"MSG_CUST|{order['id']}", "title": "💬 Message Customer"}
                     ])
                 elif order.get("engine_type") == "RIDE" or is_home_service:
                     # RIDE, Home Service: Include "Arrived" button directly
                     send_reply_buttons(phone, accept_body, [
-                        {"id": f"ARRIVED|{order['id']}", "title": "📍 Arrived"}
+                        {"id": f"ARRIVED|{order['id']}", "title": "📍 Arrived"},
+                        {"id": f"MSG_CUST|{order['id']}", "title": "💬 Message Customer"}
                     ])
                 elif order.get("status") == "ADMIN_APPROVED_BILL":
                     # Needs "Picked Up" button first
                     send_reply_buttons(phone, accept_body, [
-                        {"id": f"PICKED_UP|{order['id']}", "title": "🛍️ Picked Up"}
+                        {"id": f"PICKED_UP|{order['id']}", "title": "🛍️ Picked Up"},
+                        {"id": f"MSG_CUST|{order['id']}", "title": "💬 Message Customer"}
                     ])
                 else:
-                    # TASK (No vendor): Plain message or manual flow
-                    send_message(phone, accept_body)
+                    # TASK (No vendor): Send with Message Customer button
+                    send_reply_buttons(phone, accept_body, [
+                        {"id": f"MSG_CUST|{order['id']}", "title": "💬 Message Customer"}
+                    ])
 
                 # ------------------------------------------------
-                # NOTIFY CUSTOMER
+                # NOTIFY CUSTOMER (WITH DIRECT PROXY BUTTON)
                 # ------------------------------------------------
                 if order.get("engine_type") == "RIDE":
-                    send_message(
+                    send_reply_buttons(
                         order["customer_number"],
                         f"🚗 *Rider Assigned!*\n\n"
                         f"🆔 Order: {order['order_id']}\n"
                         f"👤 Rider: {helper['name']}\n"
-                        f"📞 Phone: {phone}\n\n"
+                        f"📞 Contact: 🔒 Protected via Bot\n\n"
                         f"📍 *Live Tracking:*\n"
                         f"https://need2done.in/track/{order['order_id']}\n\n"
                         f"Your rider is on the way to pick you up!\n\n"
                         f"🛡️ *Safety Precautions:*\n"
                         f"• Please wear a helmet during the ride.\n"
                         f"• Verify rider name & vehicle details before boarding.\n"
-                        f"• Share START OTP with your rider only when seated."
+                        f"• Share START OTP with your rider only when seated.",
+                        [{"id": f"MSG_HELPER|{order['id']}", "title": "💬 Message Rider"}]
                     )
                 elif is_home_service:
-                    send_message(
+                    send_reply_buttons(
                         order["customer_number"],
                         f"🛠️ *Your Professional is on the way!*\n\n"
                         f"👤 Professional : {helper['name']}\n"
-                        f"📞 Contact      : {phone}\n"
+                        f"📞 Contact      : 🔒 Protected via Bot\n"
                         f"🆔 Order ID      : {order['order_id']}\n\n"
                         f"They are currently heading to your location.\n\n"
                         f"📍 *Live Tracking:*\n"
-                        f"https://need2done.in/track/{order['order_id']}"
+                        f"https://need2done.in/track/{order['order_id']}",
+                        [{"id": f"MSG_HELPER|{order['id']}", "title": "💬 Message Pro"}]
                     )
                 else:
-                    send_message(
+                    send_reply_buttons(
                         order["customer_number"],
                         f"🚗 *Your Order is on the way!*\n\n"
-                        f"Your helper {helper['name']} is working on your order.\n"
-                        f"📞 Contact: {phone}\n\n"
+                        f"Your helper *{helper['name']}* is working on your order.\n"
+                        f"📞 Contact: 🔒 Protected via Bot\n\n"
                         f"📍 *Live Tracking:*\n"
-                        f"https://need2done.in/track/{order['order_id']}"
+                        f"https://need2done.in/track/{order['order_id']}",
+                        [{"id": f"MSG_HELPER|{order['id']}", "title": "💬 Message Helper"}]
                     )
 
                 # ------------------------------------------------
@@ -1206,6 +1345,36 @@ Share this with helper."""
                     send_message(phone, "❌ Order not found.")
                     return
 
+                order_db_id = order["id"]
+                current_status = (order.get("status") or "").upper()
+
+                # 🛑 FLOW INTEGRITY GUARD: Do not move backward if shopping is already done
+                if current_status in ("ADMIN_APPROVED_BILL", "ITEMS_PICKED_UP"):
+                    send_reply_buttons(
+                        phone,
+                        "ℹ️ *Items Already Purchased!*\n\nYou have already uploaded the bill and items are confirmed. Please navigate to the customer location:",
+                        [
+                            {"id": f"ARRIVED_DROP|{order_db_id}", "title": "📍 Arrived at Customer"},
+                            {"id": f"MSG_CUST|{order_db_id}", "title": "💬 Message Customer"}
+                        ]
+                    )
+                    return
+
+                if current_status in ("HELPER_ARRIVED", "ARRIVED_AT_CUSTOMER"):
+                    send_reply_buttons(
+                        phone,
+                        "ℹ️ *Already at Customer Location!*\n\nPlease collect the 4-digit Delivery OTP from the customer:",
+                        [
+                            {"id": f"TRIGGER_DELIVERY_OTP|{order_db_id}", "title": "🔐 Delivery OTP"},
+                            {"id": f"MSG_CUST|{order_db_id}", "title": "💬 Message Customer"}
+                        ]
+                    )
+                    return
+
+                if current_status in ("COMPLETED", "CANCELLED", "EXPIRED", "DELIVERED"):
+                    send_message(phone, f"ℹ️ Order #{order.get('order_id')} is already {current_status}.")
+                    return
+
                 try:
                     from db.mysql_conn import get_db
                     db = get_db()
@@ -1499,6 +1668,53 @@ Share this with helper."""
                     return
 
                 order_db_id = order["id"]
+                current_status = (order.get("status") or "").upper()
+                is_anywork = order.get("service") in ("AnyWork", "Custom Work", 3, 5, 11) or str(order.get("order_id", "")).startswith("N2DCW_")
+
+                # 🛑 MISUSE PREVENTION & STEP INTEGRITY GUARD:
+                # Must follow sequence: Arrived at Store -> Upload Bill -> Enter Bill -> Arrived at Customer!
+                if is_anywork or order.get("engine_type") == "TASK":
+                    is_home_service = order.get("service") == "Home Services" or str(order.get("service")) == "10"
+                    has_vendor = order.get("vendor_id") is not None
+                    
+                    if not is_home_service and not has_vendor:
+                        if current_status in ("CONFIRMED", "HELPER_ACCEPTED"):
+                            send_reply_buttons(
+                                phone,
+                                "⚠️ *Step Incomplete!*\n\nPlease navigate to the store/pickup point first and tap *Arrived at Store*:",
+                                [
+                                    {"id": f"ARRIVED_STORE|{order_db_id}", "title": "📍 Arrived at Store"},
+                                    {"id": f"MSG_CUST|{order_db_id}", "title": "💬 Message Customer"}
+                                ]
+                            )
+                            return
+
+                        if current_status == "ARRIVED_AT_STORE":
+                            send_reply_buttons(
+                                phone,
+                                "⚠️ *Bill Photo Missing!*\n\nPlease purchase the requested items and upload the **Store Receipt Bill Photo** before delivering to customer:",
+                                [
+                                    {"id": f"PROMPT_BILL_UPLOAD|{order_db_id}", "title": "📷 Upload Bill Photo"},
+                                    {"id": f"MSG_CUST|{order_db_id}", "title": "💬 Message Customer"}
+                                ]
+                            )
+                            return
+
+                        if current_status == "BILL_IMAGE_UPLOADED":
+                            send_reply_buttons(
+                                phone,
+                                "⚠️ *Bill Amount Missing!*\n\nPlease enter the total store bill amount to generate customer payment before proceeding to customer:",
+                                [
+                                    {"id": f"ENTER_BILL_AMOUNT|{order_db_id}", "title": "💰 Enter Bill Amount"},
+                                    {"id": f"MSG_CUST|{order_db_id}", "title": "💬 Message Customer"}
+                                ]
+                            )
+                            return
+
+                if current_status in ("COMPLETED", "CANCELLED", "EXPIRED", "DELIVERED"):
+                    send_message(phone, f"ℹ️ Order #{order.get('order_id')} is already {current_status}.")
+                    return
+
                 from db.mysql_conn import get_db
                 db = get_db()
                 cur = db.cursor()
@@ -1538,6 +1754,18 @@ Share this with helper."""
                     return
 
                 order_db_id = order["id"]
+                current_status = (order.get("status") or "").upper()
+                if current_status in ("CONFIRMED", "HELPER_ACCEPTED", "ARRIVED_AT_STORE", "BILL_IMAGE_UPLOADED"):
+                    send_reply_buttons(
+                        phone,
+                        "⚠️ *Cannot Trigger OTP Yet!*\n\nPlease arrive at the customer delivery location first before triggering Delivery OTP:",
+                        [
+                            {"id": f"ARRIVED_DROP|{order_db_id}", "title": "📍 Arrived at Customer"},
+                            {"id": f"MSG_CUST|{order_db_id}", "title": "💬 Message Customer"}
+                        ]
+                    )
+                    return
+
                 import random
                 import json
                 payload = safe_parse_payload(order.get("payload"))
@@ -1560,6 +1788,7 @@ Share this with helper."""
                 db.close()
 
                 # Send OTP to Customer (Payment Aware)
+                cust_name_disp = order.get('customer_name') or 'Customer'
                 if is_paid:
                     cust_msg = (
                         f"🔐 *Need2Done Delivery OTP: {end_otp}*\n"
@@ -1569,7 +1798,7 @@ Share this with helper."""
                         f"Please share this Delivery OTP *{end_otp}* with your helper to complete your order."
                     )
                     helper_msg = (
-                        f"🔐 *Delivery OTP Sent to Customer ({order['customer_number']})!*\n\n"
+                        f"🔐 *Delivery OTP Sent to Customer ({cust_name_disp})!*\n\n"
                         f"✅ *Payment Completed Online (₹{total})! / ఆన్‌లైన్ చెల్లింపు పూర్తయింది*\n"
                         f"Please ask customer for the *4-digit Delivery OTP* and reply with the OTP:"
                     )
@@ -1581,7 +1810,7 @@ Share this with helper."""
                         f"Please pay ₹{total} (Cash / UPI) and share this Delivery OTP *{end_otp}* with your helper to complete your order."
                     )
                     helper_msg = (
-                        f"🔐 *Delivery OTP Sent to Customer ({order['customer_number']})!*\n\n"
+                        f"🔐 *Delivery OTP Sent to Customer ({cust_name_disp})!*\n\n"
                         f"💵 Collect ₹{total} payment from customer and ask for the *4-digit Delivery OTP*.\n"
                         f"Reply with the 4-digit OTP:"
                     )
@@ -1712,7 +1941,7 @@ Share this with helper."""
                 send_message(phone, "❌ Invalid image.")
                 return
 
-            is_anywork = active.get("service") in ("AnyWork", 3, 5) or active.get("engine_type") == "TASK" or str(active.get("order_id", "")).startswith("N2DCW_")
+            is_anywork = active.get("service") in ("AnyWork", "Custom Work", 3, 5, 11) or active.get("engine_type") == "TASK" or str(active.get("order_id", "")).startswith("N2DCW_")
             if is_anywork and active["status"] in ("HELPER_ACCEPTED", "CONFIRMED", "ARRIVED_AT_STORE", "HELPER_ARRIVED", "BILL_IMAGE_UPLOADED"):
                 from db.mysql_conn import get_db
                 db = get_db()
@@ -1808,7 +2037,7 @@ Share this with helper."""
                         f"📸 *Item / Store Purchase Photo*\nUploaded by helper for Order #{active.get('order_id')}"
                     )
                 
-                is_anywork = active.get("service") in ("AnyWork", 3, 5) or active.get("engine_type") == "TASK"
+                is_anywork = active.get("service") in ("AnyWork", "Custom Work", 3, 5, 11) or active.get("engine_type") == "TASK" or str(active.get("order_id", "")).startswith("N2DCW_")
                 if is_anywork:
                     from db.mysql_conn import get_db
                     db = get_db()
@@ -1884,7 +2113,7 @@ Share this with helper."""
                     return
 
                 # 🔥 AUTOMATION: Transition to Payment Generated
-                is_anywork = active.get("service") in ("AnyWork", 3, 5)
+                is_anywork = active.get("service") in ("AnyWork", "Custom Work", 3, 5, 11) or str(active.get("order_id", "")).startswith("N2DCW_")
                 bill_amt = ANYWORK_BASE_FEE if is_anywork else (active.get("bill_amount") or 0)
                 
                 # Use dynamic charges from the database (which already includes surge and distance logic)
@@ -2359,6 +2588,13 @@ Share this with helper."""
         # =================================================
         # DEFAULT
         # =================================================
+
+        if active and (active.get("status") or "").upper() not in ("COMPLETED", "CANCELLED", "EXPIRED", "DELIVERED"):
+            send_reply_buttons(phone, f"ℹ️ You have active order *#{active.get('order_id')}* in progress.\n\nWould you like to message the customer?", [
+                {"id": f"MSG_CUST|{active['id']}", "title": "💬 Message Customer"},
+                {"id": "H_ACTIVE", "title": "📦 View Order"}
+            ])
+            return
 
         send_message(phone, "ℹ️ Type *GO* to open menu.")
 
