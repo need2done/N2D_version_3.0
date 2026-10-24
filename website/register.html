@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Register as Helper / Vendor — Need2Done Partner Network</title>
-  <meta name="description" content="Join Need2Done as an independent Helper (Delivery Runner, Driver, Domestic Technician) or Merchant Vendor (Pharmacy, Grocery, Restaurant). Apply online with instant KYC submission.">
+  <meta name="description" content="Join Need2Done as an independent Helper (Delivery Runner, Driver, Domestic Technician) or Merchant Vendor (Grocery, Retail, Restaurant). Apply online with instant KYC submission.">
   <link rel="icon" href="/assets/logo.png">
 
   <!-- Google Fonts: Outfit & Plus Jakarta Sans -->
@@ -621,7 +621,6 @@
                 <option value="All">🌟 All (All Services)</option>
                 <option value="Custom Work">🛠️ Custom Work</option>
                 <option value="Home Services">🏠 Home Services</option>
-                <option value="Medicine Delivery">💊 Medicine Delivery</option>
               </select>
             </div>
             <div class="form-group">
@@ -856,7 +855,7 @@
               <label class="form-label">Business Category <span class="req">*</span></label>
               <select name="business_category" required class="form-control">
                 <option value="Grocery & FMCG Store">🛒 Grocery & Supermarket</option>
-                <option value="Pharmacy & Healthcare">💊 Pharmacy / Medical Store</option>
+                <option value="General Retail & Essentials">🏪 General Retail & Daily Essentials</option>
                 <option value="Restaurant / Food Kitchen">🍲 Restaurant / Food Outlet</option>
                 <option value="Fruits & Fresh Produce">🍎 Fresh Vegetables & Fruits</option>
                 <option value="Electronics & Hardware">🔌 Electronics & Electrical Hardware</option>
@@ -1252,7 +1251,7 @@
         if (areaInput) areaInput.required = true;
         vehicleSelect.required = false;
       } else {
-        // Medicine Delivery
+        // Other Services / Delivery
         if (vehicleReqStar) vehicleReqStar.style.display = 'inline';
         if (areaReqStar) areaReqStar.style.display = 'inline';
         if (areaInput) areaInput.required = true;
@@ -1266,7 +1265,7 @@
       const isMotorized = ['bike', 'auto', 'car'].some(v => vehicleType.includes(v));
 
       if (isMotorized && !isNonVehicleRole) {
-        // Motorized Delivery (Medicine): Mandatory vehicle fields, DL and RC
+        // Motorized Delivery: Mandatory vehicle fields, DL and RC
         motorizedSection.style.display = 'block';
         document.getElementById('vRegNo').required = true;
         document.getElementById('vMakeModel').required = true;

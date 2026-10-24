@@ -552,7 +552,7 @@ button {
   margin-bottom: 48px;
 }
 
-.swiggy-search-container {
+.service-search-bar {
   display: flex;
   background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(20px);
@@ -564,13 +564,13 @@ button {
   transition: border-color 0.3s, box-shadow 0.3s;
 }
 
-[data-theme="light"] .swiggy-search-container {
+[data-theme="light"] .service-search-bar {
   background: rgba(255, 255, 255, 0.95);
   border-color: rgba(15, 23, 42, 0.12);
   box-shadow: 0 15px 40px rgba(0, 0, 0, 0.08);
 }
 
-.swiggy-search-container:focus-within {
+.service-search-bar:focus-within {
   border-color: rgba(168, 85, 247, 0.6);
   box-shadow: 0 20px 50px rgba(139, 92, 246, 0.25);
 }
@@ -590,7 +590,7 @@ button {
   align-items: center;
 }
 
-.swiggy-search-container input {
+.service-search-bar input {
   width: 100%;
   border: none;
   outline: none;
@@ -601,7 +601,7 @@ button {
   padding: 18px 16px 18px 48px;
 }
 
-.swiggy-search-container svg.input-icon {
+.service-search-bar svg.input-icon {
   position: absolute;
   left: 18px;
   color: var(--primary);

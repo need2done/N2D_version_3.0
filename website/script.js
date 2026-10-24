@@ -361,32 +361,6 @@ function handleSearchInput(e) {
   });
 }
 
-// ─── MEDICINE MODAL HANDLERS ───
-function openMedicineModal() {
-  const modal = document.getElementById('medicineModal');
-  if (modal) modal.classList.add('active');
-}
-
-function closeMedicineModal() {
-  const modal = document.getElementById('medicineModal');
-  if (modal) modal.classList.remove('active');
-}
-
-function submitMedicineOrder(e) {
-  e.preventDefault();
-  const name = document.getElementById('medName').value;
-  const phone = document.getElementById('medPhone').value;
-  const list = document.getElementById('medList').value;
-  const address = document.getElementById('medAddress').value;
-
-  const text = `Hi Need2Done, I would like to order medicines:\n\n👤 Name: ${name}\n📞 Phone: ${phone}\n💊 Medicines/Prescription: ${list}\n📍 Address: ${address}`;
-  const encodedText = encodeURIComponent(text);
-  const waUrl = `https://wa.me/917989862623?text=${encodedText}`;
-  
-  closeMedicineModal();
-  window.open(waUrl, '_blank');
-}
-
 // ─── ANY WORK MODAL HANDLERS ───
 function openAnyWorkModal() {
   const modal = document.getElementById('anyWorkModal');
