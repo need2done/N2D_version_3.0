@@ -617,6 +617,56 @@ def handle_customer_interactive(
                     )
                     return True
 
+            is_med = btn_id.startswith("I_PAID_MED_UPI_") or str(order.get("order_id", "")).startswith("N2DMD_") or str(order.get("service", "")).lower() in ("medicines", "medicine")
+            if is_med:
+                from db.order_repo import mark_payment_claim
+                from db.helper_repo import get_helper_by_id
+
+                mark_payment_claim(order_db_id, method="KOTAK_UPI")
+
+                send_message(
+                    from_number,
+                    (
+                        "⏳ *Payment Verification in Progress*\n\n"
+                        f"📝 Order : *#{order['order_id']}*\n"
+                        f"💰 Amount: *₹{order['total_amount']}*\n\n"
+                        "We have received your payment confirmation. Our team is verifying the receipt directly with our Kotak Bank statement.\n\n"
+                        "⚠️ *Note:* Delivery partner will hand over the medicines once the bank receipt is verified. Thank you for your patience!"
+                    )
+                )
+
+                send_message(
+                    ADMIN_NUMBER,
+                    (
+                        "🚨 *MEDICINE PAYMENT VERIFICATION REQUIRED*\n\n"
+                        f"📝 Order ID : {order['order_id']}\n"
+                        f"👤 Customer : {order.get('customer_name', 'Customer')} ({from_number})\n"
+                        f"💰 Amount   : ₹{order['total_amount']}\n"
+                        f"🏦 Method   : Direct Kotak UPI (9885131080@kotakbank)\n\n"
+                        "⚠️ Customer claimed they paid via Kotak UPI.\n"
+                        "👉 Please check your Kotak Bank SMS / Statement.\n"
+                        "Once verified, click '✓ Confirm in Bank' in Admin Dashboard to approve delivery:\n"
+                        "https://need2done.in/admin/earnings"
+                    )
+                )
+
+                if order.get("helper_id"):
+                    try:
+                        helper = get_helper_by_id(order["helper_id"])
+                        if helper and helper.get("phone"):
+                            send_message(
+                                helper["phone"],
+                                (
+                                    f"🔔 *Order #{order['order_id']} Alert:*\n\n"
+                                    f"Customer claimed payment of ₹{order['total_amount']} via UPI.\n"
+                                    "⚠️ *DO NOT HAND OVER MEDICINES YET.* Wait for owner verification confirmation on WhatsApp."
+                                )
+                            )
+                    except Exception as e:
+                        print(f"Error alerting helper: {e}")
+
+                return True
+
             # ------------------------------------------------
             # Mark payment received
             # ------------------------------------------------
@@ -635,29 +685,15 @@ def handle_customer_interactive(
             # Notify Admin / Owner
             # ------------------------------------------------
 
-            if method == "KOTAK_UPI" or str(order.get("order_id", "")).startswith("N2DMD_"):
-                send_message(
-                    ADMIN_NUMBER,
-                    (
-                        "🔔 *Medicine Direct UPI Payment Received!*\n\n"
-                        f"📝 Order ID : {order['order_id']}\n"
-                        f"👤 Customer : {order.get('customer_name', 'Customer')} ({from_number})\n"
-                        f"💰 Amount   : ₹{order['total_amount']}\n"
-                        f"🏦 Method   : Direct Kotak UPI (9885131080@kotakbank)\n\n"
-                        "👉 Please check your Kotak Bank app/SMS to verify, then confirm in Admin Dashboard:\n"
-                        "https://need2done.in/admin/earnings"
-                    )
+            send_message(
+                ADMIN_NUMBER,
+                (
+                    "💳 *Payment Confirmed*\n\n"
+                    f"Order ID : {order['order_id']}\n"
+                    f"Amount   : ₹{order['total_amount']}\n"
+                    f"Method   : {order['payment_method']}"
                 )
-            else:
-                send_message(
-                    ADMIN_NUMBER,
-                    (
-                        "💳 *Payment Confirmed*\n\n"
-                        f"Order ID : {order['order_id']}\n"
-                        f"Amount   : ₹{order['total_amount']}\n"
-                        f"Method   : {order['payment_method']}"
-                    )
-                )
+            )
 
             # ------------------------------------------------
             # RIDE: complete directly + notify helper + rate

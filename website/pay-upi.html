@@ -100,83 +100,68 @@
       color: #fff;
     }
     .btn-pay-primary {
-      display: block;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
       width: 100%;
-      background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
       color: #fff;
-      font-size: 1.05rem;
+      font-size: 1.12rem;
       font-weight: 800;
       text-decoration: none;
-      padding: 16px 20px;
-      border-radius: 14px;
-      box-shadow: 0 8px 24px rgba(16, 185, 129, 0.35);
-      transition: all 0.2s ease;
+      padding: 18px 20px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4);
+      transition: all 0.25s ease;
       cursor: pointer;
-      border: none;
-      margin-bottom: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      margin-bottom: 20px;
     }
     .btn-pay-primary:hover, .btn-pay-primary:active {
       transform: translateY(-2px);
-      box-shadow: 0 12px 28px rgba(16, 185, 129, 0.45);
+      box-shadow: 0 14px 30px rgba(16, 185, 129, 0.5);
     }
-    .app-choice-label {
-      font-size: 0.78rem;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin: 16px 0 12px;
-    }
-    .apps-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
+    .payment-notice {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 12px 14px;
       margin-bottom: 20px;
+      font-size: 0.82rem;
+      line-height: 1.5;
+      color: #94a3b8;
+      text-align: left;
     }
-    .app-btn {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 12px;
-      padding: 10px 8px;
-      font-size: 0.8rem;
-      font-weight: 700;
-      color: #fff;
-      text-decoration: none;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-      transition: all 0.2s;
-    }
-    .app-btn:hover, .app-btn:active {
-      background: rgba(255, 255, 255, 0.08);
-      border-color: rgba(16, 185, 129, 0.4);
-    }
-    .app-icon {
-      font-size: 1.25rem;
+    .payment-notice strong {
+      color: #e2e8f0;
     }
     .btn-whatsapp-confirm {
-      display: block;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
       width: 100%;
-      background: rgba(37, 211, 102, 0.1);
+      background: rgba(37, 211, 102, 0.12);
       color: #25d366;
-      border: 1px solid rgba(37, 211, 102, 0.3);
-      padding: 14px;
+      border: 1px solid rgba(37, 211, 102, 0.35);
+      padding: 15px;
       border-radius: 14px;
-      font-size: 0.92rem;
+      font-size: 0.95rem;
       font-weight: 700;
       text-decoration: none;
       transition: all 0.2s;
     }
-    .btn-whatsapp-confirm:hover {
-      background: rgba(37, 211, 102, 0.2);
+    .btn-whatsapp-confirm:hover, .btn-whatsapp-confirm:active {
+      background: rgba(37, 211, 102, 0.22);
     }
     .security-badge {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      font-size: 0.75rem;
+      font-size: 0.78rem;
       color: var(--text-muted);
-      margin-top: 18px;
+      margin-top: 20px;
     }
   </style>
 </head>
@@ -199,26 +184,13 @@
       </div>
     </div>
 
-    <!-- Main Dynamic UPI Button (Hides Raw UPI ID) -->
+    <!-- Main Dynamic UPI Button (Triggers Native OS Bottom-Sheet) -->
     <a href="#" id="mainUpiBtn" class="btn-pay-primary">
       ⚡ Pay with UPI App
     </a>
 
-    <div class="app-choice-label">Or choose your preferred app</div>
-
-    <div class="apps-grid">
-      <a href="#" id="gpayBtn" class="app-btn">
-        <span class="app-icon">🔵</span>
-        <span>Google Pay</span>
-      </a>
-      <a href="#" id="phonepeBtn" class="app-btn">
-        <span class="app-icon">🟣</span>
-        <span>PhonePe</span>
-      </a>
-      <a href="#" id="paytmBtn" class="app-btn">
-        <span class="app-icon">🔷</span>
-        <span>Paytm</span>
-      </a>
+    <div class="payment-notice">
+      ℹ️ <strong>How to Pay:</strong> Tapping <strong>Pay with UPI App</strong> will prompt you to choose any installed UPI app on your phone (Google Pay, PhonePe, Paytm, etc.). After completing the transfer, return and tap below.
     </div>
 
     <!-- Return to WhatsApp after Payment -->
@@ -227,7 +199,7 @@
     </a>
 
     <div class="security-badge">
-      <span>🔒</span> 100% Encrypted Direct Bank Payment
+      <span>🔒</span> 100% Secure Direct Bank Payment
     </div>
   </div>
 
@@ -244,25 +216,31 @@
     const payeeName = 'Need2Done';
     const note = 'Order_' + orderId;
 
+    // Standard Universal UPI URI: Mobile OS triggers native app chooser
     const baseUpiUri = `upi://pay?pa=${receiverVpa}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(note)}`;
+
+    let hasClickedPay = false;
 
     // Set Main Button
     const mainBtn = document.getElementById('mainUpiBtn');
     mainBtn.href = baseUpiUri;
     mainBtn.textContent = `⚡ Pay ₹${parseFloat(amount).toFixed(0)} with UPI App`;
-
-    // Specific Apps
-    document.getElementById('gpayBtn').href = `gpay://upi/pay?pa=${receiverVpa}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(note)}`;
-    document.getElementById('phonepeBtn').href = `phonepe://pay?pa=${receiverVpa}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(note)}`;
-    document.getElementById('paytmBtn').href = `paytmmp://pay?pa=${receiverVpa}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(note)}`;
+    mainBtn.addEventListener('click', () => {
+      hasClickedPay = true;
+    });
 
     // Return to WhatsApp
-    const waText = encodeURIComponent(`✅ I have completed the UPI payment for Order #${orderId} (₹${amount}). Please proceed with delivery.`);
-    document.getElementById('waConfirmBtn').href = `https://wa.me/917989862623?text=${waText}`;
+    const confirmBtn = document.getElementById('waConfirmBtn');
+    const waText = encodeURIComponent(`✅ I have completed the UPI payment for Order #${orderId} (₹${amount}). Please verify with bank.`);
+    confirmBtn.href = `https://wa.me/917989862623?text=${waText}`;
 
-    // Auto-launch on direct mobile tap if supported
-    window.addEventListener('load', () => {
-      // If mobile user arrived directly, button is immediately ready to tap
+    confirmBtn.addEventListener('click', (e) => {
+      if (!hasClickedPay) {
+        const proceed = confirm(`Have you already sent ₹${amount} in your UPI app?\n\nPlease complete payment first. Unverified payments cannot be processed.`);
+        if (!proceed) {
+          e.preventDefault();
+        }
+      }
     });
   </script>
 </body>

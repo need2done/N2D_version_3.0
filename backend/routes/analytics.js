@@ -1,6 +1,25 @@
 const express = require('express');
 const router = express.Router();
+const axios = require('axios');
 const db = require('../config/db');
+
+async function sendWhatsAppText(to, text) {
+    const token = process.env.WA_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN || '';
+    const phoneId = process.env.WA_PHONE_ID || process.env.WHATSAPP_PHONE_ID || '';
+    if (!token || !phoneId || !to) return;
+    try {
+        await axios.post(`https://graph.facebook.com/v19.0/${phoneId}/messages`, {
+            messaging_product: "whatsapp",
+            to: to.replace(/\D/g, ''),
+            type: "text",
+            text: { body: text }
+        }, {
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+        });
+    } catch (err) {
+        console.error('[WA ERROR IN ANALYTICS] Failed to send message:', err.response?.data || err.message);
+    }
+}
 
 // GET /api/analytics/earnings
 router.get('/earnings', async (req, res) => {
@@ -101,9 +120,19 @@ router.post('/verify-medicine-payment/:orderId', async (req, res) => {
         const { orderId } = req.params;
         const isNumeric = /^\d+$/.test(orderId);
         const query = isNumeric
-            ? 'UPDATE orders SET verified_by_owner = 1, owner_verified_at = NOW(), payment_status = ? WHERE order_id = ? OR id = ?'
-            : 'UPDATE orders SET verified_by_owner = 1, owner_verified_at = NOW(), payment_status = ? WHERE order_id = ?';
-        const params = isNumeric ? ['PAID', orderId, parseInt(orderId, 10)] : ['PAID', orderId];
+            ? `UPDATE orders 
+               SET verified_by_owner = 1, 
+                   owner_verified_at = NOW(), 
+                   payment_status = 'PAID',
+                   status = CASE WHEN status = 'PAYMENT_GENERATED' THEN 'COMPLETED' ELSE status END
+               WHERE order_id = ? OR id = ?`
+            : `UPDATE orders 
+               SET verified_by_owner = 1, 
+                   owner_verified_at = NOW(), 
+                   payment_status = 'PAID',
+                   status = CASE WHEN status = 'PAYMENT_GENERATED' THEN 'COMPLETED' ELSE status END
+               WHERE order_id = ?`;
+        const params = isNumeric ? [orderId, parseInt(orderId, 10)] : [orderId];
 
         const [result] = await db.query(query, params);
 
@@ -111,7 +140,27 @@ router.post('/verify-medicine-payment/:orderId', async (req, res) => {
             return res.status(404).json({ success: false, error: 'Order not found' });
         }
 
-        res.json({ success: true, message: 'Payment successfully marked as verified in Kotak Bank!' });
+        // Fetch order details for WhatsApp notification
+        const selectQuery = isNumeric
+            ? `SELECT o.*, h.phone as helper_phone FROM orders o LEFT JOIN helpers h ON o.helper_id = h.id WHERE o.order_id = ? OR o.id = ?`
+            : `SELECT o.*, h.phone as helper_phone FROM orders o LEFT JOIN helpers h ON o.helper_id = h.id WHERE o.order_id = ?`;
+        const [orders] = await db.query(selectQuery, params);
+
+        if (orders.length > 0) {
+            const order = orders[0];
+            // Notify customer
+            if (order.customer_number) {
+                const customerMsg = `✅ *Payment Verified by Owner!*\n\nYour Kotak UPI payment of ₹${order.total_amount} for Order *#${order.order_id}* has been verified in our bank.\n\nYour order is confirmed. Thank you for choosing Need2Done!`;
+                await sendWhatsAppText(order.customer_number, customerMsg);
+            }
+            // Notify helper
+            if (order.helper_phone) {
+                const helperMsg = `✅ *Payment Confirmed by Owner!*\n\nOrder *#${order.order_id}*: Kotak UPI payment of ₹${order.total_amount} is verified in bank statement.\nYou can now safely hand over the package to the customer.`;
+                await sendWhatsAppText(order.helper_phone, helperMsg);
+            }
+        }
+
+        res.json({ success: true, message: 'Payment successfully marked as verified in Kotak Bank! Customer & Helper intimated via WhatsApp.' });
     } catch (err) {
         console.error('Error verifying medicine payment:', err);
         res.status(500).json({ success: false, error: 'Failed to verify payment' });

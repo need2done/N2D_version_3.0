@@ -1135,6 +1135,30 @@ def auto_generate_payment(order_id: str, bill_amount: float, helper_charge: floa
 # PAYMENT RECEIVED (CUSTOMER CONFIRMS PAYMENT)
 # =================================================
 
+def mark_payment_claim(db_id: int, method: str = "KOTAK_UPI") -> bool:
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+    try:
+        cur.execute(
+            """
+            UPDATE orders
+            SET payment_status='PENDING_VERIFICATION',
+                payment_method=%s,
+                updated_at=NOW()
+            WHERE id=%s
+            """,
+            (method, db_id)
+        )
+        db.commit()
+        return True
+    except Exception:
+        db.rollback()
+        traceback.print_exc()
+        return False
+    finally:
+        cur.close()
+        db.close()
+
 def mark_payment_received(db_id: int, method: str) -> bool:
 
     db = get_db()
