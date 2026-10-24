@@ -216,8 +216,8 @@
     const payeeName = 'Need2Done';
     const note = 'Order_' + orderId;
 
-    // Standard Universal UPI URI: Mobile OS triggers native app chooser
-    const baseUpiUri = `upi://pay?pa=${receiverVpa}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(note)}`;
+    // Standard Universal UPI URI: Mobile OS triggers native app chooser with verified merchant parameters
+    const baseUpiUri = `upi://pay?pa=${receiverVpa}&pn=${encodeURIComponent(payeeName)}&mc=5499&mode=02&am=${amount}&cu=INR&tn=${encodeURIComponent(note)}`;
 
     let hasClickedPay = false;
 
