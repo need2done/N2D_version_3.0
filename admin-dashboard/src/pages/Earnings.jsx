@@ -374,10 +374,10 @@ export default function Earnings() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#34d399', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <ShieldCheck size={22} color="#10b981" /> Medicine Direct UPI Account: 9885131080@kotakbank
+                  <ShieldCheck size={22} color="#10b981" /> Medicine Merchant UPI: Q21351640@ybl (Need2Done)
                 </h3>
                 <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.88rem', color: 'var(--text-muted)' }}>
-                  Customers pay directly into the owner's Kotak Bank account via dynamic UPI buttons. Razorpay is completely bypassed for medicine orders. Verify incoming credits in your Kotak Bank app/SMS and click <strong>"Confirm in Bank"</strong> below.
+                  Customers pay directly into the verified <strong>Need2Done</strong> PhonePe Merchant account (SBI linked). Razorpay is completely bypassed for medicine orders. Verify incoming credits in your PhonePe Business app / SMS and click <strong>"Confirm in Bank"</strong> below.
                 </p>
               </div>
               <div style={{ display: 'flex', gap: '1rem' }}>

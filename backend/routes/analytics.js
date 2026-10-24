@@ -104,7 +104,8 @@ router.get('/medicine-transactions', async (req, res) => {
             total_amount: totalAmount,
             pending_verification: pendingVerification,
             verified: verified,
-            kotak_vpa: '9885131080@kotakbank'
+            merchant_vpa: 'Q21351640@ybl',
+            kotak_vpa: 'Q21351640@ybl (PhonePe Merchant)'
         };
 
         res.json({ success: true, summary, transactions: rows });
@@ -150,17 +151,17 @@ router.post('/verify-medicine-payment/:orderId', async (req, res) => {
             const order = orders[0];
             // Notify customer
             if (order.customer_number) {
-                const customerMsg = `✅ *Payment Verified by Owner!*\n\nYour Kotak UPI payment of ₹${order.total_amount} for Order *#${order.order_id}* has been verified in our bank.\n\nYour order is confirmed. Thank you for choosing Need2Done!`;
+                const customerMsg = `✅ *Payment Verified!*\n\nYour UPI payment of ₹${order.total_amount} for Order *#${order.order_id}* has been verified.\n\nYour order is confirmed. Thank you for choosing Need2Done!`;
                 await sendWhatsAppText(order.customer_number, customerMsg);
             }
             // Notify helper
             if (order.helper_phone) {
-                const helperMsg = `✅ *Payment Confirmed by Owner!*\n\nOrder *#${order.order_id}*: Kotak UPI payment of ₹${order.total_amount} is verified in bank statement.\nYou can now safely hand over the package to the customer.`;
+                const helperMsg = `✅ *Payment Confirmed by Owner!*\n\nOrder *#${order.order_id}*: UPI payment of ₹${order.total_amount} is verified in business statement.\nYou can now safely hand over the package to the customer.`;
                 await sendWhatsAppText(order.helper_phone, helperMsg);
             }
         }
 
-        res.json({ success: true, message: 'Payment successfully marked as verified in Kotak Bank! Customer & Helper intimated via WhatsApp.' });
+        res.json({ success: true, message: 'Payment successfully marked as verified! Customer & Helper intimated via WhatsApp.' });
     } catch (err) {
         console.error('Error verifying medicine payment:', err);
         res.status(500).json({ success: false, error: 'Failed to verify payment' });

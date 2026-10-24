@@ -630,8 +630,8 @@ def handle_customer_interactive(
                         "⏳ *Payment Verification in Progress*\n\n"
                         f"📝 Order : *#{order['order_id']}*\n"
                         f"💰 Amount: *₹{order['total_amount']}*\n\n"
-                        "We have received your payment confirmation. Our team is verifying the receipt directly with our Kotak Bank statement.\n\n"
-                        "⚠️ *Note:* Delivery partner will hand over the medicines once the bank receipt is verified. Thank you for your patience!"
+                        "We have received your payment confirmation. Our operations team is verifying the receipt in our business account.\n\n"
+                        "⚠️ *Note:* Delivery partner will hand over the medicines once the receipt is verified. Thank you for your patience!"
                     )
                 )
 
@@ -642,9 +642,9 @@ def handle_customer_interactive(
                         f"📝 Order ID : {order['order_id']}\n"
                         f"👤 Customer : {order.get('customer_name', 'Customer')} ({from_number})\n"
                         f"💰 Amount   : ₹{order['total_amount']}\n"
-                        f"🏦 Method   : Direct Kotak UPI (9885131080@kotakbank)\n\n"
-                        "⚠️ Customer claimed they paid via Kotak UPI.\n"
-                        "👉 Please check your Kotak Bank SMS / Statement.\n"
+                        f"🏦 Method   : PhonePe Merchant (Q21351640@ybl)\n\n"
+                        "⚠️ Customer claimed they paid via UPI.\n"
+                        "👉 Please check your PhonePe Business App / SMS.\n"
                         "Once verified, click '✓ Confirm in Bank' in Admin Dashboard to approve delivery:\n"
                         "https://need2done.in/admin/earnings"
                     )
