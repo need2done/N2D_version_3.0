@@ -99,13 +99,13 @@ router.get('/medicine-transactions', async (req, res) => {
 router.post('/verify-medicine-payment/:orderId', async (req, res) => {
     try {
         const { orderId } = req.params;
-        const [result] = await db.query(`
-            UPDATE orders 
-            SET verified_by_owner = 1, 
-                owner_verified_at = NOW(), 
-                payment_status = 'PAID'
-            WHERE order_id = ? OR id = ?
-        `, [orderId, orderId]);
+        const isNumeric = /^\d+$/.test(orderId);
+        const query = isNumeric
+            ? 'UPDATE orders SET verified_by_owner = 1, owner_verified_at = NOW(), payment_status = ? WHERE order_id = ? OR id = ?'
+            : 'UPDATE orders SET verified_by_owner = 1, owner_verified_at = NOW(), payment_status = ? WHERE order_id = ?';
+        const params = isNumeric ? ['PAID', orderId, parseInt(orderId, 10)] : ['PAID', orderId];
+
+        const [result] = await db.query(query, params);
 
         if (result.affectedRows === 0) {
             return res.status(404).json({ success: false, error: 'Order not found' });
