@@ -122,8 +122,17 @@ def handle_customer_interactive(
                     total = float(payload.get("balance_due", order.get("total_amount") or 0.0))
                     if total <= 0:
                         total = float(order.get("total_amount") or 0.0)
-                    pay_url = f"{TRACKING_BASE_URL}/payment.html?orderId={order['order_id']}&amount={total}"
-                    send_url_button(from_number, f"💳 Click below to complete online UPI payment for order #{order['order_id']}:\n\nTotal Amount: ₹{total}", "💳 Pay Online", pay_url)
+                    
+                    is_medicine = (
+                        str(order.get("order_id", "")).startswith("N2DMD_")
+                        or str(order.get("service", "")).lower() in ("medicines", "medicine")
+                    )
+                    if is_medicine:
+                        pay_url = f"{TRACKING_BASE_URL}/pay-upi.html?orderId={order['order_id']}&amount={total}"
+                        send_payment_button(from_number, f"💳 *Payment Required via UPI*\n\nOrder #{order['order_id']}\nTotal: ₹{total}\n\nTap the button below to pay directly with your UPI app 👇", f"Pay ₹{int(total)} via UPI", pay_url)
+                    else:
+                        pay_url = f"{TRACKING_BASE_URL}/payment.html?orderId={order['order_id']}&amount={total}"
+                        send_url_button(from_number, f"💳 Click below to complete online UPI payment for order #{order['order_id']}:\n\nTotal Amount: ₹{total}", "💳 Pay Online", pay_url)
                 return True
 
             if action == "CUST_CONT_WITHOUT":
@@ -426,36 +435,74 @@ def handle_customer_interactive(
             payload = safe_parse_payload(order.get("payload"))
             total = float(payload.get("balance_due", order["total_amount"]))
 
-            # save payment method
-            mark_payment_method(order_db_id, "ONLINE")
-
-            pay_link = (
-                f"{TRACKING_BASE_URL}/payment.html?"
-                f"orderId={order['order_id']}"
-                f"&amount={total}"
+            is_medicine = (
+                str(order.get("order_id", "")).startswith("N2DMD_")
+                or str(order.get("service", "")).lower() in ("medicines", "medicine")
             )
 
-            send_payment_button(
-                to=from_number,
-                body=(
-                    "💳 *Online Payment (Razorpay)*\n\n"
-                    f"💰 Amount : ₹{total}\n\n"
-                    "Tap the button below to pay securely 👇"
-                ),
-                button_text="Pay ₹" + str(total),
-                url=pay_link
-            )
+            if is_medicine:
+                # Save payment method as KOTAK_UPI
+                mark_payment_method(order_db_id, "KOTAK_UPI")
 
-            send_reply_buttons(
-                to=from_number,
-                body="Confirm once payment is completed:",
-                buttons=[
-                    {
-                        "id": f"I_PAID_{order_db_id}",
-                        "title": "✅ I Have Paid"
-                    }
-                ]
-            )
+                pay_link = (
+                    f"{TRACKING_BASE_URL}/pay-upi.html?"
+                    f"orderId={order['order_id']}"
+                    f"&amount={total}"
+                )
+
+                send_payment_button(
+                    to=from_number,
+                    body=(
+                        "💳 *Order Payment (Direct UPI)*\n\n"
+                        f"📝 Order: *#{order['order_id']}*\n"
+                        f"💰 Amount Due : *₹{total}*\n\n"
+                        "Tap the button below to pay directly with GPay, PhonePe, or Paytm 👇"
+                    ),
+                    button_text=f"Pay ₹{int(total)} via UPI",
+                    url=pay_link
+                )
+
+                send_reply_buttons(
+                    to=from_number,
+                    body="Confirm once payment is completed in your UPI app:",
+                    buttons=[
+                        {
+                            "id": f"I_PAID_MED_UPI_{order_db_id}",
+                            "title": "✅ I Have Paid via UPI"
+                        }
+                    ]
+                )
+            else:
+                # save payment method
+                mark_payment_method(order_db_id, "ONLINE")
+
+                pay_link = (
+                    f"{TRACKING_BASE_URL}/payment.html?"
+                    f"orderId={order['order_id']}"
+                    f"&amount={total}"
+                )
+
+                send_payment_button(
+                    to=from_number,
+                    body=(
+                        "💳 *Online Payment (Razorpay)*\n\n"
+                        f"💰 Amount : ₹{total}\n\n"
+                        "Tap the button below to pay securely 👇"
+                    ),
+                    button_text="Pay ₹" + str(total),
+                    url=pay_link
+                )
+
+                send_reply_buttons(
+                    to=from_number,
+                    body="Confirm once payment is completed:",
+                    buttons=[
+                        {
+                            "id": f"I_PAID_{order_db_id}",
+                            "title": "✅ I Have Paid"
+                        }
+                    ]
+                )
 
             return True
 
@@ -553,7 +600,9 @@ def handle_customer_interactive(
                 return True
 
             method = order.get("payment_method")
-            if btn_id.startswith("PAID_CASH_"):
+            if btn_id.startswith("I_PAID_MED_UPI_") or str(order.get("order_id", "")).startswith("N2DMD_") or str(order.get("service", "")).lower() in ("medicines", "medicine"):
+                method = "KOTAK_UPI"
+            elif btn_id.startswith("PAID_CASH_"):
                 method = "Cash"
             elif btn_id.startswith("PAID_UPI_"):
                 method = "UPI"
@@ -583,18 +632,32 @@ def handle_customer_interactive(
             )
 
             # ------------------------------------------------
-            # Notify Admin
+            # Notify Admin / Owner
             # ------------------------------------------------
 
-            send_message(
-                ADMIN_NUMBER,
-                (
-                    "💳 *Payment Confirmed*\n\n"
-                    f"Order ID : {order['order_id']}\n"
-                    f"Amount   : ₹{order['total_amount']}\n"
-                    f"Method   : {order['payment_method']}"
+            if method == "KOTAK_UPI" or str(order.get("order_id", "")).startswith("N2DMD_"):
+                send_message(
+                    ADMIN_NUMBER,
+                    (
+                        "🔔 *Medicine Direct UPI Payment Received!*\n\n"
+                        f"📝 Order ID : {order['order_id']}\n"
+                        f"👤 Customer : {order.get('customer_name', 'Customer')} ({from_number})\n"
+                        f"💰 Amount   : ₹{order['total_amount']}\n"
+                        f"🏦 Method   : Direct Kotak UPI (9885131080@kotakbank)\n\n"
+                        "👉 Please check your Kotak Bank app/SMS to verify, then confirm in Admin Dashboard:\n"
+                        "https://need2done.in/admin/earnings"
+                    )
                 )
-            )
+            else:
+                send_message(
+                    ADMIN_NUMBER,
+                    (
+                        "💳 *Payment Confirmed*\n\n"
+                        f"Order ID : {order['order_id']}\n"
+                        f"Amount   : ₹{order['total_amount']}\n"
+                        f"Method   : {order['payment_method']}"
+                    )
+                )
 
             # ------------------------------------------------
             # RIDE: complete directly + notify helper + rate

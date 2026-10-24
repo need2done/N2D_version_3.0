@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Complete UPI Payment — Need2Done</title>
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: rgba(17, 24, 39, 0.95);
+      --border: rgba(255, 255, 255, 0.1);
+      --primary: #10b981;
+      --primary-hover: #059669;
+      --text-main: #f9fafb;
+      --text-muted: #9ca3af;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background-image: radial-gradient(circle at 50% 20%, rgba(16, 185, 129, 0.12), transparent 60%);
+    }
+    .payment-container {
+      width: 100%;
+      max-width: 440px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 32px 24px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+      text-align: center;
+      backdrop-filter: blur(16px);
+    }
+    .logo-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 64px;
+      height: 64px;
+      border-radius: 18px;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      margin-bottom: 20px;
+    }
+    .logo-badge img {
+      width: 44px;
+      height: 44px;
+      object-fit: contain;
+    }
+    .title {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+    .subtitle {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+    .order-box {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 18px 20px;
+      margin-bottom: 24px;
+      text-align: left;
+    }
+    .order-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      font-size: 0.9rem;
+    }
+    .order-row.total {
+      border-top: 1px dashed rgba(255, 255, 255, 0.15);
+      margin-top: 8px;
+      padding-top: 12px;
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #34d399;
+    }
+    .order-label {
+      color: var(--text-muted);
+    }
+    .order-value {
+      font-weight: 700;
+      color: #fff;
+    }
+    .btn-pay-primary {
+      display: block;
+      width: 100%;
+      background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+      color: #fff;
+      font-size: 1.05rem;
+      font-weight: 800;
+      text-decoration: none;
+      padding: 16px 20px;
+      border-radius: 14px;
+      box-shadow: 0 8px 24px rgba(16, 185, 129, 0.35);
+      transition: all 0.2s ease;
+      cursor: pointer;
+      border: none;
+      margin-bottom: 14px;
+    }
+    .btn-pay-primary:hover, .btn-pay-primary:active {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(16, 185, 129, 0.45);
+    }
+    .app-choice-label {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin: 16px 0 12px;
+    }
+    .apps-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .app-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 10px 8px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #fff;
+      text-decoration: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s;
+    }
+    .app-btn:hover, .app-btn:active {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(16, 185, 129, 0.4);
+    }
+    .app-icon {
+      font-size: 1.25rem;
+    }
+    .btn-whatsapp-confirm {
+      display: block;
+      width: 100%;
+      background: rgba(37, 211, 102, 0.1);
+      color: #25d366;
+      border: 1px solid rgba(37, 211, 102, 0.3);
+      padding: 14px;
+      border-radius: 14px;
+      font-size: 0.92rem;
+      font-weight: 700;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-whatsapp-confirm:hover {
+      background: rgba(37, 211, 102, 0.2);
+    }
+    .security-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 18px;
+    }
+  </style>
+</head>
+<body>
+  <div class="payment-container">
+    <div class="logo-badge">
+      <img src="/assets/logo.png" onerror="this.src='logo.png'" alt="Need2Done">
+    </div>
+    <h1 class="title">Complete Payment</h1>
+    <p class="subtitle">Pay securely using any UPI app on your phone</p>
+
+    <div class="order-box">
+      <div class="order-row">
+        <span class="order-label">Order ID:</span>
+        <span class="order-value" id="displayOrderId">#Loading...</span>
+      </div>
+      <div class="order-row total">
+        <span>Amount Payable:</span>
+        <span id="displayAmount">₹--</span>
+      </div>
+    </div>
+
+    <!-- Main Dynamic UPI Button (Hides Raw UPI ID) -->
+    <a href="#" id="mainUpiBtn" class="btn-pay-primary">
+      ⚡ Pay with UPI App
+    </a>
+
+    <div class="app-choice-label">Or choose your preferred app</div>
+
+    <div class="apps-grid">
+      <a href="#" id="gpayBtn" class="app-btn">
+        <span class="app-icon">🔵</span>
+        <span>Google Pay</span>
+      </a>
+      <a href="#" id="phonepeBtn" class="app-btn">
+        <span class="app-icon">🟣</span>
+        <span>PhonePe</span>
+      </a>
+      <a href="#" id="paytmBtn" class="app-btn">
+        <span class="app-icon">🔷</span>
+        <span>Paytm</span>
+      </a>
+    </div>
+
+    <!-- Return to WhatsApp after Payment -->
+    <a href="#" id="waConfirmBtn" class="btn-whatsapp-confirm">
+      💬 I Have Paid — Return to WhatsApp
+    </a>
+
+    <div class="security-badge">
+      <span>🔒</span> 100% Encrypted Direct Bank Payment
+    </div>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const orderId = urlParams.get('orderId') || urlParams.get('order_id') || 'ORDER';
+    const amount = urlParams.get('amount') || '0';
+
+    document.getElementById('displayOrderId').textContent = '#' + orderId;
+    document.getElementById('displayAmount').textContent = '₹' + parseFloat(amount).toFixed(2);
+
+    // Dynamic UPI URI Construction (VPA is internal to link, not printed as text)
+    const receiverVpa = '9885131080@kotakbank';
+    const payeeName = 'Need2Done';
+    const note = 'Order_' + orderId;
+
+    const baseUpiUri = `upi://pay?pa=${receiverVpa}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(note)}`;
+
+    // Set Main Button
+    const mainBtn = document.getElementById('mainUpiBtn');
+    mainBtn.href = baseUpiUri;
+    mainBtn.textContent = `⚡ Pay ₹${parseFloat(amount).toFixed(0)} with UPI App`;
+
+    // Specific Apps
+    document.getElementById('gpayBtn').href = `gpay://upi/pay?pa=${receiverVpa}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(note)}`;
+    document.getElementById('phonepeBtn').href = `phonepe://pay?pa=${receiverVpa}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(note)}`;
+    document.getElementById('paytmBtn').href = `paytmmp://pay?pa=${receiverVpa}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(note)}`;
+
+    // Return to WhatsApp
+    const waText = encodeURIComponent(`✅ I have completed the UPI payment for Order #${orderId} (₹${amount}). Please proceed with delivery.`);
+    document.getElementById('waConfirmBtn').href = `https://wa.me/917989862623?text=${waText}`;
+
+    // Auto-launch on direct mobile tap if supported
+    window.addEventListener('load', () => {
+      // If mobile user arrived directly, button is immediately ready to tap
+    });
+  </script>
+</body>
+</html>

@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Need2Done — Hyperlocal Home Services, Pharmacy Pickup & Custom Errands</title>
-  <meta name="description" content="Need2Done provides 3 essential hyperlocal services in Bhongir & Telangana: Home Services (Kitchen Cleaning, Laundry, Floor & Deep Cleaning), Pharmacy Pickup & Delivery (Errand Runner), and Custom Work errands. Delivered in 15-30 mins via Web & WhatsApp.">
-  <meta name="keywords" content="Need2Done, Home Services, Kitchen Cleaning, Laundry, Cloth Washing, Floor Cleaning, Deep Cleaning, Medicine Pickup, Pharmacy Runner, Custom Work, Pick and Drop, Custom Errands, Bhongir, Telangana, WhatsApp Delivery">
+  <title>Need2Done — Hyperlocal Home Services & Custom Work Errands</title>
+  <meta name="description" content="Need2Done provides essential hyperlocal services in Bhongir & Telangana: Professional Home Services (Kitchen Cleaning, Laundry, Repairs, Deep Cleaning) and Custom Work errands. Fast, verified assistance via Web & WhatsApp.">
+  <meta name="keywords" content="Need2Done, Home Services, Kitchen Cleaning, Laundry, Cloth Washing, Floor Cleaning, Deep Cleaning, Appliance Repair, Plumbing, Electrician, Custom Work, Pick and Drop, Custom Errands, Bhongir, Telangana, WhatsApp Booking">
   <meta name="author" content="Need2Done">
   
   <!-- Open Graph -->
-  <meta property="og:title" content="Need2Done — 3 Essential Local Services Delivered Instantly">
-  <meta property="og:description" content="Book Home Services, Pharmacy Pickup & Drop in 20 mins, or Request Custom Work errands locally.">
+  <meta property="og:title" content="Need2Done — Essential Local Services Delivered Instantly">
+  <meta property="og:description" content="Book Professional Home Services and Request Custom Work errands locally in Bhongir & Telangana.">
   <meta property="og:type" content="website">
   
   <link rel="icon" href="/assets/logo.png">
@@ -342,9 +342,8 @@
 
       <!-- Center Nav Links -->
       <nav class="codex-nav-links">
-        <a href="#services" class="nav-item" onclick="scrollToSection('services')">Our 3 Services</a>
+        <a href="#services" class="nav-item" onclick="scrollToSection('services')">Our Services</a>
         <a href="/home-services" class="nav-item">🏠 Home Services</a>
-        <a href="javascript:void(0)" class="nav-item" onclick="openMedicineModal()">💊 Pharmacy Pickup</a>
         <a href="javascript:void(0)" class="nav-item" onclick="openAnyWorkModal()">👷 Custom Work</a>
         <a href="/register" class="nav-item" style="color: #38bdf8; font-weight: 700;">🤝 Register as Helper / Vendor</a>
         <a href="/help.html" class="nav-item">Help & Support</a>
@@ -385,9 +384,8 @@
         <span style="font-size: 0.65rem; opacity: 0.8;">▼</span>
       </div>
       <div class="sticky-nav">
-        <span class="sticky-nav-link" onclick="scrollToSection('services')">Our 3 Services</span>
+        <span class="sticky-nav-link" onclick="scrollToSection('services')">Our Services</span>
         <a href="/home-services" class="sticky-nav-link">🏠 Home Services</a>
-        <a href="javascript:void(0)" class="sticky-nav-link" onclick="openMedicineModal()">💊 Pharmacy Pickup</a>
         <a href="javascript:void(0)" class="sticky-nav-link" onclick="openAnyWorkModal()">👷 Custom Work</a>
         <a href="/register" class="sticky-nav-link" style="color: #38bdf8; font-weight: 700;">🤝 Register as Partner</a>
       </div>
@@ -408,10 +406,10 @@
 
       <!-- Main Headline -->
       <h1 class="hero-title">Need2Done</h1>
-      <p class="hero-subtitle">3 Essential Hyperlocal Services Delivered Instantly — Home Services, Pharmacy Pickup (Errand Runner), & Custom Work Errands.</p>
+      <p class="hero-subtitle">Essential Hyperlocal Services Delivered Instantly — Professional Home Services & Maintenance, and Custom Work Errands.</p>
 
-      <!-- 3 Service Quick Selector Pills -->
-      <div class="hero-service-selector-row">
+      <!-- 2 Service Quick Selector Pills -->
+      <div class="hero-service-selector-row" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
         <a href="/home-services" class="hero-service-pill">
           <span class="pill-icon">🏠</span>
           <div class="pill-text">
@@ -419,15 +417,6 @@
             <small>Kitchen, Laundry, Floor & Deep Clean</small>
           </div>
           <span class="pill-arrow">↗</span>
-        </a>
-
-        <a href="javascript:void(0)" onclick="openMedicineModal()" class="hero-service-pill">
-          <span class="pill-icon">💊</span>
-          <div class="pill-text">
-            <strong>Pharmacy Pickup</strong>
-            <small>Prescription Pickup & 20-Min Delivery</small>
-          </div>
-          <span class="pill-arrow">⚡</span>
         </a>
 
         <a href="javascript:void(0)" onclick="openAnyWorkModal()" class="hero-service-pill">
@@ -500,16 +489,16 @@
     </div>
   </section>
 
-  <!-- --- 3 ACTIVE SERVICES BENTO CARDS GRID --- -->
+  <!-- --- 2 ACTIVE SERVICES BENTO CARDS GRID --- -->
   <section class="service-cards-section" id="services">
     <div class="container">
       <div class="section-title-wrapper">
         <span class="section-kicker">Core Offerings</span>
-        <h2 class="section-heading">Our 3 Active Local Services</h2>
-        <p class="section-subheading">Select any service below to book online, upload requirements, or dispatch a verified helper instantly.</p>
+        <h2 class="section-heading">Our Core Local Services</h2>
+        <p class="section-subheading">Select any service below to book online, schedule trusted home helpers, or dispatch an errand runner instantly.</p>
       </div>
 
-      <div class="services-grid three-active-services-grid">
+      <div class="services-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 28px;">
         
         <!-- SERVICE 1: Home Services -->
         <div class="service-card codex-glass-card active-service-card">
@@ -540,39 +529,11 @@
           </div>
         </div>
 
-        <!-- SERVICE 2: Pharmacy Pickup (Errand Runner) -->
-        <div class="service-card codex-glass-card active-service-card">
-          <div class="card-glow-bg" style="background: radial-gradient(circle, rgba(16, 185, 129, 0.25) 0%, transparent 70%);"></div>
-          <div class="card-header-badge-row">
-            <span class="sub-title" style="color: var(--accent-green);">SERVICE #2</span>
-            <span class="promo-tag" style="background: rgba(16, 185, 129, 0.2); color: var(--accent-green); padding: 4px 10px; border-radius: 20px;">ERRAND RUNNER</span>
-          </div>
-          <h2 style="margin-top: 8px;">💊 Pharmacy Pickup & Delivery</h2>
-          <p style="color: var(--text-secondary); font-size: 0.92rem; margin-bottom: 16px; line-height: 1.5;">Hyperlocal errand runner service for prescription medicines & wellness items picked up from licensed local pharmacies.</p>
-          
-          <ul class="service-features-list">
-            <li><span class="bullet-icon">📄</span> <strong>Valid Doctor Prescription Required for Rx</strong></li>
-            <li><span class="bullet-icon">🏥</span> <strong>Purchased Directly from Licensed Retail Chemists</strong></li>
-            <li><span class="bullet-icon">🧾</span> <strong>Original Chemist Tax Invoice Given to You</strong></li>
-            <li><span class="bullet-icon">🛵</span> <strong>Hyperlocal Errand Delivery Fee Only (₹20-₹40)</strong></li>
-          </ul>
-
-          <div class="card-price-row">
-            <span class="price-tag" style="color: var(--accent-green);">Errand Fee from ₹20</span>
-            <span class="eta-tag">⚡ 20-Min Delivery</span>
-          </div>
-
-          <div class="service-card-actions">
-            <button onclick="openMedicineModal()" class="btn-primary-codex full-width" style="background: linear-gradient(135deg, var(--accent-green), #047857);">Request Medicine Pickup 💊</button>
-            <a href="https://wa.me/917989862623?text=Hi%20Need2Done%2C%20I%20need%20a%20runner%20for%20medicine%20pickup" target="_blank" class="btn-whatsapp-outline full-width">💬 Request via WhatsApp</a>
-          </div>
-        </div>
-
-        <!-- SERVICE 3: Custom Work Service -->
+        <!-- SERVICE 2: Custom Work Service -->
         <div class="service-card codex-glass-card active-service-card">
           <div class="card-glow-bg" style="background: radial-gradient(circle, rgba(236, 72, 153, 0.25) 0%, transparent 70%);"></div>
           <div class="card-header-badge-row">
-            <span class="sub-title" style="color: var(--accent-pink);">SERVICE #3</span>
+            <span class="sub-title" style="color: var(--accent-pink);">SERVICE #2</span>
             <span class="promo-tag" style="background: rgba(236, 72, 153, 0.2); color: var(--accent-pink); padding: 4px 10px; border-radius: 20px;">INSTANT AGENT</span>
           </div>
           <h2 style="margin-top: 8px;">👷 Custom Work & Tasks</h2>
@@ -613,13 +574,13 @@
         <div class="step-card codex-glass-card">
           <div class="step-number">01</div>
           <h3>Select Your Service</h3>
-          <p>Choose from Home Services, Pharmacy Pickup (Errand Runner), or Custom Work directly on Web or WhatsApp.</p>
+          <p>Choose from Home Services or Custom Work directly on Web or WhatsApp.</p>
         </div>
 
         <div class="step-card codex-glass-card">
           <div class="step-number">02</div>
           <h3>Provide Details or Location</h3>
-          <p>Share your task requirements, prescription, or delivery location with our automated system.</p>
+          <p>Share your task requirements or service location with our automated system.</p>
         </div>
 
         <div class="step-card codex-glass-card">
@@ -666,7 +627,7 @@
       <div class="footer-top-status">
         <div class="status-indicator">
           <span class="status-dot"></span>
-          <span class="status-text">All 3 Services Active & Helpers Ready in Bhongir</span>
+          <span class="status-text">All Services Active & Helpers Ready in Bhongir</span>
         </div>
       </div>
 
@@ -675,14 +636,13 @@
           <a href="/" class="codex-brand" style="margin-bottom: 16px;">
             <img src="/assets/logo.png" onerror="this.src='logo.png'" alt="Need2Done Logo" style="height: 38px; width: auto; object-fit: contain;">
           </a>
-          <p>Need2Done is a hyperlocal logistics & errand network providing Home Services, Pharmacy Pickup (Errand Runner), and Custom Work across Bhongir, Yadadri, and Telangana.</p>
+          <p>Need2Done is a hyperlocal service network providing Professional Home Services & Maintenance, and Custom Work Errands across Bhongir, Yadadri, and Telangana.</p>
         </div>
         
         <div class="footer-col">
           <h4>Active Services</h4>
           <ul>
             <li><a href="/home-services">🏠 Home Services (Kitchen, Laundry, Cleaning)</a></li>
-            <li><a href="javascript:void(0)" onclick="openMedicineModal()">💊 Pharmacy Pickup</a></li>
             <li><a href="javascript:void(0)" onclick="openAnyWorkModal()">👷 Custom Work Service</a></li>
           </ul>
         </div>
@@ -708,17 +668,14 @@
         </div>
       </div>
 
-      <!-- Regulatory & Hyperlocal Logistics Compliance Disclaimer (For Razorpay & RBI Compliance) -->
+      <!-- Regulatory & Logistics Compliance Disclaimer (For Razorpay & RBI Compliance) -->
       <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 18px 22px; margin: 32px 0 20px; font-size: 0.8rem; color: var(--text-secondary); line-height: 1.6; text-align: left;">
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
           <span style="font-size: 1.1rem;">⚖️</span>
-          <strong style="color: #fff; font-size: 0.88rem;">Hyperlocal Errand & Courier Logistics Disclaimer:</strong>
+          <strong style="color: #fff; font-size: 0.88rem;">Hyperlocal Platform & Logistics Disclaimer:</strong>
         </div>
-        <p style="margin: 0 0 6px;">
-          <strong>Need2Done</strong> operates strictly as a technology platform connecting customers with independent local delivery runners. Need2Done is <strong>NOT an online pharmacy, medical store, or drug seller</strong> and does not sell, dispense, store, or warehouse pharmaceutical drugs or medical supplies.
-        </p>
         <p style="margin: 0;">
-          When a user requests medicine pickup, the assigned delivery partner acts solely as the customer's personal errand runner to visit a government-licensed retail chemist with the customer's doctor prescription. The retail pharmacy dispenses the medicines and issues the original tax invoice directly to the customer. Any platform or online convenience fee paid via payment gateway (Razorpay) is strictly for hyperlocal logistics and delivery errand facilitation.
+          <strong>Need2Done</strong> operates strictly as a technology platform connecting customers with verified local service professionals and errand helpers for Home Services (Repairs, Cleaning, Maintenance) and Custom Work. Any platform or online booking fee paid via payment gateway (Razorpay) is strictly for service coordination, platform access, and delivery logistics.
         </p>
       </div>
 
@@ -731,46 +688,6 @@
 
     </div>
   </footer>
-
-  <!-- --- MEDICINE PICKUP (ERRAND RUNNER) MODAL --- -->
-  <div class="modal-overlay" id="medicineModal">
-    <div class="modal codex-glass-card" style="max-width: 520px; text-align: left;">
-      <div class="modal-header">
-        <h3>💊 Request Medicine Pickup</h3>
-        <button class="btn-modal-close" onclick="closeMedicineModal()">×</button>
-      </div>
-      <p style="color: var(--text-secondary); font-size: 0.88rem; margin-bottom: 12px;">Provide your prescription or medicine details. Our verified delivery runner will pick them up from a licensed local pharmacy on your behalf.</p>
-      
-      <!-- Errand Logistics Disclaimer Box -->
-      <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; font-size: 0.78rem; color: var(--text-secondary); line-height: 1.45;">
-        <strong style="color: var(--accent-green);">Runner Service Notice:</strong> Need2Done is a hyperlocal delivery errand service, not an online pharmacy. The runner purchases from a licensed retail chemist who issues the original invoice directly to you. Payment on Need2Done covers errand delivery fees only.
-      </div>
-      
-      <form id="medicineForm" onsubmit="submitMedicineOrder(event)">
-        <div class="form-group" style="margin-bottom: 14px;">
-          <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px;">YOUR NAME</label>
-          <input type="text" id="medName" required placeholder="Enter your full name" class="modal-input">
-        </div>
-        
-        <div class="form-group" style="margin-bottom: 14px;">
-          <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px;">WHATSAPP PHONE NUMBER</label>
-          <input type="tel" id="medPhone" required placeholder="e.g. 9876543210" class="modal-input">
-        </div>
-
-        <div class="form-group" style="margin-bottom: 14px;">
-          <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px;">PRESCRIPTION / MEDICINE NAMES & QUANTITIES</label>
-          <textarea id="medList" required rows="3" placeholder="e.g. Paracetamol 650mg (1 strip), or attach doctor prescription..." class="modal-input"></textarea>
-        </div>
-
-        <div class="form-group" style="margin-bottom: 20px;">
-          <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px;">DELIVERY ADDRESS</label>
-          <input type="text" id="medAddress" required placeholder="House No, Street, Landmark, Bhongir" class="modal-input">
-        </div>
-
-        <button type="submit" class="btn-primary-codex full-width" style="background: linear-gradient(135deg, var(--accent-green), #047857); padding: 14px;">Submit Pickup Request via WhatsApp ↗</button>
-      </form>
-    </div>
-  </div>
 
   <!-- --- CUSTOM WORK REQUEST MODAL --- -->
   <div class="modal-overlay" id="anyWorkModal">

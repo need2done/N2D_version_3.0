@@ -31,7 +31,7 @@ router.get('/earnings', async (req, res) => {
         `, params);
         
         const [recentPaid] = await db.query(`
-            SELECT o.order_id, o.total_amount, o.platform_fee, o.helper_charge, o.completed_at, o.updated_at, o.payment_method, o.payment_status, o.service, o.engine_type, h.name as helper_name
+            SELECT o.order_id, o.total_amount, o.bill_amount, o.platform_fee, o.helper_charge, o.completed_at, o.updated_at, o.payment_method, o.payment_status, o.verified_by_owner, o.owner_verified_at, o.service, o.engine_type, o.customer_name, o.customer_number, h.name as helper_name
             FROM orders o
             LEFT JOIN helpers h ON o.helper_id = h.id
             WHERE o.status IN ('COMPLETED', 'PAID')
@@ -44,6 +44,77 @@ router.get('/earnings', async (req, res) => {
 
         console.error(err);
         res.status(500).json({ success: false, error: 'Database error' });
+    }
+});
+
+// GET /api/analytics/medicine-transactions (Owner Direct UPI Transactions)
+router.get('/medicine-transactions', async (req, res) => {
+    try {
+        const [rows] = await db.query(`
+            SELECT 
+                o.id,
+                o.order_id, 
+                o.customer_name, 
+                o.customer_number, 
+                o.service, 
+                COALESCE(o.bill_amount, 0) as bill_amount,
+                COALESCE(o.helper_charge, 0) as helper_charge,
+                COALESCE(o.platform_fee, 0) as platform_fee,
+                o.total_amount, 
+                o.payment_method, 
+                o.payment_status, 
+                COALESCE(o.verified_by_owner, 0) as verified_by_owner, 
+                o.owner_verified_at,
+                o.status,
+                o.created_at,
+                o.updated_at,
+                h.name as helper_name
+            FROM orders o
+            LEFT JOIN helpers h ON o.helper_id = h.id
+            WHERE o.service = 'Medicines' OR o.order_id LIKE 'N2DMD_%'
+            ORDER BY o.id DESC LIMIT 100
+        `);
+
+        const totalOrders = rows.length;
+        const totalAmount = rows.reduce((sum, r) => sum + parseFloat(r.total_amount || 0), 0);
+        const pendingVerification = rows.filter(r => !r.verified_by_owner).length;
+        const verified = rows.filter(r => r.verified_by_owner).length;
+
+        const summary = {
+            total_orders: totalOrders,
+            total_amount: totalAmount,
+            pending_verification: pendingVerification,
+            verified: verified,
+            kotak_vpa: '9885131080@kotakbank'
+        };
+
+        res.json({ success: true, summary, transactions: rows });
+    } catch (err) {
+        console.error('Error fetching medicine transactions:', err);
+        res.status(500).json({ success: false, error: 'Database error' });
+    }
+});
+
+// POST /api/analytics/verify-medicine-payment/:orderId
+router.post('/verify-medicine-payment/:orderId', async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const [result] = await db.query(`
+            UPDATE orders 
+            SET verified_by_owner = 1, 
+                owner_verified_at = NOW(), 
+                payment_status = 'PAID'
+            WHERE order_id = ? OR id = ?
+        `, [orderId, orderId]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ success: false, error: 'Order not found' });
+        }
+
+        res.json({ success: true, message: 'Payment successfully marked as verified in Kotak Bank!' });
+    } catch (err) {
+        console.error('Error verifying medicine payment:', err);
+        res.status(500).json({ success: false, error: 'Failed to verify payment' });
     }
 });
 

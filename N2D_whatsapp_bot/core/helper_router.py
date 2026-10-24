@@ -1714,7 +1714,16 @@ Share this with helper."""
 
                 log_event(order_db_id, "BILL_UPI_REQUESTED", f"Helper requested online UPI payment for ₹{total_customer}", "HELPER")
 
-                pay_url = f"{TRACKING_BASE_URL}/payment.html?orderId={order['order_id']}&amount={total_customer}"
+                is_medicine = (
+                    str(order.get("order_id", "")).startswith("N2DMD_")
+                    or str(order.get("service", "")).lower() in ("medicines", "medicine")
+                )
+                if is_medicine:
+                    pay_url = f"{TRACKING_BASE_URL}/pay-upi.html?orderId={order['order_id']}&amount={total_customer}"
+                    btn_text = f"Pay ₹{int(total_customer)} via UPI"
+                else:
+                    pay_url = f"{TRACKING_BASE_URL}/payment.html?orderId={order['order_id']}&amount={total_customer}"
+                    btn_text = f"💳 Pay ₹{int(total_customer)} Online"
 
                 # Send Store Receipt Proof photos to Customer first
                 if order.get("customer_number"):
@@ -1728,15 +1737,15 @@ Share this with helper."""
                 send_url_button(
                     to=order["customer_number"],
                     text=(
-                        f"💳 *Store Items Online Payment Request / చెల్లింపు లింక్*\n"
+                        f"💳 *Store Items Payment Request*\n"
                         f"━━━━━━━━━━━━━━━━━━━━━\n"
                         f"📝 Order: #{order['order_id']}\n"
                         f"🧾 Store Bill Amount: ₹{amount}\n"
                         f"🛵 Service Fee: ₹{base_fee}\n"
                         f"💵 *Total Payable Amount:* ₹{total_customer}\n\n"
-                        f"Please complete online UPI payment so your helper can pick up items & deliver:"
+                        f"Please complete UPI payment so your helper can pick up items & deliver:"
                     ),
-                    button_text=f"💳 Pay ₹{int(total_customer)} Online",
+                    button_text=btn_text,
                     url=pay_url
                 )
 
@@ -1939,7 +1948,16 @@ Share this with helper."""
                     cur.close()
                     db.close()
 
-                    pay_url = f"{TRACKING_BASE_URL}/payment.html?orderId={active['order_id']}&amount={amount}"
+                    is_medicine = (
+                        str(active.get("order_id", "")).startswith("N2DMD_")
+                        or str(active.get("service", "")).lower() in ("medicines", "medicine")
+                    )
+                    if is_medicine:
+                        pay_url = f"{TRACKING_BASE_URL}/pay-upi.html?orderId={active['order_id']}&amount={amount}"
+                        btn_label = f"Pay ₹{int(amount)} via UPI"
+                    else:
+                        pay_url = f"{TRACKING_BASE_URL}/payment.html?orderId={active['order_id']}&amount={amount}"
+                        btn_label = f"💳 Pay Store Bill ₹{int(amount)}"
 
                     send_url_button(
                         to=active["customer_number"],
@@ -1950,7 +1968,7 @@ Share this with helper."""
                             f"🧾 Store Bill Amount: *₹{amount}*\n\n"
                             f"⚠️ *Payment Notice:* Since store bill exceeds ₹200, please complete online UPI payment for the items so your helper can pick up."
                         ),
-                        button_text=f"💳 Pay Store Bill ₹{int(amount)}",
+                        button_text=btn_label,
                         url=pay_url
                     )
 

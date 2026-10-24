@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { DollarSign, TrendingUp, Users, Download, FileText, Calendar, RotateCcw, Filter } from 'lucide-react';
+import { DollarSign, TrendingUp, Users, Download, FileText, Calendar, RotateCcw, Filter, CheckCircle, AlertCircle, ShieldCheck } from 'lucide-react';
 import { exportToExcel, exportToPDF } from '../utils/exportUtils';
 import { API_URL } from '../config';
 
@@ -28,6 +28,13 @@ export default function Earnings() {
   const [toDate, setToDate] = useState('');
   const [activePreset, setActivePreset] = useState('ALL');
 
+  // Medicine Transactions Tab State
+  const [activeTab, setActiveTab] = useState('ALL'); // 'ALL' or 'MEDICINE'
+  const [medicineData, setMedicineData] = useState({ summary: {}, transactions: [] });
+  const [loadingMedicine, setLoadingMedicine] = useState(false);
+  const [verifyingId, setVerifyingId] = useState(null);
+  const [verifySuccessMsg, setVerifySuccessMsg] = useState(null);
+
   const fetchEarnings = async (fDate = fromDate, tDate = toDate) => {
     setLoading(true);
     try {
@@ -51,8 +58,49 @@ export default function Earnings() {
     }
   };
 
+  const fetchMedicineTransactions = async () => {
+    setLoadingMedicine(true);
+    try {
+      const res = await fetch(`${API_URL}/analytics/medicine-transactions`);
+      const result = await res.json();
+      if (result.success) {
+        setMedicineData(result);
+      }
+      setLoadingMedicine(false);
+    } catch (err) {
+      console.error('Failed to fetch medicine transactions:', err);
+      setLoadingMedicine(false);
+    }
+  };
+
+  const handleVerifyMedicinePayment = async (orderId) => {
+    setVerifyingId(orderId);
+    try {
+      const res = await fetch(`${API_URL}/analytics/verify-medicine-payment/${orderId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const result = await res.json();
+      if (result.success) {
+        setVerifySuccessMsg(`Order #${orderId} payment verified in Kotak Bank!`);
+        setTimeout(() => setVerifySuccessMsg(null), 4000);
+        // Refresh medicine transactions
+        fetchMedicineTransactions();
+        fetchEarnings();
+      } else {
+        alert(result.error || 'Failed to verify payment');
+      }
+    } catch (err) {
+      console.error('Error verifying payment:', err);
+      alert('Network error while verifying payment');
+    } finally {
+      setVerifyingId(null);
+    }
+  };
+
   useEffect(() => {
     fetchEarnings();
+    fetchMedicineTransactions();
   }, []);
 
   // Time Range Presets
@@ -268,7 +316,181 @@ export default function Earnings() {
         </div>
       </div>
 
-      {/* Data Table Card */}
+      {verifySuccessMsg && (
+        <div className="card" style={{ borderLeft: '4px solid #10b981', marginBottom: '1.5rem', background: 'rgba(16, 185, 129, 0.08)' }}>
+          <p style={{ color: '#10b981', margin: 0, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <CheckCircle size={18} /> {verifySuccessMsg}
+          </p>
+        </div>
+      )}
+
+      {/* Tabs Switcher: All Transactions vs Medicine Kotak UPI */}
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '1.25rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
+        <button 
+          onClick={() => setActiveTab('ALL')}
+          style={{
+            padding: '8px 18px',
+            borderRadius: '10px',
+            border: activeTab === 'ALL' ? '1px solid var(--primary)' : '1px solid transparent',
+            background: activeTab === 'ALL' ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
+            color: activeTab === 'ALL' ? 'var(--primary)' : 'var(--text-muted)',
+            fontWeight: 700,
+            cursor: 'pointer',
+            fontSize: '0.92rem'
+          }}
+        >
+          📊 All Transactions ({recent.length})
+        </button>
+        <button 
+          onClick={() => { setActiveTab('MEDICINE'); fetchMedicineTransactions(); }}
+          style={{
+            padding: '8px 18px',
+            borderRadius: '10px',
+            border: activeTab === 'MEDICINE' ? '1px solid #10b981' : '1px solid transparent',
+            background: activeTab === 'MEDICINE' ? 'rgba(16, 185, 129, 0.15)' : 'transparent',
+            color: activeTab === 'MEDICINE' ? '#10b981' : 'var(--text-muted)',
+            fontWeight: 700,
+            cursor: 'pointer',
+            fontSize: '0.92rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          💊 Medicine Direct UPI (Kotak)
+          {medicineData.summary.pending_verification > 0 && (
+            <span style={{ background: '#f59e0b', color: '#000', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 800 }}>
+              {medicineData.summary.pending_verification} Pending Check
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* MEDICINE TAB CONTENT */}
+      {activeTab === 'MEDICINE' && (
+        <div>
+          {/* Kotak Bank UPI Info Banner */}
+          <div className="card" style={{ marginBottom: '1.5rem', background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(59, 130, 246, 0.08) 100%)', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#34d399', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <ShieldCheck size={22} color="#10b981" /> Medicine Direct UPI Account: 9885131080@kotakbank
+                </h3>
+                <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.88rem', color: 'var(--text-muted)' }}>
+                  Customers pay directly into the owner's Kotak Bank account via dynamic UPI buttons. Razorpay is completely bypassed for medicine orders. Verify incoming credits in your Kotak Bank app/SMS and click <strong>"Confirm in Bank"</strong> below.
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <div style={{ textAlign: 'right' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Total Medicine Volume</span>
+                  <h3 style={{ margin: 0, color: '#10b981', fontSize: '1.4rem' }}>₹{parseFloat(medicineData.summary.total_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</h3>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Medicine Transactions Table */}
+          <div className="card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.15rem' }}>💊 Medicine Orders & Bank Credit Status</h3>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <span className="badge task">{medicineData.transactions.length} Total Orders</span>
+                {medicineData.summary.pending_verification > 0 && (
+                  <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.2)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.4)' }}>
+                    ⚠️ {medicineData.summary.pending_verification} Need Bank Verification
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="table-responsive">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Order ID</th>
+                    <th>Customer</th>
+                    <th>Medicine Bill</th>
+                    <th>Delivery Fee</th>
+                    <th>Total to Kotak UPI</th>
+                    <th>Helper Name</th>
+                    <th>Order Status</th>
+                    <th>Bank Credit Verification</th>
+                    <th>Date & Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {medicineData.transactions.length === 0 && (
+                    <tr>
+                      <td colSpan="9" style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)' }}>
+                        No medicine orders recorded yet.
+                      </td>
+                    </tr>
+                  )}
+                  {medicineData.transactions.map((trx) => (
+                    <tr key={trx.order_id || trx.id}>
+                      <td><strong>#{trx.order_id}</strong></td>
+                      <td>
+                        <div style={{ fontWeight: 600 }}>{trx.customer_name || 'Customer'}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{trx.customer_number || '-'}</div>
+                      </td>
+                      <td>₹{trx.bill_amount || 0}</td>
+                      <td>₹{trx.helper_charge || 0}</td>
+                      <td style={{ fontWeight: 700, color: '#10b981', fontSize: '0.98rem' }}>₹{trx.total_amount}</td>
+                      <td><strong>{trx.helper_name || 'Unassigned'}</strong></td>
+                      <td>
+                        <span className={`badge ${trx.status === 'COMPLETED' ? 'active' : 'pending'}`}>
+                          {trx.status}
+                        </span>
+                      </td>
+                      <td>
+                        {trx.verified_by_owner ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span className="badge active" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }}>
+                              <CheckCircle size={13} /> Verified in Bank
+                            </span>
+                            {trx.owner_verified_at && (
+                              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                {new Date(trx.owner_verified_at).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleVerifyMedicinePayment(trx.order_id)}
+                            disabled={verifyingId === trx.order_id}
+                            className="btn btn-primary"
+                            style={{
+                              padding: '5px 12px',
+                              fontSize: '0.78rem',
+                              background: '#10b981',
+                              color: '#fff',
+                              borderRadius: '6px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              cursor: 'pointer'
+                            }}
+                            title="Click once you verify incoming credit in your Kotak Bank app"
+                          >
+                            <CheckCircle size={13} />
+                            {verifyingId === trx.order_id ? 'Verifying...' : '✓ Confirm in Bank'}
+                          </button>
+                        )}
+                      </td>
+                      <td style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                        {new Date(trx.created_at || trx.updated_at).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ALL TRANSACTIONS TAB CONTENT */}
+      {activeTab === 'ALL' && (
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h3 style={{ margin: 0, fontSize: '1.15rem' }}>Recent Payouts & Transactions</h3>
@@ -326,6 +548,7 @@ export default function Earnings() {
         </table>
         </div>
       </div>
+      )}
     </div>
   );
 }
