@@ -164,9 +164,29 @@ function generateInvoicePdf(inv) {
             // Top Header Banner
             doc.rect(0, 0, 595.28, 92).fill(primaryColor);
 
-            // Brand Title
-            doc.fillColor('#ffffff').fontSize(24).font('Helvetica-Bold').text('Need2Done', 40, 24);
-            doc.fillColor('#94a3b8').fontSize(9.5).font('Helvetica').text('Everyday Helper & Hyperlocal Services', 40, 54);
+            // Brand Logo & Title
+            const logoCandidates = [
+                path.join(__dirname, '../public/assets/logo.png'),
+                path.join(__dirname, '../../website/logo.png'),
+                path.join(__dirname, '../../website/assets/logo.png'),
+                '/need2done/app/Need2Done/backend/public/assets/logo.png',
+                '/need2done/app/Need2Done/website/logo.png'
+            ];
+            const logoPath = logoCandidates.find(p => fs.existsSync(p));
+
+            if (logoPath) {
+                try {
+                    doc.image(logoPath, 40, 18, { fit: [56, 56] });
+                    doc.fillColor('#ffffff').fontSize(22).font('Helvetica-Bold').text('Need2Done', 106, 24);
+                    doc.fillColor('#94a3b8').fontSize(9.5).font('Helvetica').text('Everyday Helper & Hyperlocal Services', 106, 52);
+                } catch (imgErr) {
+                    doc.fillColor('#ffffff').fontSize(24).font('Helvetica-Bold').text('Need2Done', 40, 24);
+                    doc.fillColor('#94a3b8').fontSize(9.5).font('Helvetica').text('Everyday Helper & Hyperlocal Services', 40, 54);
+                }
+            } else {
+                doc.fillColor('#ffffff').fontSize(24).font('Helvetica-Bold').text('Need2Done', 40, 24);
+                doc.fillColor('#94a3b8').fontSize(9.5).font('Helvetica').text('Everyday Helper & Hyperlocal Services', 40, 54);
+            }
 
             // "TAX INVOICE & RECEIPT" on top-right
             doc.fillColor('#38bdf8').fontSize(14).font('Helvetica-Bold').text('TAX INVOICE', 350, 24, { align: 'right', width: 205 });
@@ -354,9 +374,12 @@ function buildHtmlInvoice(inv) {
 <body>
     <div class="invoice-card">
         <div class="header">
-            <div>
-                <h1>Need2Done</h1>
-                <p>Tax Invoice & Payment Receipt</p>
+            <div style="display: flex; align-items: center; gap: 14px;">
+                <img src="https://need2done.in/assets/logo.png" onerror="this.src='https://need2done.in/logo.png'" alt="Need2Done" style="width: 48px; height: 48px; border-radius: 8px; object-fit: contain; background: rgba(255,255,255,0.1); padding: 2px;">
+                <div>
+                    <h1>Need2Done</h1>
+                    <p>Tax Invoice & Payment Receipt</p>
+                </div>
             </div>
             <div>
                 <span class="status-badge">PAID ✅</span>
