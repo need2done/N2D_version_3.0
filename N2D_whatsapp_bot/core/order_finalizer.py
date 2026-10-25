@@ -341,8 +341,15 @@ def finalize_order(session: dict) -> str | None:
         db.commit()
         logger.info(f"SUCCESS: ORDER FINALIZED: {order_code}")
 
+        # Log ORDER_CREATED to timeline & Slack
+        try:
+            log_event(order_db_id, "ORDER_CREATED", f"New order placed: {order_code}", "CUSTOMER")
+        except Exception:
+            pass
+
         # =================================================
         # 🔥 SYNC TO ADMIN DB (CORRECT PLACE)
+
         # =================================================
         try:
             logger.info(f"LOG: SYNCING TO ADMIN DB: {order_db_id}")
@@ -614,13 +621,16 @@ def service_name(service_id: int) -> str:
     return {
         1: "Groceries",
         2: "Medicines",
-        3: "AnyWork",
+        3: "Custom Work",
         4: "Ride",
-        5: "AnyWork",   # was incorrectly "Support"
+        5: "Custom Work",
         6: "Other",
         7: "Vegetables & Fruits",
-        9: "Food Service"
-    }.get(service_id, "Service")
+        8: "Fruits",
+        9: "Food Service",
+        10: "Home Services",
+        11: "Custom Work"
+    }.get(service_id, "Custom Work")
 
 
 # =================================================
@@ -679,9 +689,10 @@ def push_unassigned_orders_to_helper(phone: str, lat: float, lng: float):
                         if items:
                             items_preview = "🛍️ Items:\n" + "\n".join(f"• {item}" for item in items) + "\n\n"
 
+                    service_disp = "Custom Work" if str(order.get('service', '')).lower() in ("anywork", "any work", "custom work", "3", "5") else order['service']
                     invite_text = (
                         f"📦 *Pending Order Offer*\n\n"
-                        f"🛠 Service  : {order['service']}\n"
+                        f"🛠 Service  : {service_disp}\n"
                         f"{items_preview}"
                         f"{timing_lines}"
                         f"💰 Est. Bill: ₹{order['total_amount'] or 'TBD'}\n"
@@ -727,24 +738,46 @@ def process_payment_success(order_code: str, payment_method: str = "UPI", transa
         customer_phone = order.get("customer_number")
         helper_id = order.get("helper_id")
         current_status = order.get("status")
+        existing_payment_status = (order.get("payment_status") or "").upper()
         total_amount = float(order.get("total_amount") or 0.0)
         bill_amount = float(order.get("bill_amount") or 0.0)
         base_fee = round(total_amount - bill_amount, 2)
         if base_fee < 0: base_fee = 39.0
 
+        # ----------------------------------------------------
+        # IDEMPOTENCY GUARD: Skip duplicate notifications if already PAID
+        # ----------------------------------------------------
+        if existing_payment_status == "PAID":
+            if current_status in ("ADMIN_APPROVED_BILL", "ARRIVED_AT_CUSTOMER", "ITEMS_PICKED_UP", "COMPLETED", "DELIVERED"):
+                logger.info(f"⏩ Store bill payment already processed for order #{real_order_code} (status={current_status}). Skipping duplicate notifications.")
+                return {"success": True, "already_processed": True, "type": "BILL_PAYMENT", "order_id": real_order_code}
+            if current_status in ("CONFIRMED", "HELPER_ACCEPTED", "ARRIVED_AT_STORE"):
+                logger.info(f"⏩ Initial order #{real_order_code} already paid & confirmed. Skipping duplicate.")
+                return {"success": True, "already_processed": True, "type": "INITIAL_ORDER", "order_id": real_order_code}
+
         log_event(order_db_id, "PAYMENT_SUCCESS_PROCESSING", f"Payment confirmed via {payment_method}. Status: {current_status}", "SYSTEM")
 
         # CASE 1: STORE BILL ONLINE PAYMENT (Helper ALREADY assigned)
         if helper_id or current_status in ("BILL_PENDING_ONLINE_PAYMENT", "BILL_IMAGE_UPLOADED", "ARRIVED_AT_STORE"):
+            # Atomic update: only update if not already marked PAID
             cur.execute("""
                 UPDATE orders 
-                SET status = 'ADMIN_APPROVED_BILL', 
+                SET status = CASE 
+                        WHEN status IN ('BILL_PENDING_ONLINE_PAYMENT', 'BILL_IMAGE_UPLOADED', 'ARRIVED_AT_STORE', 'HELPER_ACCEPTED', 'CONFIRMED') 
+                        THEN 'ADMIN_APPROVED_BILL' 
+                        ELSE status 
+                    END,
                     payment_status = 'PAID', 
                     payment_method = %s,
                     updated_at = NOW() 
-                WHERE id = %s
+                WHERE id = %s AND (payment_status != 'PAID' OR status IN ('BILL_PENDING_ONLINE_PAYMENT', 'BILL_IMAGE_UPLOADED', 'ARRIVED_AT_STORE'))
             """, (payment_method, order_db_id))
+            affected = cur.rowcount
             db.commit()
+
+            if affected == 0:
+                logger.info(f"⏩ Store bill online payment already processed for order #{real_order_code} (rowcount 0). Skipping duplicate notifications.")
+                return {"success": True, "already_processed": True, "type": "BILL_PAYMENT", "order_id": real_order_code}
 
             # Get helper details
             helper = None
@@ -795,9 +828,14 @@ def process_payment_success(order_code: str, payment_method: str = "UPI", transa
                     payment_status = 'PAID', 
                     payment_method = %s,
                     updated_at = NOW() 
-                WHERE id = %s
+                WHERE id = %s AND payment_status != 'PAID'
             """, (payment_method, order_db_id))
+            affected = cur.rowcount
             db.commit()
+
+            if affected == 0:
+                logger.info(f"⏩ Initial payment already confirmed for order #{real_order_code} (rowcount 0). Skipping duplicate.")
+                return {"success": True, "already_processed": True, "type": "INITIAL_ORDER", "order_id": real_order_code}
 
             # Trigger helper auto-assignment
             try:

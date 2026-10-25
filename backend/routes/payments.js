@@ -110,15 +110,12 @@ router.post('/verify', async (req, res) => {
       if (orderId) {
         if (pool) {
           try {
-            await pool.query(
-              `UPDATE orders 
-               SET payment_status = 'PAID', 
-                   payment_method = 'RAZORPAY', 
-                   razorpay_payment_id = ?, 
-                   updated_at = NOW() 
-               WHERE id = ? OR order_id = ?`,
-              [razorpay_payment_id, orderId, orderId]
-            );
+            const isNumericId = !isNaN(orderId) && /^\d+$/.test(String(orderId).trim());
+            const updateSql = isNumericId
+              ? `UPDATE orders SET payment_status = 'PAID', payment_method = 'RAZORPAY', razorpay_payment_id = ?, updated_at = NOW() WHERE id = ?`
+              : `UPDATE orders SET payment_status = 'PAID', payment_method = 'RAZORPAY', razorpay_payment_id = ?, updated_at = NOW() WHERE order_id = ?`;
+
+            await pool.query(updateSql, [razorpay_payment_id, orderId]);
           } catch (dbErr) {
             console.warn('[Razorpay DB Update Warning]:', dbErr.message);
           }
@@ -187,21 +184,25 @@ router.post('/webhook', async (req, res) => {
       if (receiptId) {
         if (pool) {
           try {
-            await pool.query(
-              `UPDATE orders 
-               SET payment_status = 'PAID', 
-                   payment_method = 'RAZORPAY', 
-                   razorpay_payment_id = ?, 
-                   updated_at = NOW() 
-               WHERE id = ? OR order_id = ?`,
-              [paymentId || null, receiptId, receiptId]
+            const isNumericId = !isNaN(receiptId) && /^\d+$/.test(String(receiptId).trim());
+            const [orders] = await pool.query(
+              isNumericId ? `SELECT * FROM orders WHERE id = ?` : `SELECT * FROM orders WHERE order_id = ?`,
+              [receiptId]
             );
 
+            // If already marked PAID in DB, skip duplicate bot notification from secondary webhook event
+            if (orders.length > 0 && orders[0].payment_status === 'PAID') {
+              console.log(`[Razorpay Webhook] Order ${receiptId} already marked PAID. Skipping duplicate bot notify for event ${event}.`);
+              return res.json({ status: 'ok', event, already_processed: true });
+            }
+
+            const updateSql = isNumericId
+              ? `UPDATE orders SET payment_status = 'PAID', payment_method = 'RAZORPAY', razorpay_payment_id = ?, updated_at = NOW() WHERE id = ?`
+              : `UPDATE orders SET payment_status = 'PAID', payment_method = 'RAZORPAY', razorpay_payment_id = ?, updated_at = NOW() WHERE order_id = ?`;
+
+            await pool.query(updateSql, [paymentId || null, receiptId]);
+
             // Check if order is already completed; if so, dispatch invoice receipt
-            const [orders] = await pool.query(
-              `SELECT * FROM orders WHERE id = ? OR order_id = ?`,
-              [receiptId, receiptId]
-            );
             if (orders.length > 0 && orders[0].status === 'COMPLETED') {
               await sendOrderInvoiceReceipt(orders[0]);
             }

@@ -398,7 +398,7 @@ def route_message(
 
                     otp_display = active_order.get('otp') or "Share upon delivery"
                     helper_str = (
-                        f"👨‍🌾 *Helper:* {active_order['helper_name']} ({active_order['helper_phone']})\n"
+                        f"👨‍🌾 *Helper:* {active_order['helper_name']} (🔒 Protected)\n"
                         f"🔑 *Delivery OTP:* `{otp_display}`\n"
                     ) if active_order.get("helper_phone") else "👨‍🌾 *Helper:* Assigning nearby helper...\n"
 
@@ -412,13 +412,21 @@ def route_message(
                     send_message(user, msg_text)
 
                     # 1. Send Payment Buttons if bill approved or payment pending
+                    from whatsapp_client import send_reply_buttons
                     if active_order.get('status') in ('ADMIN_APPROVED_BILL', 'HELPER_PURCHASED', 'WAITING_FOR_PAYMENT', 'HELPER_ARRIVED'):
-                        from whatsapp_client import send_reply_buttons
                         pay_buttons = [
                             {"id": f"CUST_PAY_UPI|{order_db_id}", "title": "💳 Pay Online UPI"},
                             {"id": "CUST_PAY_CASH", "title": "💵 Pay Cash"}
                         ]
+                        if active_order.get('helper_phone'):
+                            pay_buttons.append({"id": f"MSG_HELPER|{order_db_id}", "title": "💬 Message Helper"})
                         send_reply_buttons(to=user, body="💳 Choose your payment option below to proceed:", buttons=pay_buttons)
+                    elif active_order.get('helper_phone'):
+                        send_reply_buttons(
+                            to=user,
+                            body=f"Need to send instructions or notes to your helper *{active_order.get('helper_name') or 'Helper'}*?",
+                            buttons=[{"id": f"MSG_HELPER|{order_db_id}", "title": "💬 Message Helper"}]
+                        )
 
                     # 2. Send Live Tracking URL Button
                     from config import TRACKING_BASE_URL
@@ -691,7 +699,9 @@ def route_message(
         if msg_type == "text" and upper.startswith("PAY_SUCCESS_"):
             order_code = raw_text.replace("PAY_SUCCESS_", "").strip()
             from core.order_finalizer import process_payment_success
-            process_payment_success(order_code, payment_method="UPI")
+            result = process_payment_success(order_code, payment_method="UPI")
+            if result.get("already_processed"):
+                send_message(user, f"✅ Payment for order #{order_code} has already been verified and received! Your helper is processing your order.")
             reset_session(user)
             return
 
@@ -814,6 +824,143 @@ def route_message(
 
         session = get_session(user)
 
+        # -------------------------------------------------
+        # 💬 CUSTOMER RELAY TO HELPER (ANONYMOUS PROXY)
+        # -------------------------------------------------
+        if session.get("stage") == "RELAY_TO_HELPER":
+            if (msg_type == "interactive" and btn_id.startswith("EXIT_CHAT")) or lower_text in ("cancel", "exit", "abort", "menu"):
+                session["stage"] = ""
+                relay_order_id = session.pop("relay_order_id", None)
+                from whatsapp_client import send_reply_buttons
+                exit_buttons = []
+                if relay_order_id:
+                    exit_buttons.append({"id": f"MSG_HELPER|{relay_order_id}", "title": "💬 Reply to Helper"})
+                exit_buttons.append({"id": "SERVICES", "title": "📋 Main Menu"})
+                send_reply_buttons(
+                    to=user,
+                    body="👋 *Chat Closed*\n\nYou have exited the conversation with your helper. Your order is still active!",
+                    buttons=exit_buttons
+                )
+                return
+
+            relay_order_id = session.get("relay_order_id")
+            session["stage"] = ""
+            session.pop("relay_order_id", None)
+
+            # Look up active order
+            db = get_db()
+            order = None
+            if db:
+                cur = db.cursor(dictionary=True)
+                if relay_order_id and str(relay_order_id).isdigit():
+                    cur.execute("""
+                        SELECT o.id, o.order_id, o.status, h.name as helper_name, h.phone as helper_phone
+                        FROM orders o
+                        LEFT JOIN helpers h ON o.helper_id = h.id
+                        WHERE o.id = %s
+                    """, (int(relay_order_id),))
+                    order = cur.fetchone()
+                elif relay_order_id:
+                    cur.execute("""
+                        SELECT o.id, o.order_id, o.status, h.name as helper_name, h.phone as helper_phone
+                        FROM orders o
+                        LEFT JOIN helpers h ON o.helper_id = h.id
+                        WHERE o.order_id = %s
+                    """, (str(relay_order_id),))
+                    order = cur.fetchone()
+
+                if not order:
+                    cur.execute("""
+                        SELECT o.id, o.order_id, o.status, h.name as helper_name, h.phone as helper_phone
+                        FROM orders o
+                        LEFT JOIN helpers h ON o.helper_id = h.id
+                        WHERE o.customer_number = %s
+                          AND o.status NOT IN ('COMPLETED', 'CANCELLED', 'EXPIRED', 'DELIVERED', 'DRAFT')
+                        ORDER BY o.id DESC LIMIT 1
+                    """, (user,))
+                    order = cur.fetchone()
+                cur.close()
+                db.close()
+
+            if not order or (order.get("status") or "").upper() in ('COMPLETED', 'CANCELLED', 'EXPIRED', 'DELIVERED'):
+                send_message(user, "⚠️ This order is no longer active. Message could not be sent.")
+                return
+
+            helper_phone = order.get("helper_phone")
+            if not helper_phone:
+                send_message(user, "⚠️ A helper has not yet been assigned to your order.")
+                return
+
+            cust_name = session.get("name") or "Customer"
+            order_code = order.get("order_id", "N/A")
+            h_disp_name = order.get("helper_name") or "your helper"
+
+            from whatsapp_client import send_audio, send_image, send_reply_buttons
+
+            helper_chat_buttons = [
+                {"id": f"MSG_CUST|{order['id']}", "title": "💬 Reply to Cust"},
+                {"id": f"EXIT_CHAT_HELPER|{order['id']}", "title": "❌ Exit Chat"}
+            ]
+
+            if msg_type in ("audio", "voice"):
+                audio_obj = msg.get("audio", {}) or msg.get("voice", {})
+                mid = audio_obj.get("id")
+                if mid:
+                    send_message(helper_phone, f"🎤 *Voice note from Customer ({cust_name}) – Order #{order_code}:*")
+                    send_audio(helper_phone, mid)
+                    send_reply_buttons(
+                        to=helper_phone,
+                        body="Tap below to respond to customer:",
+                        buttons=helper_chat_buttons
+                    )
+            elif msg_type == "image":
+                image_obj = msg.get("image", {})
+                mid = image_obj.get("id")
+                caption = image_obj.get("caption", "")
+                if mid:
+                    send_image(helper_phone, mid, f"📸 *Photo from Customer ({cust_name}) – Order #{order_code}:*\n{caption}")
+                    send_reply_buttons(
+                        to=helper_phone,
+                        body="Tap below to respond to customer:",
+                        buttons=helper_chat_buttons
+                    )
+            elif msg_type == "location":
+                loc = msg.get("location", {})
+                lat = loc.get("latitude")
+                lng = loc.get("longitude")
+                maps_url = f"https://www.google.com/maps?q={lat},{lng}"
+                loc_body = (
+                    f"📍 *Location Pin from Customer ({cust_name}) – Order #{order_code}:*\n"
+                    f"{maps_url}\n\n"
+                    f"Tap below to respond:"
+                )
+                send_reply_buttons(
+                    to=helper_phone,
+                    body=loc_body,
+                    buttons=helper_chat_buttons
+                )
+            else:
+                relay_body = (
+                    f"💬 *Message from Customer ({cust_name}) – Order #{order_code}:*\n\n"
+                    f"\"{raw_text}\"\n\n"
+                    f"Tap below to reply directly:"
+                )
+                send_reply_buttons(
+                    to=helper_phone,
+                    body=relay_body,
+                    buttons=helper_chat_buttons
+                )
+
+            send_reply_buttons(
+                to=user,
+                body=f"✅ Message delivered to *{h_disp_name}*.",
+                buttons=[
+                    {"id": f"MSG_HELPER|{order['id']}", "title": "💬 Reply to Helper"},
+                    {"id": f"EXIT_CHAT|{order['id']}", "title": "❌ Exit Chat"}
+                ]
+            )
+            return
+
         # Prevent double-tap or hijacked service selection when already in case
         if msg_type == "interactive":
             interactive = msg.get("interactive", {})
@@ -847,7 +994,7 @@ def route_message(
                 
                 if active_order and not (in_memory_incomplete or db_draft):
                     status_text = format_human_status(active_order.get('status', ''))
-                    helper_str = f"👨‍🌾 *Helper:* {active_order['helper_name']} ({active_order['helper_phone']})\n" if active_order.get("helper_phone") else "👨‍🌾 *Helper:* Assigning nearby helper...\n"
+                    helper_str = f"👨‍🌾 *Helper:* {active_order['helper_name']} (🔒 Protected)\n" if active_order.get("helper_phone") else "👨‍🌾 *Helper:* Assigning nearby helper...\n"
                     msg_body = (
                         f"📦 *Active Order: #{active_order['order_id']}*\n"
                         f"🛠️ *Service:* {active_order['service']}\n"
