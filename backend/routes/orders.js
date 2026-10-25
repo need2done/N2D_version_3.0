@@ -4,7 +4,9 @@ const db = require('../config/db');
 const axios = require('axios');
 
 const { authenticateAdmin, authenticateToken, authenticateInternalOrToken } = require('../middleware/auth');
-const { sendOrderInvoiceReceipt, buildInvoiceData, buildHtmlInvoice } = require('../services/invoiceService');
+const { sendOrderInvoiceReceipt, buildInvoiceData, buildHtmlInvoice, generateInvoicePdf } = require('../services/invoiceService');
+const { sendSlackNotification } = require('../services/slackService');
+
 
 
 // ==========================================
@@ -271,6 +273,9 @@ router.post('/:id/approve', authenticateAdmin, async (req, res) => {
         
         await db.query(`INSERT INTO order_timeline (order_id, event_type, event_text, triggered_by) 
                         VALUES (?, 'BILL_APPROVED', 'Admin approved the bill', 'ADMIN')`, [req.params.id]);
+
+        // 🚀 Slack Notification
+        sendSlackNotification(req.params.id, 'ADMIN_APPROVED_BILL', 'Admin approved the bill');
 
         // 📢 Notify helper to proceed
         if (orders.length > 0 && orders[0].helper_phone) {
@@ -580,6 +585,10 @@ router.post('/:id/cancel', authenticateAdmin, async (req, res) => {
         await db.query(`INSERT INTO order_timeline (order_id, event_type, event_text, triggered_by) 
                         VALUES (?, 'CANCELLED', ?, ?)`, 
                         [req.params.id, timelineMsg, actor]);
+
+        // 🚀 Slack Notification
+        sendSlackNotification(req.params.id, 'CANCELLED', timelineMsg);
+
 
         await sendWhatsAppText(ADMIN_NUMBER, 
             `⚠️ *Order Cancelled*\n\n` +
@@ -1183,7 +1192,11 @@ router.post('/call-order', authenticateAdmin, async (req, res) => {
             );
         }
 
+        // 🚀 Slack Notification
+        sendSlackNotification(orderDbId, 'NEW_ORDER', 'New Call Order Placed');
+
         res.json({
+
             success: true,
             order_id: orderDbId,
             display_id: orderIdStr,
@@ -1245,6 +1258,34 @@ router.post('/:id/send-invoice', async (req, res) => {
     } catch (err) {
         console.error('Error sending invoice:', err);
         res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// ==========================================
+// 10. GET /api/orders/:id/invoice-pdf — View / Download PDF invoice directly
+// ==========================================
+router.get('/:id/invoice-pdf', async (req, res) => {
+    try {
+        const [rows] = await db.query(`
+            SELECT o.*, h.name as helper_name, h.phone as helper_phone, c.name as customer_name, c.phone as customer_phone
+            FROM orders o
+            LEFT JOIN helpers h ON o.helper_id = h.id
+            LEFT JOIN customers c ON o.customer_id = c.id
+            WHERE o.id = ? OR o.order_id = ?
+        `, [req.params.id, String(req.params.id)]);
+
+        if (rows.length === 0) {
+            return res.status(404).send('Order not found');
+        }
+
+        const invoiceData = buildInvoiceData(rows[0]);
+        const pdf = await generateInvoicePdf(invoiceData);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename="Invoice_${invoiceData.orderId}.pdf"`);
+        res.sendFile(pdf.filePath);
+    } catch (err) {
+        console.error('Error generating invoice PDF:', err);
+        res.status(500).send('Failed to generate invoice PDF');
     }
 });
 

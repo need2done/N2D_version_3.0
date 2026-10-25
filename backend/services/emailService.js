@@ -69,7 +69,7 @@ async function logEmailRecord({ applicationId, recipientEmail, recipientRole, em
 /**
  * Send an email safely with logging and error isolation
  */
-async function sendMailSafe({ to, subject, html, text, applicationId, role, emailType }) {
+async function sendMailSafe({ to, subject, html, text, applicationId, role, emailType, attachments = [] }) {
     console.log(`\n======================================================`);
     console.log(`📨 [OUTGOING EMAIL] To: ${to} | Subject: ${subject}`);
     console.log(`📋 Type: ${emailType} | App ID: ${applicationId}`);
@@ -89,13 +89,17 @@ async function sendMailSafe({ to, subject, html, text, applicationId, role, emai
     }
 
     try {
-        const info = await transporter.sendMail({
+        const mailOptions = {
             from: EMAIL_FROM,
             to,
             subject,
             text,
             html
-        });
+        };
+        if (attachments && attachments.length > 0) {
+            mailOptions.attachments = attachments;
+        }
+        const info = await transporter.sendMail(mailOptions);
         console.log(`✅ Email sent successfully: ${info.messageId}`);
         await logEmailRecord({
             applicationId,

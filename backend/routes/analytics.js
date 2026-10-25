@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 const db = require('../config/db');
+const { sendOrderInvoiceReceipt } = require('../services/invoiceService');
 
 async function sendWhatsAppText(to, text) {
     const token = process.env.WA_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN || '';
@@ -159,9 +160,16 @@ router.post('/verify-medicine-payment/:orderId', async (req, res) => {
                 const helperMsg = `✅ *Payment Confirmed by Owner!*\n\nOrder *#${order.order_id}*: UPI payment of ₹${order.total_amount} is verified in business statement.\nYou can now safely hand over the package to the customer.`;
                 await sendWhatsAppText(order.helper_phone, helperMsg);
             }
+
+            // Dispatch official PDF invoice to customer WhatsApp
+            try {
+                await sendOrderInvoiceReceipt(order.id);
+            } catch (invErr) {
+                console.error('[Analytics] Failed to dispatch invoice PDF:', invErr.message);
+            }
         }
 
-        res.json({ success: true, message: 'Payment successfully marked as verified! Customer & Helper intimated via WhatsApp.' });
+        res.json({ success: true, message: 'Payment successfully marked as verified! Invoice PDF dispatched to customer.' });
     } catch (err) {
         console.error('Error verifying medicine payment:', err);
         res.status(500).json({ success: false, error: 'Failed to verify payment' });
