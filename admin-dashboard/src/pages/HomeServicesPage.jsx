@@ -20,6 +20,7 @@ export default function HomeServicesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingService, setEditingService] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
   const [formData, setFormData] = useState({
     category_id: '1',
     title: '',
@@ -60,6 +61,7 @@ export default function HomeServicesPage() {
 
   const openAddModal = () => {
     setEditingService(null);
+    setNewCategoryName('');
     setFormData({
       category_id: categories.length > 0 ? String(categories[0].id) : '1',
       title: '',
@@ -76,6 +78,7 @@ export default function HomeServicesPage() {
 
   const openEditModal = (service) => {
     setEditingService(service);
+    setNewCategoryName('');
     setFormData({
       category_id: String(service.category_id || (categories[0]?.id || '1')),
       title: service.title || '',
@@ -125,8 +128,16 @@ export default function HomeServicesPage() {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.title || !formData.rate) {
-      alert('Please fill service title and customer rate');
+    if (!formData.title || !formData.title.trim()) {
+      alert('Please enter the Service Name');
+      return;
+    }
+    if (!formData.rate) {
+      alert('Please enter Customer Rate (₹)');
+      return;
+    }
+    if (formData.category_id === 'NEW' && !newCategoryName.trim()) {
+      alert('Please enter the new category name');
       return;
     }
 
@@ -138,10 +149,16 @@ export default function HomeServicesPage() {
       
       const method = editingService ? 'PUT' : 'POST';
 
+      const payload = {
+        ...formData,
+        title: formData.title.trim(),
+        new_category_name: formData.category_id === 'NEW' ? newCategoryName.trim() : undefined
+      };
+
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
 
       const data = await res.json();
@@ -778,18 +795,34 @@ export default function HomeServicesPage() {
         </div>
       )}
 
-      {/* ── Add / Edit Modal (Crisp, Solid Background, No Overlap) ── */}
+      {/* ── Add / Edit Modal (Crisp, Solid Background, Always-Visible Submit Button) ── */}
       {isModalOpen && (
         <div 
           className="modal-overlay" 
           onClick={(e) => {
             if (e.target.classList.contains('modal-overlay')) setIsModalOpen(false);
           }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem',
+            overflowY: 'auto'
+          }}
         >
           <div 
             className="modal-dialog"
             style={{ 
+              width: '100%',
               maxWidth: '560px',
+              maxHeight: 'min(90vh, 700px)',
+              display: 'flex',
+              flexDirection: 'column',
               backgroundColor: '#ffffff',
               borderRadius: '20px',
               boxShadow: '0 25px 60px -15px rgba(15, 23, 42, 0.4)',
@@ -798,24 +831,41 @@ export default function HomeServicesPage() {
             }}
           >
             {/* Header */}
-            <div className="modal-dialog-header" style={{ padding: '1.25rem 1.5rem', background: '#ffffff', borderBottom: '1px solid #e2e8f0' }}>
+            <div className="modal-dialog-header" style={{ flexShrink: 0, padding: '1.25rem 1.5rem', background: '#ffffff', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <span style={{ 
                   display: 'inline-flex', 
-                  padding: '7px', 
-                  borderRadius: '10px', 
+                  padding: '8px', 
+                  borderRadius: '12px', 
                   backgroundColor: '#eff6ff', 
                   color: '#3b82f6' 
                 }}>
-                  <Home size={20} />
+                  <Home size={22} />
                 </span>
                 <div>
-                  <h3 className="modal-dialog-title" style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a' }}>
-                    {editingService ? 'Edit Home Service' : 'Add New Home Service'}
+                  <h3 className="modal-dialog-title" style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a', margin: 0, letterSpacing: '-0.01em' }}>
+                    {editingService ? 'Edit Service & Pricing' : 'Add New Home Service'}
                   </h3>
-                  <p className="modal-dialog-subtitle" style={{ fontSize: '0.78rem', color: '#64748b', margin: '2px 0 0 0' }}>
-                    Configure customer rates, helper earnings, and service duration
-                  </p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
+                    <span style={{ 
+                      fontSize: '0.72rem', 
+                      fontWeight: 700, 
+                      color: '#059669', 
+                      backgroundColor: '#ecfdf5', 
+                      padding: '2px 8px', 
+                      borderRadius: '6px',
+                      border: '1px solid #d1fae5',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}>
+                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10b981' }}></span>
+                      Global Live Sync
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                      Updates website & booking app in real-time
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -825,38 +875,75 @@ export default function HomeServicesPage() {
                 style={{ 
                   background: '#f1f5f9', 
                   border: 'none', 
-                  borderRadius: '8px', 
-                  width: '32px', 
-                  height: '32px', 
+                  borderRadius: '10px', 
+                  width: '34px', 
+                  height: '34px', 
                   display: 'flex', 
                   alignItems: 'center', 
                   justifyContent: 'center',
                   color: '#64748b',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.15s ease'
+                  cursor: 'pointer'
                 }}
               >
-                <X size={16} />
+                <X size={18} />
               </button>
             </div>
 
-            {/* Form Body */}
-            <form onSubmit={handleFormSubmit}>
-              <div className="modal-dialog-body" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', backgroundColor: '#ffffff' }}>
-                {/* Category Selection */}
+            {/* Form */}
+            <form onSubmit={handleFormSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden', margin: 0 }}>
+              <div 
+                className="modal-dialog-body" 
+                style={{ 
+                  flex: 1, 
+                  overflowY: 'auto', 
+                  padding: '1.25rem 1.5rem', 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '1.1rem', 
+                  backgroundColor: '#ffffff' 
+                }}
+              >
+                {/* 1. Service Name (Prominent & Clear) */}
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.4rem' }}>
-                    Service Category
+                  <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', fontWeight: 800, color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.4rem' }}>
+                    <span>SERVICE NAME <span style={{ color: '#ef4444' }}>*</span></span>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'none' }}>Customers see this name</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter service name (e.g. Kitchen Cleaning, Bathroom Deep Scrub, Sofa Wash)"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    style={{ 
+                      width: '100%', 
+                      padding: '0.75rem 1rem', 
+                      borderRadius: '10px', 
+                      border: '1.5px solid #cbd5e1', 
+                      fontSize: '0.92rem',
+                      fontWeight: 600,
+                      color: '#0f172a',
+                      backgroundColor: '#f8fafc',
+                      outline: 'none'
+                    }}
+                    required
+                  />
+                </div>
+
+                {/* 2. Service Category */}
+                <div>
+                  <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', fontWeight: 800, color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.4rem' }}>
+                    <span>SERVICE CATEGORY <span style={{ color: '#ef4444' }}>*</span></span>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'none' }}>Select or create new category</span>
                   </label>
                   <select
                     value={formData.category_id}
                     onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
                     style={{ 
                       width: '100%', 
-                      padding: '0.7rem 0.9rem', 
+                      padding: '0.75rem 1rem', 
                       borderRadius: '10px', 
-                      border: '1px solid #cbd5e1', 
-                      fontSize: '0.9rem',
+                      border: '1.5px solid #cbd5e1', 
+                      fontSize: '0.92rem',
                       fontWeight: 600,
                       color: '#0f172a',
                       backgroundColor: '#f8fafc',
@@ -869,40 +956,40 @@ export default function HomeServicesPage() {
                         {cat.name}
                       </option>
                     ))}
+                    <option value="NEW">+ Create New Category...</option>
                   </select>
+
+                  {formData.category_id === 'NEW' && (
+                    <div style={{ marginTop: '0.6rem' }}>
+                      <input
+                        type="text"
+                        placeholder="Enter new category name (e.g. Pest Control, Electrical & Repairs)"
+                        value={newCategoryName}
+                        onChange={(e) => setNewCategoryName(e.target.value)}
+                        style={{ 
+                          width: '100%', 
+                          padding: '0.65rem 0.9rem', 
+                          borderRadius: '10px', 
+                          border: '2px solid #3b82f6', 
+                          fontSize: '0.88rem',
+                          fontWeight: 600,
+                          color: '#0f172a',
+                          backgroundColor: '#eff6ff',
+                          outline: 'none'
+                        }}
+                        autoFocus
+                      />
+                    </div>
+                  )}
                 </div>
 
-                {/* Service Title */}
+                {/* 3. Description */}
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.4rem' }}>
-                    Service Title
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Kitchen Cleaning (Dishes & Slab Scrub)"
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    style={{ 
-                      width: '100%', 
-                      padding: '0.7rem 0.9rem', 
-                      borderRadius: '10px', 
-                      border: '1px solid #cbd5e1', 
-                      fontSize: '0.9rem',
-                      color: '#0f172a',
-                      backgroundColor: '#f8fafc',
-                      outline: 'none'
-                    }}
-                    required
-                  />
-                </div>
-
-                {/* Description */}
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.4rem' }}>
-                    Description
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.4rem' }}>
+                    Service Description
                   </label>
                   <textarea
-                    placeholder="Clear description of what the helper will perform..."
+                    placeholder="Clear description of the tasks the helper will perform for the customer..."
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     rows={2}
@@ -910,7 +997,7 @@ export default function HomeServicesPage() {
                       width: '100%', 
                       padding: '0.7rem 0.9rem', 
                       borderRadius: '10px', 
-                      border: '1px solid #cbd5e1', 
+                      border: '1.5px solid #cbd5e1', 
                       fontSize: '0.88rem',
                       color: '#0f172a',
                       backgroundColor: '#f8fafc',
@@ -920,11 +1007,11 @@ export default function HomeServicesPage() {
                   />
                 </div>
 
-                {/* Pricing Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                {/* 4. Pricing Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: '#f8fafc', padding: '1rem', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.4rem' }}>
-                      Customer Rate (₹)
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#15803d', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.35rem' }}>
+                      Customer Rate (₹) *
                     </label>
                     <input
                       type="number"
@@ -945,20 +1032,23 @@ export default function HomeServicesPage() {
                         width: '100%', 
                         padding: '0.7rem 0.9rem', 
                         borderRadius: '10px', 
-                        border: '1px solid #cbd5e1', 
-                        fontSize: '0.95rem',
-                        fontWeight: 700,
-                        color: '#16a34a',
-                        backgroundColor: '#f8fafc',
+                        border: '1.5px solid #86efac', 
+                        fontSize: '1rem',
+                        fontWeight: 800,
+                        color: '#15803d',
+                        backgroundColor: '#ffffff',
                         outline: 'none'
                       }}
                       required
                     />
+                    <span style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '3px', display: 'block' }}>
+                      Price shown to customer
+                    </span>
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.4rem' }}>
-                      Helper Earning (₹)
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#1d4ed8', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.35rem' }}>
+                      Helper Earning (₹) *
                     </label>
                     <input
                       type="number"
@@ -970,22 +1060,25 @@ export default function HomeServicesPage() {
                         width: '100%', 
                         padding: '0.7rem 0.9rem', 
                         borderRadius: '10px', 
-                        border: '1px solid #cbd5e1', 
-                        fontSize: '0.95rem',
-                        fontWeight: 700,
-                        color: '#2563eb',
-                        backgroundColor: '#f8fafc',
+                        border: '1.5px solid #93c5fd', 
+                        fontSize: '1rem',
+                        fontWeight: 800,
+                        color: '#1d4ed8',
+                        backgroundColor: '#ffffff',
                         outline: 'none'
                       }}
                       required
                     />
+                    <span style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '3px', display: 'block' }}>
+                      Payout helper receives
+                    </span>
                   </div>
                 </div>
 
-                {/* Platform Fee & Duration */}
+                {/* 5. Platform Fee & Duration */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.4rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.35rem' }}>
                       Platform Fee (₹)
                     </label>
                     <input
@@ -997,10 +1090,10 @@ export default function HomeServicesPage() {
                         width: '100%', 
                         padding: '0.7rem 0.9rem', 
                         borderRadius: '10px', 
-                        border: '1px solid #cbd5e1', 
+                        border: '1.5px solid #cbd5e1', 
                         fontSize: '0.9rem',
-                        fontWeight: 600,
-                        color: '#475569',
+                        fontWeight: 700,
+                        color: '#334155',
                         backgroundColor: '#f8fafc',
                         outline: 'none'
                       }}
@@ -1008,8 +1101,8 @@ export default function HomeServicesPage() {
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.4rem' }}>
-                      Duration
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.35rem' }}>
+                      Estimated Duration
                     </label>
                     <input
                       type="text"
@@ -1020,7 +1113,7 @@ export default function HomeServicesPage() {
                         width: '100%', 
                         padding: '0.7rem 0.9rem', 
                         borderRadius: '10px', 
-                        border: '1px solid #cbd5e1', 
+                        border: '1.5px solid #cbd5e1', 
                         fontSize: '0.9rem',
                         color: '#0f172a',
                         backgroundColor: '#f8fafc',
@@ -1030,66 +1123,94 @@ export default function HomeServicesPage() {
                   </div>
                 </div>
 
-                {/* Active Checkbox */}
+                {/* 6. Active Toggle Checkbox */}
                 <div style={{ 
                   display: 'flex', 
                   alignItems: 'center', 
-                  gap: '10px', 
-                  padding: '0.75rem 1rem', 
-                  background: '#f8fafc', 
-                  borderRadius: '10px', 
-                  border: '1px solid #e2e8f0',
-                  marginTop: '0.25rem'
+                  gap: '12px', 
+                  padding: '0.85rem 1rem', 
+                  background: formData.is_active === 1 ? '#f0fdf4' : '#f8fafc', 
+                  borderRadius: '12px', 
+                  border: formData.is_active === 1 ? '1.5px solid #bbf7d0' : '1px solid #e2e8f0',
+                  marginTop: '0.2rem'
                 }}>
                   <input
                     type="checkbox"
                     id="active_check"
                     checked={formData.is_active === 1}
                     onChange={(e) => setFormData({ ...formData, is_active: e.target.checked ? 1 : 0 })}
-                    style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#3b82f6' }}
+                    style={{ width: '19px', height: '19px', cursor: 'pointer', accentColor: '#16a34a' }}
                   />
-                  <label htmlFor="active_check" style={{ fontSize: '0.88rem', fontWeight: 700, color: '#334155', cursor: 'pointer' }}>
-                    Enable Service for Customer Booking
+                  <label htmlFor="active_check" style={{ fontSize: '0.88rem', fontWeight: 700, color: formData.is_active === 1 ? '#15803d' : '#475569', cursor: 'pointer' }}>
+                    Enable this service for instant customer booking
                   </label>
                 </div>
               </div>
 
-              {/* Footer */}
-              <div className="modal-dialog-footer" style={{ padding: '1rem 1.5rem', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  style={{ 
-                    padding: '0.6rem 1.25rem', 
-                    borderRadius: '10px', 
-                    border: '1px solid #cbd5e1',
-                    background: '#ffffff',
-                    color: '#475569',
-                    fontWeight: 600,
-                    fontSize: '0.88rem',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  style={{ 
-                    padding: '0.6rem 1.5rem', 
-                    borderRadius: '10px', 
-                    backgroundColor: '#3b82f6', 
-                    color: '#ffffff', 
-                    border: 'none', 
-                    fontWeight: 700, 
-                    fontSize: '0.88rem',
-                    cursor: submitting ? 'not-allowed' : 'pointer',
-                    boxShadow: '0 4px 12px rgba(59, 130, 246, 0.25)',
-                    opacity: submitting ? 0.7 : 1
-                  }}
-                >
-                  {submitting ? 'Saving...' : (editingService ? 'Save Changes' : 'Create Service')}
-                </button>
+              {/* Footer - Always Visible & Pinned to Modal Bottom */}
+              <div 
+                className="modal-dialog-footer" 
+                style={{ 
+                  flexShrink: 0,
+                  padding: '1rem 1.5rem', 
+                  background: '#f8fafc', 
+                  borderTop: '1px solid #e2e8f0', 
+                  display: 'flex', 
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.03)'
+                }}
+              >
+                <div style={{ fontSize: '0.75rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Sparkles size={14} color="#3b82f6" />
+                  <span>Changes apply globally in real-time</span>
+                </div>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    style={{ 
+                      padding: '0.65rem 1.25rem', 
+                      borderRadius: '10px', 
+                      border: '1.5px solid #cbd5e1',
+                      background: '#ffffff',
+                      color: '#475569',
+                      fontWeight: 700,
+                      fontSize: '0.88rem',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    style={{ 
+                      padding: '0.65rem 1.6rem', 
+                      borderRadius: '10px', 
+                      backgroundColor: '#2563eb', 
+                      color: '#ffffff', 
+                      border: 'none', 
+                      fontWeight: 800, 
+                      fontSize: '0.9rem',
+                      cursor: submitting ? 'not-allowed' : 'pointer',
+                      boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      opacity: submitting ? 0.75 : 1
+                    }}
+                  >
+                    {submitting ? (
+                      <>
+                        <RefreshCw size={16} className="animate-spin" />
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      editingService ? 'Save Changes' : 'Create Service'
+                    )}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

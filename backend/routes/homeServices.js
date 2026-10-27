@@ -285,19 +285,29 @@ router.get('/admin/services', async (req, res) => {
 // 1C. ADMIN: ADD NEW HOME SERVICE
 // ==========================================
 router.post('/admin/services', async (req, res) => {
-    const { category_id, title, description, rate, helper_charge, platform_fee, duration, icon } = req.body;
-    if (!category_id || !title || rate === undefined) {
-        return res.status(400).json({ success: false, error: 'Category, title, and rate are required' });
-    }
+    let { category_id, new_category_name, title, description, rate, helper_charge, platform_fee, duration, icon } = req.body;
+    
     try {
+        if ((category_id === 'NEW' || !category_id) && new_category_name && new_category_name.trim()) {
+            const [catRes] = await db.query(
+                'INSERT INTO hs_service_categories (name, icon, description, is_active) VALUES (?, ?, ?, 1)',
+                [new_category_name.trim(), icon || 'CheckSquare', new_category_name.trim()]
+            );
+            category_id = catRes.insertId;
+        }
+
+        if (!category_id || !title || rate === undefined) {
+            return res.status(400).json({ success: false, error: 'Category, service name, and rate are required' });
+        }
+
         const numRate = parseFloat(rate || 0);
-        const numPF = parseFloat(platform_fee || 5);
+        const numPF = parseFloat(platform_fee || 39);
         const numHC = parseFloat(helper_charge || (numRate > 0 ? numRate - numPF : 0));
 
         const [result] = await db.query(`
             INSERT INTO hs_services (category_id, title, description, rate, helper_charge, platform_fee, duration, icon, is_active)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
-        `, [category_id, title, description || '', numRate, numHC, numPF, duration || '1 Hour', icon || 'Wrench']);
+        `, [category_id, title.trim(), description || '', numRate, numHC, numPF, duration || '1.5 - 2 Hours', icon || 'Utensils']);
 
         res.json({ success: true, message: 'Home service created successfully', id: result.insertId });
     } catch (err) {
@@ -311,10 +321,18 @@ router.post('/admin/services', async (req, res) => {
 // ==========================================
 router.put('/admin/services/:id', async (req, res) => {
     const { id } = req.params;
-    const { category_id, title, description, rate, helper_charge, platform_fee, duration, icon, is_active } = req.body;
+    let { category_id, new_category_name, title, description, rate, helper_charge, platform_fee, duration, icon, is_active } = req.body;
     try {
+        if ((category_id === 'NEW' || !category_id) && new_category_name && new_category_name.trim()) {
+            const [catRes] = await db.query(
+                'INSERT INTO hs_service_categories (name, icon, description, is_active) VALUES (?, ?, ?, 1)',
+                [new_category_name.trim(), icon || 'CheckSquare', new_category_name.trim()]
+            );
+            category_id = catRes.insertId;
+        }
+
         const numRate = parseFloat(rate || 0);
-        const numPF = parseFloat(platform_fee || 5);
+        const numPF = parseFloat(platform_fee || 39);
         const numHC = parseFloat(helper_charge || (numRate > 0 ? numRate - numPF : 0));
         const activeState = is_active !== undefined ? (is_active ? 1 : 0) : 1;
 
@@ -322,9 +340,9 @@ router.put('/admin/services/:id', async (req, res) => {
             UPDATE hs_services
             SET category_id = ?, title = ?, description = ?, rate = ?, helper_charge = ?, platform_fee = ?, duration = ?, icon = ?, is_active = ?
             WHERE id = ?
-        `, [category_id, title, description, numRate, numHC, numPF, duration, icon, activeState, id]);
+        `, [category_id, title ? title.trim() : '', description || '', numRate, numHC, numPF, duration || '1.5 - 2 Hours', icon || 'Utensils', activeState, id]);
 
-        res.json({ success: true, message: 'Home service updated successfully' });
+        res.json({ success: true, message: 'Home service updated globally successfully' });
     } catch (err) {
         console.error('Error updating home service:', err);
         res.status(500).json({ success: false, error: 'Database update failed' });
@@ -332,7 +350,27 @@ router.put('/admin/services/:id', async (req, res) => {
 });
 
 // ==========================================
-// 1E. ADMIN: TOGGLE HOME SERVICE ACTIVE STATUS
+// 1E. ADMIN: CREATE CATEGORY
+// ==========================================
+router.post('/admin/categories', async (req, res) => {
+    const { name, icon, description } = req.body;
+    if (!name || !name.trim()) {
+        return res.status(400).json({ success: false, error: 'Category name is required' });
+    }
+    try {
+        const [result] = await db.query(
+            'INSERT INTO hs_service_categories (name, icon, description, is_active) VALUES (?, ?, ?, 1)',
+            [name.trim(), icon || 'CheckSquare', description || name.trim()]
+        );
+        res.json({ success: true, id: result.insertId, name: name.trim() });
+    } catch (err) {
+        console.error('Error adding category:', err);
+        res.status(500).json({ success: false, error: 'Failed to add category' });
+    }
+});
+
+// ==========================================
+// 1F. ADMIN: TOGGLE HOME SERVICE ACTIVE STATUS
 // ==========================================
 router.put('/admin/services/:id/toggle', async (req, res) => {
     const { id } = req.params;
@@ -351,13 +389,13 @@ router.put('/admin/services/:id/toggle', async (req, res) => {
 });
 
 // ==========================================
-// 1F. ADMIN: DELETE HOME SERVICE
+// 1G. ADMIN: DELETE HOME SERVICE
 // ==========================================
 router.delete('/admin/services/:id', async (req, res) => {
     const { id } = req.params;
     try {
         await db.query('DELETE FROM hs_services WHERE id = ?', [id]);
-        res.json({ success: true, message: 'Service deleted' });
+        res.json({ success: true, message: 'Service deleted globally' });
     } catch (err) {
         console.error('Error deleting home service:', err);
         res.status(500).json({ success: false, error: 'Failed to delete service' });
@@ -652,7 +690,62 @@ router.get('/banner-config', async (req, res) => {
             if (r.setting_key === 'services_config' && val) servicesConfig = val;
         });
 
-        res.json({ success: true, banner: bannerConfig, coupons: couponConfig, services: servicesConfig });
+        // 🌟 LIVE GLOBAL MERGE FROM hs_services TABLE
+        // Any price, name, duration, or active status modified in admin reflects immediately across customer app!
+        const [liveDbServices] = await db.query(`
+            SELECT s.*, c.name as category_name, c.icon as category_icon
+            FROM hs_services s
+            LEFT JOIN hs_service_categories c ON s.category_id = c.id
+            ORDER BY s.id ASC
+        `);
+
+        let finalServices = [];
+        if (liveDbServices && liveDbServices.length > 0) {
+            const configArray = Array.isArray(servicesConfig) ? servicesConfig : [];
+
+            finalServices = liveDbServices.map(s => {
+                const match = configArray.find(cfg => cfg.id === s.id || (cfg.name && cfg.name.toLowerCase() === s.title.toLowerCase()));
+
+                let defaultImg = '/home-services/images/kitchen.png';
+                const catLower = (s.category_name || '').toLowerCase();
+                const titleLower = (s.title || '').toLowerCase();
+                if (catLower.includes('laundry') || titleLower.includes('laundry')) defaultImg = '/home-services/images/laundry.png';
+                else if (catLower.includes('cloth') || titleLower.includes('cloth')) defaultImg = '/home-services/images/cloth_washing_v2.png';
+                else if (catLower.includes('floor') || titleLower.includes('floor')) defaultImg = '/home-services/images/floor_cleaning_v2.png';
+                else if (catLower.includes('deep') || titleLower.includes('deep')) defaultImg = '/home-services/images/bathroom.png';
+                else if (catLower.includes('custom') || titleLower.includes('custom')) defaultImg = '/home-services/images/custom_service_v2.png';
+
+                return {
+                    id: s.id,
+                    name: s.title,
+                    base_price: parseFloat(s.rate),
+                    helper_charge: parseFloat(s.helper_charge),
+                    platform_fee: parseFloat(s.platform_fee),
+                    duration: s.duration || '1.5 - 2 Hours',
+                    description: s.description || match?.description || 'Professional home service by verified helpers',
+                    image: match?.image || defaultImg,
+                    rating: match?.rating || 4.8,
+                    reviewCount: match?.reviewCount || 120,
+                    is_custom: match?.is_custom || Boolean(catLower.includes('custom') || titleLower.includes('custom')),
+                    custom_options: match?.custom_options || undefined,
+                    short_summary: match?.short_summary || (s.description ? s.description.slice(0, 60) + '...' : undefined),
+                    whats_included: match?.whats_included || [
+                        `Verified helper for ${s.title}`,
+                        'All necessary cleaning tasks completed',
+                        'Customer satisfaction guaranteed'
+                    ],
+                    whats_not_included: match?.whats_not_included || [
+                        'Repairs outside the scope of this chore',
+                        'Appliance or motor rewiring'
+                    ],
+                    is_active: s.is_active === 1
+                };
+            }).filter(s => s.is_active);
+        } else if (servicesConfig) {
+            finalServices = servicesConfig;
+        }
+
+        res.json({ success: true, banner: bannerConfig, coupons: couponConfig, services: finalServices });
     } catch (err) {
         console.error('Error fetching banner-config:', err);
         res.status(500).json({ success: false, error: 'Failed to fetch banner config' });
@@ -665,15 +758,13 @@ router.get('/banner-config', async (req, res) => {
 router.get('/services-config', async (req, res) => {
     try {
         await ensureHsTablesExist();
-        const [rows] = await db.query("SELECT setting_value FROM hs_settings WHERE setting_key = 'services_config'");
-        if (rows.length > 0 && rows[0].setting_value) {
-            let val = rows[0].setting_value;
-            if (typeof val === 'string') {
-                try { val = JSON.parse(val); } catch (e) {}
-            }
-            return res.json({ success: true, services: val });
-        }
-        res.json({ success: true, services: null });
+        const [liveDbServices] = await db.query(`
+            SELECT s.*, c.name as category_name, c.icon as category_icon
+            FROM hs_services s
+            LEFT JOIN hs_service_categories c ON s.category_id = c.id
+            ORDER BY s.id ASC
+        `);
+        res.json({ success: true, services: liveDbServices });
     } catch (err) {
         console.error('Error fetching services-config:', err);
         res.status(500).json({ success: false, error: 'Failed to fetch services config' });
