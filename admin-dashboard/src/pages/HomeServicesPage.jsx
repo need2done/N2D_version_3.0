@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Wrench, Plus, Edit2, Trash2, CheckCircle2, XCircle, Search, Filter, RefreshCw, Zap, Droplet, Wind, Sparkles, Hammer, ShieldCheck, DollarSign, Clock } from 'lucide-react';
+import { 
+  Plus, Edit2, Trash2, CheckCircle2, XCircle, Search, Filter, 
+  RefreshCw, Sparkles, DollarSign, Clock, Utensils, Shirt, 
+  Layers, Home, CheckSquare, X, Percent, AlertCircle
+} from 'lucide-react';
 import { API_URL } from '../config';
 
 export default function HomeServicesPage() {
@@ -15,15 +19,16 @@ export default function HomeServicesPage() {
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingService, setEditingService] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     category_id: '1',
     title: '',
     description: '',
     rate: '',
     helper_charge: '',
-    platform_fee: '5',
-    duration: '1 Hour',
-    icon: 'Wrench',
+    platform_fee: '39',
+    duration: '1.5 - 2 Hours',
+    icon: 'Utensils',
     is_active: 1
   });
 
@@ -56,14 +61,14 @@ export default function HomeServicesPage() {
   const openAddModal = () => {
     setEditingService(null);
     setFormData({
-      category_id: categories.length > 0 ? categories[0].id : '1',
+      category_id: categories.length > 0 ? String(categories[0].id) : '1',
       title: '',
       description: '',
       rate: '',
       helper_charge: '',
-      platform_fee: '5',
-      duration: '1 Hour',
-      icon: 'Wrench',
+      platform_fee: '39',
+      duration: '1.5 - 2 Hours',
+      icon: 'Utensils',
       is_active: 1
     });
     setIsModalOpen(true);
@@ -72,14 +77,14 @@ export default function HomeServicesPage() {
   const openEditModal = (service) => {
     setEditingService(service);
     setFormData({
-      category_id: service.category_id || '1',
+      category_id: String(service.category_id || (categories[0]?.id || '1')),
       title: service.title || '',
       description: service.description || '',
       rate: service.rate || '',
       helper_charge: service.helper_charge || '',
-      platform_fee: service.platform_fee || '5',
-      duration: service.duration || '1 Hour',
-      icon: service.icon || 'Wrench',
+      platform_fee: service.platform_fee || '39',
+      duration: service.duration || '1.5 - 2 Hours',
+      icon: service.icon || 'Utensils',
       is_active: service.is_active === 1 ? 1 : 0
     });
     setIsModalOpen(true);
@@ -121,10 +126,11 @@ export default function HomeServicesPage() {
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     if (!formData.title || !formData.rate) {
-      alert('Please fill title and customer rate');
+      alert('Please fill service title and customer rate');
       return;
     }
 
+    setSubmitting(true);
     try {
       const url = editingService
         ? `${API_URL}/home-services/admin/services/${editingService.id}`
@@ -147,7 +153,57 @@ export default function HomeServicesPage() {
       }
     } catch (err) {
       alert('Network error submitting form.');
+    } finally {
+      setSubmitting(false);
     }
+  };
+
+  // Category styles & icon helper
+  const getCategoryDetails = (catName = '') => {
+    const lower = catName.toLowerCase();
+    if (lower.includes('kitchen')) {
+      return { 
+        bg: '#fff7ed', 
+        text: '#ea580c', 
+        border: '#ffedd5', 
+        badgeBg: '#ffedd5',
+        icon: Utensils 
+      };
+    }
+    if (lower.includes('laundry') || lower.includes('cloth')) {
+      return { 
+        bg: '#eff6ff', 
+        text: '#2563eb', 
+        border: '#dbeafe', 
+        badgeBg: '#dbeafe',
+        icon: Shirt 
+      };
+    }
+    if (lower.includes('floor')) {
+      return { 
+        bg: '#f0fdf4', 
+        text: '#16a34a', 
+        border: '#dcfce7', 
+        badgeBg: '#dcfce7',
+        icon: Layers 
+      };
+    }
+    if (lower.includes('deep') || lower.includes('house')) {
+      return { 
+        bg: '#faf5ff', 
+        text: '#9333ea', 
+        border: '#f3e8ff', 
+        badgeBg: '#f3e8ff',
+        icon: Home 
+      };
+    }
+    return { 
+      bg: '#fefce8', 
+      text: '#ca8a04', 
+      border: '#fef9c3', 
+      badgeBg: '#fef9c3',
+      icon: CheckSquare 
+    };
   };
 
   // Filtered Services
@@ -163,122 +219,298 @@ export default function HomeServicesPage() {
 
   const activeCount = services.filter(s => s.is_active === 1).length;
 
+  // Calculate Average Payout % dynamically
+  const calculatedAvgPayout = services.length > 0
+    ? Math.round(
+        services.reduce((acc, s) => {
+          const rate = parseFloat(s.rate) || 0;
+          const helper = parseFloat(s.helper_charge) || (rate > 0 ? rate - (parseFloat(s.platform_fee) || 39) : 0);
+          return acc + (rate > 0 ? (helper / rate) * 100 : 85);
+        }, 0) / services.length
+      )
+    : 85;
+
   return (
-    <div className="home-services-page" style={{ padding: '1.5rem', maxWidth: '1400px', margin: '0 auto' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+    <div style={{ padding: '2rem 1.5rem', maxWidth: '1440px', margin: '0 auto' }}>
+      {/* ── Header ────────────────────────────────────────── */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1.25rem' }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            <Wrench className="text-primary" size={28} />
-            Home Services Management
-          </h1>
-          <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            Configure home service offerings, pricing, helper payouts, and availability
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ 
+              display: 'inline-flex', 
+              padding: '8px', 
+              borderRadius: '12px', 
+              backgroundColor: '#eff6ff', 
+              color: '#3b82f6',
+              boxShadow: '0 2px 8px rgba(59, 130, 246, 0.15)'
+            }}>
+              <Home size={26} />
+            </span>
+            <h1 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
+              Home Services Management
+            </h1>
+          </div>
+          <p style={{ margin: '0.4rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.92rem' }}>
+            Manage active home offerings, pricing, helper payouts, and booking availability
           </p>
         </div>
+
         <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button onClick={fetchHomeServices} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <button 
+            onClick={fetchHomeServices} 
+            className="btn btn-outline" 
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.5rem',
+              backgroundColor: '#ffffff',
+              border: '1px solid #e2e8f0',
+              padding: '0.6rem 1.1rem',
+              borderRadius: '10px',
+              fontWeight: 600,
+              fontSize: '0.88rem',
+              cursor: 'pointer'
+            }}
+          >
             <RefreshCw size={16} /> Refresh
           </button>
-          <button onClick={openAddModal} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', backgroundColor: '#3b82f6', color: '#fff', padding: '0.5rem 1rem', borderRadius: '8px', border: 'none', fontWeight: 600, cursor: 'pointer' }}>
+          <button 
+            onClick={openAddModal} 
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.5rem', 
+              backgroundColor: '#3b82f6', 
+              color: '#fff', 
+              padding: '0.6rem 1.3rem', 
+              borderRadius: '10px', 
+              border: 'none', 
+              fontWeight: 700, 
+              fontSize: '0.9rem',
+              cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(59, 130, 246, 0.25)',
+              transition: 'all 0.2s ease'
+            }}
+          >
             <Plus size={18} /> Add New Service
           </button>
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-        <div className="card" style={{ padding: '1.2rem' }}>
+      {/* ── Summary Stats Cards ───────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
+        <div style={{ 
+          background: '#ffffff', 
+          border: '1px solid #e2e8f0', 
+          borderRadius: '16px', 
+          padding: '1.4rem',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+        }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 600 }}>TOTAL SERVICES</p>
-              <h2 style={{ margin: '0.3rem 0 0 0', fontSize: '1.8rem', fontWeight: 700 }}>{services.length}</h2>
+              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.05em' }}>TOTAL SERVICES</p>
+              <h2 style={{ margin: '0.35rem 0 0 0', fontSize: '2rem', fontWeight: 800, color: '#0f172a' }}>{services.length}</h2>
             </div>
-            <div style={{ padding: '0.6rem', borderRadius: '50%', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
-              <Wrench size={24} />
+            <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: '#eff6ff', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Home size={24} />
             </div>
           </div>
         </div>
 
-        <div className="card" style={{ padding: '1.2rem' }}>
+        <div style={{ 
+          background: '#ffffff', 
+          border: '1px solid #e2e8f0', 
+          borderRadius: '16px', 
+          padding: '1.4rem',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+        }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 600 }}>ACTIVE SERVICES</p>
-              <h2 style={{ margin: '0.3rem 0 0 0', fontSize: '1.8rem', fontWeight: 700, color: '#10b981' }}>{activeCount}</h2>
+              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.05em' }}>ACTIVE SERVICES</p>
+              <h2 style={{ margin: '0.35rem 0 0 0', fontSize: '2rem', fontWeight: 800, color: '#16a34a' }}>{activeCount}</h2>
             </div>
-            <div style={{ padding: '0.6rem', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: '#f0fdf4', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <CheckCircle2 size={24} />
             </div>
           </div>
         </div>
 
-        <div className="card" style={{ padding: '1.2rem' }}>
+        <div style={{ 
+          background: '#ffffff', 
+          border: '1px solid #e2e8f0', 
+          borderRadius: '16px', 
+          padding: '1.4rem',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+        }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 600 }}>CATEGORIES</p>
-              <h2 style={{ margin: '0.3rem 0 0 0', fontSize: '1.8rem', fontWeight: 700 }}>{categories.length || 5}</h2>
+              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.05em' }}>CATEGORIES</p>
+              <h2 style={{ margin: '0.35rem 0 0 0', fontSize: '2rem', fontWeight: 800, color: '#9333ea' }}>{categories.length}</h2>
             </div>
-            <div style={{ padding: '0.6rem', borderRadius: '50%', background: 'rgba(168, 85, 247, 0.1)', color: '#a855f7' }}>
-              <Zap size={24} />
+            <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: '#faf5ff', color: '#9333ea', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Sparkles size={24} />
             </div>
           </div>
         </div>
 
-        <div className="card" style={{ padding: '1.2rem' }}>
+        <div style={{ 
+          background: '#ffffff', 
+          border: '1px solid #e2e8f0', 
+          borderRadius: '16px', 
+          padding: '1.4rem',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+        }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 600 }}>AVG HELPER PAYOUT</p>
-              <h2 style={{ margin: '0.3rem 0 0 0', fontSize: '1.8rem', fontWeight: 700, color: '#f59e0b' }}>85%</h2>
+              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.05em' }}>AVG HELPER PAYOUT</p>
+              <h2 style={{ margin: '0.35rem 0 0 0', fontSize: '2rem', fontWeight: 800, color: '#ea580c' }}>{calculatedAvgPayout}%</h2>
             </div>
-            <div style={{ padding: '0.6rem', borderRadius: '50%', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
-              <DollarSign size={24} />
+            <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: '#fff7ed', color: '#ea580c', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Percent size={24} />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Category Pills & Search Controls */}
-      <div className="card" style={{ padding: '1.2rem', marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', pb: '0.75rem' }}>
+      {/* ── Category Filter Pills & Search Bar ─────────────── */}
+      <div style={{ 
+        background: '#ffffff', 
+        border: '1px solid #e2e8f0', 
+        borderRadius: '16px', 
+        padding: '1.25rem', 
+        marginBottom: '1.5rem',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+      }}>
+        {/* Category Pills */}
+        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
           <button
             onClick={() => setSelectedCategory('ALL')}
-            className={`btn ${selectedCategory === 'ALL' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ borderRadius: '20px', padding: '0.4rem 1rem', fontSize: '0.85rem' }}
+            style={{ 
+              borderRadius: '30px', 
+              padding: '0.5rem 1.1rem', 
+              fontSize: '0.86rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              border: selectedCategory === 'ALL' ? 'none' : '1px solid #e2e8f0',
+              backgroundColor: selectedCategory === 'ALL' ? '#3b82f6' : '#ffffff',
+              color: selectedCategory === 'ALL' ? '#ffffff' : '#475569',
+              boxShadow: selectedCategory === 'ALL' ? '0 4px 12px rgba(59, 130, 246, 0.25)' : 'none',
+              transition: 'all 0.15s ease',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
           >
-            All Categories ({services.length})
+            All Categories
+            <span style={{ 
+              fontSize: '0.75rem', 
+              padding: '2px 7px', 
+              borderRadius: '20px', 
+              backgroundColor: selectedCategory === 'ALL' ? 'rgba(255,255,255,0.25)' : '#f1f5f9',
+              color: selectedCategory === 'ALL' ? '#ffffff' : '#64748b'
+            }}>
+              {services.length}
+            </span>
           </button>
-          {categories.map(cat => (
-            <button
-              key={cat.id}
-              onClick={() => setSelectedCategory(String(cat.id))}
-              className={`btn ${String(selectedCategory) === String(cat.id) ? 'btn-primary' : 'btn-secondary'}`}
-              style={{ borderRadius: '20px', padding: '0.4rem 1rem', fontSize: '0.85rem' }}
-            >
-              {cat.name}
-            </button>
-          ))}
+
+          {categories.map(cat => {
+            const isSelected = String(selectedCategory) === String(cat.id);
+            const details = getCategoryDetails(cat.name);
+            const CatIcon = details.icon;
+            const count = services.filter(s => String(s.category_id) === String(cat.id)).length;
+
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCategory(String(cat.id))}
+                style={{ 
+                  borderRadius: '30px', 
+                  padding: '0.5rem 1.1rem', 
+                  fontSize: '0.86rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  border: isSelected ? 'none' : '1px solid #e2e8f0',
+                  backgroundColor: isSelected ? '#3b82f6' : '#ffffff',
+                  color: isSelected ? '#ffffff' : '#475569',
+                  boxShadow: isSelected ? '0 4px 12px rgba(59, 130, 246, 0.25)' : 'none',
+                  transition: 'all 0.15s ease',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <CatIcon size={15} color={isSelected ? '#ffffff' : details.text} />
+                {cat.name}
+                <span style={{ 
+                  fontSize: '0.75rem', 
+                  padding: '2px 7px', 
+                  borderRadius: '20px', 
+                  backgroundColor: isSelected ? 'rgba(255,255,255,0.25)' : details.badgeBg,
+                  color: isSelected ? '#ffffff' : details.text
+                }}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
+        {/* Search & Filter Row */}
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
-            <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          <div style={{ position: 'relative', flex: 1, minWidth: '260px' }}>
+            <Search size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
             <input
               type="text"
-              placeholder="Search home service title or description..."
+              placeholder="Search by title, description or category..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="form-control"
-              style={{ paddingLeft: '2.4rem', width: '100%', borderRadius: '8px' }}
+              style={{ 
+                padding: '0.65rem 1rem 0.65rem 2.6rem', 
+                width: '100%', 
+                borderRadius: '10px',
+                border: '1px solid #e2e8f0',
+                outline: 'none',
+                fontSize: '0.9rem',
+                color: '#0f172a',
+                backgroundColor: '#f8fafc',
+                transition: 'all 0.2s ease'
+              }}
             />
+            {searchTerm && (
+              <button 
+                onClick={() => setSearchTerm('')}
+                style={{ 
+                  position: 'absolute', 
+                  right: '12px', 
+                  top: '50%', 
+                  transform: 'translateY(-50%)', 
+                  border: 'none', 
+                  background: 'none', 
+                  cursor: 'pointer',
+                  color: '#94a3b8'
+                }}
+              >
+                <X size={16} />
+              </button>
+            )}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Filter size={16} style={{ color: 'var(--text-muted)' }} />
+            <Filter size={16} style={{ color: '#64748b' }} />
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="form-control"
-              style={{ borderRadius: '8px', minWidth: '140px' }}
+              style={{ 
+                borderRadius: '10px', 
+                border: '1px solid #e2e8f0',
+                padding: '0.65rem 1rem',
+                fontSize: '0.88rem',
+                fontWeight: 600,
+                color: '#334155',
+                backgroundColor: '#f8fafc',
+                cursor: 'pointer',
+                outline: 'none'
+              }}
             >
               <option value="ALL">All Status</option>
               <option value="ACTIVE">Active Only</option>
@@ -288,256 +520,575 @@ export default function HomeServicesPage() {
         </div>
       </div>
 
-      {/* Services Table */}
+      {/* ── Services Table ─────────────────────────────────── */}
       {loading ? (
-        <div className="card" style={{ padding: '3rem', textAlign: 'center' }}>
-          <p style={{ color: 'var(--text-muted)' }}>Loading Home Services...</p>
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '4rem 2rem', textAlign: 'center' }}>
+          <RefreshCw size={28} className="animate-spin" style={{ margin: '0 auto 1rem', color: '#3b82f6' }} />
+          <p style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Loading Home Services catalog...</p>
         </div>
       ) : error ? (
-        <div className="card" style={{ padding: '2rem', textAlign: 'center', color: '#ef4444' }}>
-          <p>{error}</p>
-          <button onClick={fetchHomeServices} className="btn btn-secondary" style={{ marginTop: '0.5rem' }}>Try Again</button>
+        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '16px', padding: '2.5rem', textAlign: 'center', color: '#dc2626' }}>
+          <AlertCircle size={32} style={{ margin: '0 auto 0.75rem' }} />
+          <p style={{ fontWeight: 600, marginBottom: '1rem' }}>{error}</p>
+          <button 
+            onClick={fetchHomeServices} 
+            style={{ 
+              backgroundColor: '#dc2626', 
+              color: '#ffffff', 
+              padding: '0.5rem 1.2rem', 
+              borderRadius: '8px', 
+              border: 'none', 
+              fontWeight: 600, 
+              cursor: 'pointer' 
+            }}
+          >
+            Retry Connection
+          </button>
         </div>
       ) : filteredServices.length === 0 ? (
-        <div className="card" style={{ padding: '3rem', textAlign: 'center' }}>
-          <p style={{ color: 'var(--text-muted)', fontSize: '1rem' }}>No home services found matching criteria.</p>
-          <button onClick={openAddModal} className="btn btn-primary" style={{ marginTop: '0.75rem' }}>Add New Home Service</button>
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '4rem 2rem', textAlign: 'center' }}>
+          <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#eff6ff', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem' }}>
+            <Home size={32} />
+          </div>
+          <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.2rem', fontWeight: 700, color: '#0f172a' }}>No Home Services Found</h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: '420px', margin: '0 auto 1.5rem' }}>
+            {searchTerm || statusFilter !== 'ALL' || selectedCategory !== 'ALL'
+              ? 'No services matched your filter criteria. Try resetting filters or search query.'
+              : 'Start by adding your first home service to accept customer bookings.'}
+          </p>
+          <button 
+            onClick={openAddModal} 
+            style={{ 
+              backgroundColor: '#3b82f6', 
+              color: '#ffffff', 
+              padding: '0.65rem 1.4rem', 
+              borderRadius: '10px', 
+              border: 'none', 
+              fontWeight: 700, 
+              fontSize: '0.9rem',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 4px 12px rgba(59, 130, 246, 0.25)'
+            }}
+          >
+            <Plus size={18} /> Add New Home Service
+          </button>
         </div>
       ) : (
-        <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
           <div className="table-responsive" style={{ margin: 0 }}>
-            <table style={{ width: '100%', minWidth: '720px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
-            <thead>
-              <tr style={{ background: 'var(--bg-muted)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
-                <th style={{ padding: '1rem 1.2rem' }}>Service</th>
-                <th style={{ padding: '1rem 1.2rem' }}>Category</th>
-                <th style={{ padding: '1rem 1.2rem' }}>Customer Rate</th>
-                <th style={{ padding: '1rem 1.2rem' }}>Helper Earning</th>
-                <th style={{ padding: '1rem 1.2rem' }}>Platform Fee</th>
-                <th style={{ padding: '1rem 1.2rem' }}>Duration</th>
-                <th style={{ padding: '1rem 1.2rem' }}>Status</th>
-                <th style={{ padding: '1rem 1.2rem', textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredServices.map(service => (
-                <tr key={service.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                  <td style={{ padding: '1rem 1.2rem' }}>
-                    <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{service.title}</div>
-                    {service.description && (
-                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>{service.description}</div>
-                    )}
-                  </td>
-                  <td style={{ padding: '1rem 1.2rem' }}>
-                    <span className="badge" style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', borderRadius: '12px', padding: '0.2rem 0.6rem', fontSize: '0.78rem' }}>
-                      {service.category_name || 'Home Service'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '1rem 1.2rem', fontWeight: 700, color: '#10b981' }}>
-                    ₹{parseFloat(service.rate).toFixed(2)}
-                  </td>
-                  <td style={{ padding: '1rem 1.2rem', fontWeight: 700, color: '#3b82f6' }}>
-                    ₹{parseFloat(service.helper_charge || (service.rate - (service.platform_fee || 5))).toFixed(2)}
-                  </td>
-                  <td style={{ padding: '1rem 1.2rem', color: 'var(--text-muted)' }}>
-                    ₹{parseFloat(service.platform_fee || 5).toFixed(2)}
-                  </td>
-                  <td style={{ padding: '1rem 1.2rem', color: 'var(--text-muted)' }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                      <Clock size={14} /> {service.duration || '1 Hour'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '1rem 1.2rem' }}>
-                    <button
-                      onClick={() => handleToggle(service.id)}
-                      style={{
-                        border: 'none',
-                        background: service.is_active === 1 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                        color: service.is_active === 1 ? '#10b981' : '#ef4444',
-                        padding: '0.3rem 0.75rem',
-                        borderRadius: '20px',
-                        fontWeight: 600,
-                        fontSize: '0.78rem',
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.3rem'
-                      }}
-                    >
-                      {service.is_active === 1 ? <CheckCircle2 size={13} /> : <XCircle size={13} />}
-                      {service.is_active === 1 ? 'ACTIVE' : 'INACTIVE'}
-                    </button>
-                  </td>
-                  <td style={{ padding: '1rem 1.2rem', textAlign: 'right' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                      <button
-                        onClick={() => openEditModal(service)}
-                        className="btn btn-secondary"
-                        style={{ padding: '0.35rem 0.6rem', fontSize: '0.8rem' }}
-                        title="Edit Service"
-                      >
-                        <Edit2 size={14} /> Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(service.id, service.title)}
-                        className="btn btn-danger"
-                        style={{ padding: '0.35rem 0.6rem', fontSize: '0.8rem', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-                        title="Delete Service"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </td>
+            <table style={{ width: '100%', minWidth: '820px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
+              <thead>
+                <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  <th style={{ padding: '1rem 1.4rem' }}>Service Offering</th>
+                  <th style={{ padding: '1rem 1.2rem' }}>Category</th>
+                  <th style={{ padding: '1rem 1.2rem' }}>Customer Rate</th>
+                  <th style={{ padding: '1rem 1.2rem' }}>Helper Payout</th>
+                  <th style={{ padding: '1rem 1.2rem' }}>Platform Fee</th>
+                  <th style={{ padding: '1rem 1.2rem' }}>Duration</th>
+                  <th style={{ padding: '1rem 1.2rem' }}>Status</th>
+                  <th style={{ padding: '1rem 1.4rem', textAlign: 'right' }}>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredServices.map((service, index) => {
+                  const catDetails = getCategoryDetails(service.category_name);
+                  const CatIcon = catDetails.icon;
+                  const rate = parseFloat(service.rate) || 0;
+                  const fee = parseFloat(service.platform_fee) || 39;
+                  const helperCharge = parseFloat(service.helper_charge) || (rate > fee ? rate - fee : rate);
+                  const payoutPercent = rate > 0 ? Math.round((helperCharge / rate) * 100) : 85;
+
+                  return (
+                    <tr 
+                      key={service.id} 
+                      style={{ 
+                        borderBottom: index === filteredServices.length - 1 ? 'none' : '1px solid #f1f5f9',
+                        transition: 'background-color 0.15s ease'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}
+                    >
+                      {/* Service Info */}
+                      <td style={{ padding: '1.1rem 1.4rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                          <div style={{ 
+                            width: '40px', 
+                            height: '40px', 
+                            borderRadius: '10px', 
+                            backgroundColor: catDetails.bg, 
+                            border: `1px solid ${catDetails.border}`,
+                            color: catDetails.text,
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}>
+                            <CatIcon size={20} />
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.94rem' }}>
+                              {service.title}
+                            </div>
+                            {service.description && (
+                              <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '3px', lineHeight: 1.4, maxWidth: '440px' }}>
+                                {service.description}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Category Badge */}
+                      <td style={{ padding: '1.1rem 1.2rem' }}>
+                        <span style={{ 
+                          display: 'inline-flex', 
+                          alignItems: 'center', 
+                          gap: '5px',
+                          background: catDetails.bg, 
+                          color: catDetails.text, 
+                          border: `1px solid ${catDetails.border}`,
+                          borderRadius: '20px', 
+                          padding: '0.3rem 0.75rem', 
+                          fontSize: '0.78rem',
+                          fontWeight: 700
+                        }}>
+                          <CatIcon size={13} />
+                          {service.category_name || 'Home Service'}
+                        </span>
+                      </td>
+
+                      {/* Customer Rate */}
+                      <td style={{ padding: '1.1rem 1.2rem' }}>
+                        <div style={{ fontWeight: 800, color: '#16a34a', fontSize: '1.02rem' }}>
+                          ₹{rate.toFixed(2)}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>User Price</div>
+                      </td>
+
+                      {/* Helper Earning */}
+                      <td style={{ padding: '1.1rem 1.2rem' }}>
+                        <div style={{ fontWeight: 800, color: '#2563eb', fontSize: '1.02rem' }}>
+                          ₹{helperCharge.toFixed(2)}
+                        </div>
+                        <span style={{ 
+                          display: 'inline-block',
+                          fontSize: '0.7rem', 
+                          fontWeight: 700, 
+                          color: '#2563eb', 
+                          background: '#eff6ff', 
+                          padding: '1px 6px', 
+                          borderRadius: '6px',
+                          marginTop: '2px'
+                        }}>
+                          {payoutPercent}% Payout
+                        </span>
+                      </td>
+
+                      {/* Platform Fee */}
+                      <td style={{ padding: '1.1rem 1.2rem' }}>
+                        <div style={{ fontWeight: 700, color: '#475569' }}>
+                          ₹{fee.toFixed(2)}
+                        </div>
+                      </td>
+
+                      {/* Duration */}
+                      <td style={{ padding: '1.1rem 1.2rem', color: '#475569' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.84rem', fontWeight: 600 }}>
+                          <Clock size={14} color="#64748b" /> {service.duration || '1 Hour'}
+                        </span>
+                      </td>
+
+                      {/* Active Status */}
+                      <td style={{ padding: '1.1rem 1.2rem' }}>
+                        <button
+                          onClick={() => handleToggle(service.id)}
+                          style={{
+                            border: 'none',
+                            background: service.is_active === 1 ? '#dcfce7' : '#fee2e2',
+                            color: service.is_active === 1 ? '#15803d' : '#b91c1c',
+                            padding: '0.35rem 0.85rem',
+                            borderRadius: '20px',
+                            fontWeight: 700,
+                            fontSize: '0.76rem',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          {service.is_active === 1 ? <CheckCircle2 size={13} /> : <XCircle size={13} />}
+                          {service.is_active === 1 ? 'ACTIVE' : 'INACTIVE'}
+                        </button>
+                      </td>
+
+                      {/* Actions */}
+                      <td style={{ padding: '1.1rem 1.4rem', textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                          <button
+                            onClick={() => openEditModal(service)}
+                            style={{ 
+                              padding: '0.4rem 0.75rem', 
+                              fontSize: '0.8rem',
+                              fontWeight: 600,
+                              borderRadius: '8px',
+                              border: '1px solid #dbeafe',
+                              backgroundColor: '#eff6ff',
+                              color: '#2563eb',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              transition: 'all 0.15s ease'
+                            }}
+                            title="Edit Service"
+                          >
+                            <Edit2 size={13} /> Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(service.id, service.title)}
+                            style={{ 
+                              padding: '0.4rem 0.75rem', 
+                              fontSize: '0.8rem', 
+                              borderRadius: '8px',
+                              border: '1px solid #fee2e2',
+                              backgroundColor: '#fef2f2',
+                              color: '#dc2626', 
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              transition: 'all 0.15s ease'
+                            }}
+                            title="Delete Service"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
-      {/* Add / Edit Modal */}
+      {/* ── Add / Edit Modal (Crisp, Solid Background, No Overlap) ── */}
       {isModalOpen && (
-        <div className="modal-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
-          <div className="card animate-fade" style={{ width: '100%', maxWidth: '540px', padding: '1.8rem', borderRadius: '12px', background: 'var(--bg-card)', color: 'var(--text-main)', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)' }}>
-            <h2 style={{ margin: '0 0 1.2rem 0', fontSize: '1.4rem', fontWeight: 700 }}>
-              {editingService ? 'Edit Home Service' : 'Add New Home Service'}
-            </h2>
+        <div 
+          className="modal-overlay" 
+          onClick={(e) => {
+            if (e.target.classList.contains('modal-overlay')) setIsModalOpen(false);
+          }}
+        >
+          <div 
+            className="modal-dialog"
+            style={{ 
+              maxWidth: '560px',
+              backgroundColor: '#ffffff',
+              borderRadius: '20px',
+              boxShadow: '0 25px 60px -15px rgba(15, 23, 42, 0.4)',
+              border: '1px solid #e2e8f0',
+              overflow: 'hidden'
+            }}
+          >
+            {/* Header */}
+            <div className="modal-dialog-header" style={{ padding: '1.25rem 1.5rem', background: '#ffffff', borderBottom: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ 
+                  display: 'inline-flex', 
+                  padding: '7px', 
+                  borderRadius: '10px', 
+                  backgroundColor: '#eff6ff', 
+                  color: '#3b82f6' 
+                }}>
+                  <Home size={20} />
+                </span>
+                <div>
+                  <h3 className="modal-dialog-title" style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a' }}>
+                    {editingService ? 'Edit Home Service' : 'Add New Home Service'}
+                  </h3>
+                  <p className="modal-dialog-subtitle" style={{ fontSize: '0.78rem', color: '#64748b', margin: '2px 0 0 0' }}>
+                    Configure customer rates, helper earnings, and service duration
+                  </p>
+                </div>
+              </div>
 
+              <button 
+                type="button" 
+                onClick={() => setIsModalOpen(false)}
+                style={{ 
+                  background: '#f1f5f9', 
+                  border: 'none', 
+                  borderRadius: '8px', 
+                  width: '32px', 
+                  height: '32px', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  color: '#64748b',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.15s ease'
+                }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Form Body */}
             <form onSubmit={handleFormSubmit}>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>Category</label>
-                <select
-                  value={formData.category_id}
-                  onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
-                  className="form-control"
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '8px' }}
-                  required
-                >
-                  {categories.map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>Service Title</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Tap & Pipe Leakage Repair"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="form-control"
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '8px' }}
-                  required
-                />
-              </div>
-
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>Description</label>
-                <textarea
-                  placeholder="Brief explanation of work done..."
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="form-control"
-                  rows={2}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '8px' }}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div className="modal-dialog-body" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', backgroundColor: '#ffffff' }}>
+                {/* Category Selection */}
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>Customer Rate (₹)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder="199.00"
-                    value={formData.rate}
-                    onChange={(e) => {
-                      const rateVal = parseFloat(e.target.value || 0);
-                      const pfVal = parseFloat(formData.platform_fee || 5);
-                      const calculatedHC = rateVal > 0 ? (rateVal - pfVal) : 0;
-                      setFormData({ 
-                        ...formData, 
-                        rate: e.target.value,
-                        helper_charge: calculatedHC > 0 ? calculatedHC : formData.helper_charge
-                      });
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.4rem' }}>
+                    Service Category
+                  </label>
+                  <select
+                    value={formData.category_id}
+                    onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
+                    style={{ 
+                      width: '100%', 
+                      padding: '0.7rem 0.9rem', 
+                      borderRadius: '10px', 
+                      border: '1px solid #cbd5e1', 
+                      fontSize: '0.9rem',
+                      fontWeight: 600,
+                      color: '#0f172a',
+                      backgroundColor: '#f8fafc',
+                      outline: 'none'
                     }}
-                    className="form-control"
-                    style={{ width: '100%', padding: '0.6rem', borderRadius: '8px' }}
                     required
-                  />
+                  >
+                    {categories.map(cat => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
+                {/* Service Title */}
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>Helper Earning (₹)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder="175.00"
-                    value={formData.helper_charge}
-                    onChange={(e) => setFormData({ ...formData, helper_charge: e.target.value })}
-                    className="form-control"
-                    style={{ width: '100%', padding: '0.6rem', borderRadius: '8px' }}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.2rem' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>Platform Fee (₹)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.platform_fee}
-                    onChange={(e) => setFormData({ ...formData, platform_fee: e.target.value })}
-                    className="form-control"
-                    style={{ width: '100%', padding: '0.6rem', borderRadius: '8px' }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>Duration</label>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.4rem' }}>
+                    Service Title
+                  </label>
                   <input
                     type="text"
-                    placeholder="1 Hour"
-                    value={formData.duration}
-                    onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-                    className="form-control"
-                    style={{ width: '100%', padding: '0.6rem', borderRadius: '8px' }}
+                    placeholder="e.g. Kitchen Cleaning (Dishes & Slab Scrub)"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    style={{ 
+                      width: '100%', 
+                      padding: '0.7rem 0.9rem', 
+                      borderRadius: '10px', 
+                      border: '1px solid #cbd5e1', 
+                      fontSize: '0.9rem',
+                      color: '#0f172a',
+                      backgroundColor: '#f8fafc',
+                      outline: 'none'
+                    }}
+                    required
                   />
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.4rem' }}>
+                    Description
+                  </label>
+                  <textarea
+                    placeholder="Clear description of what the helper will perform..."
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    rows={2}
+                    style={{ 
+                      width: '100%', 
+                      padding: '0.7rem 0.9rem', 
+                      borderRadius: '10px', 
+                      border: '1px solid #cbd5e1', 
+                      fontSize: '0.88rem',
+                      color: '#0f172a',
+                      backgroundColor: '#f8fafc',
+                      outline: 'none',
+                      resize: 'vertical'
+                    }}
+                  />
+                </div>
+
+                {/* Pricing Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.4rem' }}>
+                      Customer Rate (₹)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="299.00"
+                      value={formData.rate}
+                      onChange={(e) => {
+                        const rateVal = parseFloat(e.target.value || 0);
+                        const pfVal = parseFloat(formData.platform_fee || 39);
+                        const calculatedHC = rateVal > pfVal ? (rateVal - pfVal) : 0;
+                        setFormData({ 
+                          ...formData, 
+                          rate: e.target.value,
+                          helper_charge: calculatedHC > 0 ? calculatedHC.toFixed(2) : formData.helper_charge
+                        });
+                      }}
+                      style={{ 
+                        width: '100%', 
+                        padding: '0.7rem 0.9rem', 
+                        borderRadius: '10px', 
+                        border: '1px solid #cbd5e1', 
+                        fontSize: '0.95rem',
+                        fontWeight: 700,
+                        color: '#16a34a',
+                        backgroundColor: '#f8fafc',
+                        outline: 'none'
+                      }}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.4rem' }}>
+                      Helper Earning (₹)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="260.00"
+                      value={formData.helper_charge}
+                      onChange={(e) => setFormData({ ...formData, helper_charge: e.target.value })}
+                      style={{ 
+                        width: '100%', 
+                        padding: '0.7rem 0.9rem', 
+                        borderRadius: '10px', 
+                        border: '1px solid #cbd5e1', 
+                        fontSize: '0.95rem',
+                        fontWeight: 700,
+                        color: '#2563eb',
+                        backgroundColor: '#f8fafc',
+                        outline: 'none'
+                      }}
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Platform Fee & Duration */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.4rem' }}>
+                      Platform Fee (₹)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={formData.platform_fee}
+                      onChange={(e) => setFormData({ ...formData, platform_fee: e.target.value })}
+                      style={{ 
+                        width: '100%', 
+                        padding: '0.7rem 0.9rem', 
+                        borderRadius: '10px', 
+                        border: '1px solid #cbd5e1', 
+                        fontSize: '0.9rem',
+                        fontWeight: 600,
+                        color: '#475569',
+                        backgroundColor: '#f8fafc',
+                        outline: 'none'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.4rem' }}>
+                      Duration
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 1.5 - 2 Hours"
+                      value={formData.duration}
+                      onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+                      style={{ 
+                        width: '100%', 
+                        padding: '0.7rem 0.9rem', 
+                        borderRadius: '10px', 
+                        border: '1px solid #cbd5e1', 
+                        fontSize: '0.9rem',
+                        color: '#0f172a',
+                        backgroundColor: '#f8fafc',
+                        outline: 'none'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Active Checkbox */}
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '10px', 
+                  padding: '0.75rem 1rem', 
+                  background: '#f8fafc', 
+                  borderRadius: '10px', 
+                  border: '1px solid #e2e8f0',
+                  marginTop: '0.25rem'
+                }}>
+                  <input
+                    type="checkbox"
+                    id="active_check"
+                    checked={formData.is_active === 1}
+                    onChange={(e) => setFormData({ ...formData, is_active: e.target.checked ? 1 : 0 })}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#3b82f6' }}
+                  />
+                  <label htmlFor="active_check" style={{ fontSize: '0.88rem', fontWeight: 700, color: '#334155', cursor: 'pointer' }}>
+                    Enable Service for Customer Booking
+                  </label>
                 </div>
               </div>
 
-              <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <input
-                  type="checkbox"
-                  id="active_check"
-                  checked={formData.is_active === 1}
-                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked ? 1 : 0 })}
-                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                />
-                <label htmlFor="active_check" style={{ fontSize: '0.88rem', fontWeight: 600, cursor: 'pointer' }}>
-                  Enable Service for Customer Booking
-                </label>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              {/* Footer */}
+              <div className="modal-dialog-footer" style={{ padding: '1rem 1.5rem', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="btn btn-secondary"
-                  style={{ padding: '0.6rem 1.2rem', borderRadius: '8px' }}
+                  style={{ 
+                    padding: '0.6rem 1.25rem', 
+                    borderRadius: '10px', 
+                    border: '1px solid #cbd5e1',
+                    background: '#ffffff',
+                    color: '#475569',
+                    fontWeight: 600,
+                    fontSize: '0.88rem',
+                    cursor: 'pointer'
+                  }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="btn btn-primary"
-                  style={{ padding: '0.6rem 1.4rem', borderRadius: '8px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer' }}
+                  disabled={submitting}
+                  style={{ 
+                    padding: '0.6rem 1.5rem', 
+                    borderRadius: '10px', 
+                    backgroundColor: '#3b82f6', 
+                    color: '#ffffff', 
+                    border: 'none', 
+                    fontWeight: 700, 
+                    fontSize: '0.88rem',
+                    cursor: submitting ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 4px 12px rgba(59, 130, 246, 0.25)',
+                    opacity: submitting ? 0.7 : 1
+                  }}
                 >
-                  {editingService ? 'Save Changes' : 'Create Service'}
+                  {submitting ? 'Saving...' : (editingService ? 'Save Changes' : 'Create Service')}
                 </button>
               </div>
             </form>

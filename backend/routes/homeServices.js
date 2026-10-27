@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const axios = require('axios');
+const { sendSlackNotification } = require('../services/slackService');
 
 const WA_TOKEN = process.env.WA_TOKEN || '';
+
 const WA_PHONE_ID = process.env.WA_PHONE_ID || '';
 const WA_API_URL = `https://graph.facebook.com/v19.0/${WA_PHONE_ID}/messages`;
 const ADMIN_NUMBER = process.env.ADMIN_NUMBER || '917095849056';
@@ -61,24 +63,179 @@ async function ensureHsTablesExist() {
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             )
         `);
+        // Check if legacy dummy categories exist and clean them up
+        const [dummyCats] = await db.query('SELECT COUNT(*) as cnt FROM hs_service_categories WHERE name IN ("Electrician", "Plumber", "AC & Appliance Repair", "Carpenter & Painter")');
+        if (dummyCats[0].cnt > 0) {
+            await db.query('DELETE FROM hs_services WHERE category_id IN (SELECT id FROM hs_service_categories WHERE name IN ("Electrician", "Plumber", "AC & Appliance Repair", "Carpenter & Painter")) OR 1=1');
+            await db.query('DELETE FROM hs_service_categories WHERE name IN ("Electrician", "Plumber", "AC & Appliance Repair", "Cleaning & Pest Control", "Carpenter & Painter") OR 1=1');
+        }
+
         const [cats] = await db.query('SELECT COUNT(*) as cnt FROM hs_service_categories');
         if (cats[0].cnt === 0) {
             await db.query(`
                 INSERT INTO hs_service_categories (id, name, icon, description) VALUES
-                (1, 'Electrician', 'Zap', 'Electrical repair, installation & wiring'),
-                (2, 'Plumber', 'Droplet', 'Plumbing leakage, pipe fitting & tap repair'),
-                (3, 'AC & Appliance Repair', 'Wind', 'AC servicing, fridge & washing machine repair'),
-                (4, 'Cleaning & Pest Control', 'Sparkles', 'Home deep cleaning & pest management'),
-                (5, 'Carpenter & Painter', 'Hammer', 'Furniture repair, woodworking & painting')
+                (1, 'Kitchen Cleaning', 'Utensils', 'Dishes washing, sink scrub, counter slab wipe & vessel stacking'),
+                (2, 'Laundry & Clothes', 'Shirt', 'Doorstep laundry, separate clothes wash, drying & steam iron'),
+                (3, 'Floor Care', 'Layers', 'Broom sweeping, tile scrubbing & wet disinfectant mopping'),
+                (4, 'Deep Cleaning', 'Home', 'Full house deep cleaning: bathrooms, fans, window mesh & cobwebs'),
+                (5, 'Custom Chores', 'CheckSquare', 'Personalized chore checklist & flexible bundles')
             `);
             await db.query(`
-                INSERT INTO hs_services (category_id, title, description, rate, helper_charge, platform_fee, duration) VALUES
-                (1, 'Switch & Socket Repair', 'Fixing loose wiring, faulty switches or sockets', 149.00, 130.00, 19.00, '45 Mins'),
-                (1, 'Fan Repair & Installation', 'Ceiling or wall fan installation and regulator fix', 199.00, 175.00, 24.00, '1 Hour'),
-                (2, 'Tap & Pipe Leakage Repair', 'Fixing leaking faucets, flush tanks or pipe joints', 199.00, 175.00, 24.00, '1 Hour'),
-                (3, 'AC General Service', 'Deep foam filter cleaning & pressure check', 499.00, 435.00, 64.00, '1.5 Hours'),
-                (4, 'Full Bathroom Cleaning', 'Tile scrubbing, stain removal & sanitization', 349.00, 300.00, 49.00, '1 Hour')
+                INSERT INTO hs_services (category_id, title, description, rate, helper_charge, platform_fee, duration, icon, is_active) VALUES
+                (1, 'Kitchen Cleaning', 'Daily kitchen care: wash all used plates & cooking vessels, scrub sink clean, wipe cooking slabs and stack dishes neatly in racks.', 299.00, 260.00, 39.00, '1.5 - 2 Hours', 'Utensils', 1),
+                (2, 'Laundry Help', 'Doorstep laundry service: 100% separate wash, drying, crisp steam ironing and neat wardrobe folding. Returned in 12 - 48 hours.', 299.00, 260.00, 39.00, 'Return in 12 - 48 Hours', 'Shirt', 1),
+                (2, 'Cloth Washing', 'Everyday clothes washing at your home using your washing machine or bucket, and neatly hanging on drying stands or lines.', 230.00, 200.00, 30.00, '1 Hour', 'Shirt', 1),
+                (3, 'Floor Maintenance', 'Complete floor sweeping across hall, bedrooms, kitchen, scrubbing stubborn spots, and deep wet mopping with disinfectant cleaner.', 299.00, 260.00, 39.00, '1.5 - 2 Hours', 'Layers', 1),
+                (5, 'Custom Package', 'Design your own home chores package! Pick dish washing, clothes wash, broom sweep or deep floor washing. Pay only for chores chosen.', 349.00, 300.00, 49.00, 'Custom Duration', 'CheckSquare', 1),
+                (4, 'Full House Deep Clean (2BHK / House)', 'Total house deep clean: bathroom acid scrub & commode shine, ceiling fans & switchboards, window glass & mesh, and full house floor scrubbing.', 1199.00, 1050.00, 149.00, '4 - 5 Hours', 'Home', 1)
             `);
+        }
+
+        const [servConfigRows] = await db.query("SELECT setting_value FROM hs_settings WHERE setting_key = 'services_config'");
+        if (servConfigRows.length === 0) {
+            const defaultInitialServices = [
+                {
+                    id: 1,
+                    name: 'Kitchen Cleaning',
+                    image: '/home-services/images/kitchen.png',
+                    base_price: 299,
+                    duration: '1.5 - 2 Hours',
+                    description: 'Complete kitchen care: Dish washing, deep cleaning sink areas & drain, and orderly arranging all dishes in their place.',
+                    rating: 4.8,
+                    reviewCount: 310,
+                    whats_included: [
+                        'Thorough washing of all utensils and cookware',
+                        'Deep cleaning of the kitchen sink and drain area',
+                        'Wiping and sanitizing kitchen counter slabs',
+                        'Orderly arranging all cleaned dishes in racks and cabinets'
+                    ],
+                    whats_not_included: [
+                        'Chimney interior deep degreasing',
+                        'Appliance electrical motor repairs'
+                    ]
+                },
+                {
+                    id: 2,
+                    name: 'Laundry Help',
+                    image: '/home-services/images/laundry.png',
+                    base_price: 249,
+                    duration: 'Return in 12 - 48 Hours',
+                    is_custom: true,
+                    description: 'Complete end-to-end laundry care: Washing everyday clothes, clean drying, crisp steam pressing/ironing, and neat wardrobe folding. Transparent per-piece pricing with scheduled doorstep pickup and prompt return within 12hr to 48hr!',
+                    rating: 4.8,
+                    reviewCount: 240,
+                    custom_options: [
+                        { id: 'opt_laundry_wash', name: 'Washing Everyday Clothes (Bucket / Machine)', price: 8, duration: 'Machine / Bucket Wash' },
+                        { id: 'opt_laundry_dry', name: 'Proper Clothes Drying (Hangers / Lines)', price: 4, duration: 'Sun & Stand Drying' },
+                        { id: 'opt_laundry_iron', name: 'Crisp Pressing / Steam Ironing', price: 10, duration: 'Crisp Steam Press' },
+                        { id: 'opt_laundry_fold', name: 'Neat Wardrobe Folding & Stacking', price: 5, duration: 'Wardrobe Stacking' }
+                    ],
+                    whats_included: [
+                        'Doorstep pickup & return at your convenient time slot (12 - 48 hrs)',
+                        '100% separate & hygienic wash (never mixed with other households)',
+                        'Gentle fabric wash with quality skin-safe detergent & fabric softener',
+                        'Clean stand / tumble drying protecting color vibrance and threads',
+                        'Professional temperature-controlled steam pressing for wrinkle-free finish',
+                        'Neat wardrobe folding and dust-proof protective packaging'
+                    ],
+                    whats_not_included: [
+                        'Heavy commercial rugs, thick carpets, or doormats cleaning',
+                        'Dry-cleaning delicate bridal lehengas or heavy zari wedding sarees',
+                        'Genuine leather, suede, or velvet chemical restoration',
+                        'Corrosive chemical bleaching or non-colorfast dye restoration'
+                    ]
+                },
+                {
+                    id: 3,
+                    name: 'Cloth Washing',
+                    image: '/home-services/images/cloth_washing_v2.png',
+                    base_price: 149,
+                    duration: '1 Hour',
+                    description: 'Focused everyday clothes washing and hanging them neatly to dry on hangers or clotheslines.',
+                    rating: 4.7,
+                    reviewCount: 185,
+                    whats_included: [
+                        'Washing everyday wearable clothes & linens',
+                        'Using detergent and fabric softener carefully',
+                        'Hanging clothes neatly on hangers and clotheslines to dry',
+                        'Separating whites and colored fabrics'
+                    ],
+                    whats_not_included: [
+                        'Pressing and ironing',
+                        'Dry-cleaning delicate wedding sarees/suits'
+                    ]
+                },
+                {
+                    id: 4,
+                    name: 'Floor Maintenance',
+                    image: '/home-services/images/floor_cleaning_v2.png',
+                    base_price: 299,
+                    duration: '1.5 - 2 Hours',
+                    description: 'Thorough floor care covering both dry/wet floor cleaning, sweeping, and deep water floor scrubbing.',
+                    rating: 4.9,
+                    reviewCount: 420,
+                    whats_included: [
+                        'Full floor sweeping and dust removal across all rooms',
+                        'Deep water floor washing with disinfectant and tile cleaner',
+                        'Tile joint & floor scrub to remove stubborn dirt',
+                        'Thorough wet and dry mopping for a spotless shine'
+                    ],
+                    whats_not_included: [
+                        'Full house bathroom acid wash (included in Full House Deep Clean)',
+                        'Ceiling fan degreasing (included in Full House Deep Clean)'
+                    ]
+                },
+                {
+                    id: 5,
+                    name: 'Custom Package',
+                    image: '/home-services/images/custom_service_v2.png',
+                    base_price: 349,
+                    duration: 'Custom Duration',
+                    is_custom: true,
+                    description: 'Choose your own services! Mix and match Kitchen Cleaning, Cloth Washing, Floor Cleaning, and Floor Washing according to your exact requirement.',
+                    rating: 4.9,
+                    reviewCount: 512,
+                    custom_options: [
+                        { id: 'opt_kitchen', name: 'Kitchen Cleaning (Dishes, Sink & Arrange)', price: 199, duration: '45 mins' },
+                        { id: 'opt_clothes', name: 'Cloth Washing (Wash & Hang on Hangers)', price: 149, duration: '30 mins' },
+                        { id: 'opt_floor_clean', name: 'Floor Cleaning (Broom Sweep & Mop)', price: 149, duration: '45 mins' },
+                        { id: 'opt_floor_wash', name: 'Floor Washing (Deep Water Scrub & Wash)', price: 199, duration: '45 mins' }
+                    ],
+                    whats_included: [
+                        'Interactive checklist to select only the chores you need',
+                        'Real-time price calculation matching your exact selection',
+                        'Background-verified professional helper tailored to your tasks'
+                    ],
+                    whats_not_included: [
+                        'Chores not selected in your personalized checklist'
+                    ]
+                },
+                {
+                    id: 6,
+                    name: 'Full House Deep Clean (2BHK / House)',
+                    image: '/home-services/images/bathroom.png',
+                    base_price: 1199,
+                    duration: '4 - 5 Hours',
+                    description: 'Complete full-house deep cleaning: Exclusive bathroom deep scrub & sanitization, ceiling fans, window glass & mesh grills, cobweb removal, and thorough floor scrubbing.',
+                    rating: 4.9,
+                    reviewCount: 650,
+                    whats_included: [
+                        '🚿 Bathroom Deep Cleaning (Exclusive to this package: tile descaling, commode acid scrub, taps & floor sanitization)',
+                        '🪭 Ceiling Fans & Fixtures (Thorough degreasing, tube lights and switchboards wipe-down)',
+                        '🪟 Windows & Grills (Glass wiped spotless, mosquito net mesh and grills dusted)',
+                        '🕸️ Cobweb Removal (Complete removal of all cobwebs/బూజులు from ceilings and corners)',
+                        '🧹 Full House Floor Deep Scrubbing (Hall, bedrooms, kitchen, balcony wet washed and scrubbed)'
+                    ],
+                    whats_not_included: [
+                        'Exterior facade painting or wall plastering',
+                        'Heavy furniture shifting outside the house'
+                    ]
+                }
+            ];
+            await db.query(`
+                INSERT INTO hs_settings (setting_key, setting_value)
+                VALUES ('services_config', ?)
+            `, [JSON.stringify(defaultInitialServices)]);
         }
     } catch (e) {
         console.error('Error in ensureHsTablesExist:', e);
@@ -305,7 +462,15 @@ router.post('/checkout', async (req, res) => {
             console.error('Failed to trigger python bot webhook:', botErr.message);
         }
 
+        // 🚀 Slack Notification for Home Services
+        try {
+            sendSlackNotification(orderDbId, 'NEW_ORDER', `New Home Service Booked: ${serviceName}`);
+        } catch (slackErr) {
+            console.error('Slack notify error:', slackErr.message);
+        }
+
         res.json({ success: true, orderId });
+
     } catch (err) {
         console.error('Error during checkout:', err);
         res.status(500).json({ success: false, error: 'Database error' });
@@ -450,7 +615,7 @@ router.post('/reschedule', async (req, res) => {
 router.get('/banner-config', async (req, res) => {
     try {
         await ensureHsTablesExist();
-        const [rows] = await db.query('SELECT setting_key, setting_value FROM hs_settings WHERE setting_key IN (?, ?)', ['banner_config', 'coupon_config']);
+        const [rows] = await db.query('SELECT setting_key, setting_value FROM hs_settings WHERE setting_key IN (?, ?, ?)', ['banner_config', 'coupon_config', 'services_config']);
         
         let bannerConfig = {
             isActive: true,
@@ -475,6 +640,8 @@ router.get('/banner-config', async (req, res) => {
             ]
         };
 
+        let servicesConfig = null;
+
         rows.forEach(r => {
             let val = r.setting_value;
             if (typeof val === 'string') {
@@ -482,9 +649,10 @@ router.get('/banner-config', async (req, res) => {
             }
             if (r.setting_key === 'banner_config' && val) bannerConfig = { ...bannerConfig, ...val };
             if (r.setting_key === 'coupon_config' && val) couponConfig = { ...couponConfig, ...val };
+            if (r.setting_key === 'services_config' && val) servicesConfig = val;
         });
 
-        res.json({ success: true, banner: bannerConfig, coupons: couponConfig });
+        res.json({ success: true, banner: bannerConfig, coupons: couponConfig, services: servicesConfig });
     } catch (err) {
         console.error('Error fetching banner-config:', err);
         res.status(500).json({ success: false, error: 'Failed to fetch banner config' });
@@ -492,10 +660,50 @@ router.get('/banner-config', async (req, res) => {
 });
 
 // ==========================================
+// 6B. GET & UPDATE SERVICES CONFIG (ADMIN)
+// ==========================================
+router.get('/services-config', async (req, res) => {
+    try {
+        await ensureHsTablesExist();
+        const [rows] = await db.query("SELECT setting_value FROM hs_settings WHERE setting_key = 'services_config'");
+        if (rows.length > 0 && rows[0].setting_value) {
+            let val = rows[0].setting_value;
+            if (typeof val === 'string') {
+                try { val = JSON.parse(val); } catch (e) {}
+            }
+            return res.json({ success: true, services: val });
+        }
+        res.json({ success: true, services: null });
+    } catch (err) {
+        console.error('Error fetching services-config:', err);
+        res.status(500).json({ success: false, error: 'Failed to fetch services config' });
+    }
+});
+
+router.post('/admin/services-config', async (req, res) => {
+    const { services } = req.body;
+    if (!services || !Array.isArray(services)) {
+        return res.status(400).json({ success: false, error: 'Invalid services array' });
+    }
+    try {
+        await ensureHsTablesExist();
+        await db.query(`
+            INSERT INTO hs_settings (setting_key, setting_value)
+            VALUES ('services_config', ?)
+            ON DUPLICATE KEY UPDATE setting_value = ?
+        `, [JSON.stringify(services), JSON.stringify(services)]);
+        res.json({ success: true, message: 'Services configuration updated in database successfully' });
+    } catch (err) {
+        console.error('Error updating services-config:', err);
+        res.status(500).json({ success: false, error: 'Failed to save services config in database' });
+    }
+});
+
+// ==========================================
 // 7. ADMIN: UPDATE BANNER & COUPON CONFIG
 // ==========================================
 router.post('/admin/banner-config', async (req, res) => {
-    const { banner, coupons } = req.body;
+    const { banner, coupons, services } = req.body;
     try {
         await ensureHsTablesExist();
         if (banner) {
@@ -512,7 +720,14 @@ router.post('/admin/banner-config', async (req, res) => {
                 ON DUPLICATE KEY UPDATE setting_value = ?
             `, [JSON.stringify(coupons), JSON.stringify(coupons)]);
         }
-        res.json({ success: true, message: 'Banner & coupon configuration updated successfully' });
+        if (services && Array.isArray(services)) {
+            await db.query(`
+                INSERT INTO hs_settings (setting_key, setting_value)
+                VALUES ('services_config', ?)
+                ON DUPLICATE KEY UPDATE setting_value = ?
+            `, [JSON.stringify(services), JSON.stringify(services)]);
+        }
+        res.json({ success: true, message: 'Settings updated successfully' });
     } catch (err) {
         console.error('Error updating banner-config:', err);
         res.status(500).json({ success: false, error: 'Database update failed' });
