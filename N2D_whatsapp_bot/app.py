@@ -183,7 +183,14 @@ async def webhook(request: Request):
                 value = change.get("value", {})
 
                 if "statuses" in value:
-                    logger.info("Ignoring status update.")
+                    for status_obj in value.get("statuses", []):
+                        status_name = status_obj.get("status")
+                        if status_name == "failed":
+                            recipient = status_obj.get("recipient_id")
+                            errors = status_obj.get("errors", [])
+                            logger.error(f"❌ WhatsApp message delivery FAILED to {recipient}: {json.dumps(errors)}")
+                        else:
+                            logger.info(f"WhatsApp message status update: {status_name} for {status_obj.get('id')}")
                     return JSONResponse({"status": "ack"})
 
                 for msg in value.get("messages", []):
@@ -349,6 +356,14 @@ async def internal_webhook(payload: InternalWebhookPayload):
 Status: 🔍 Searching for Helper'''
         btn = [{'id': f'TRACK_ORDER_{payload.orderId}', 'title': '📍 Track Booking'}, {'id': f'MANAGE_BOOKING_{payload.orderId}', 'title': '✏️ Manage Booking'}]
         send_reply_buttons(payload.customerId, msg, btn)
+        
+        # 🚀 Multi-Channel Slack Notification
+        try:
+            from utils.slack_notifier import notify_slack_order
+            notify_slack_order(payload.orderId, "NEW_ORDER", f"Home Service Booked: {payload.serviceName}")
+        except Exception:
+            pass
+
         return {'success': True}
     return {'success': False, 'error': 'Unknown event'}
 
