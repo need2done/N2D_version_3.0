@@ -35,6 +35,11 @@ export default function Earnings() {
   const [verifyingId, setVerifyingId] = useState(null);
   const [verifySuccessMsg, setVerifySuccessMsg] = useState(null);
 
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+  };
+
   const fetchEarnings = async (fDate = fromDate, tDate = toDate) => {
     setLoading(true);
     try {
@@ -44,7 +49,7 @@ export default function Earnings() {
       if (tDate) query.push(`to=${tDate}`);
       if (query.length) url += `?${query.join('&')}`;
 
-      const res = await fetch(url);
+      const res = await fetch(url, { headers: getAuthHeaders() });
       const result = await res.json();
       if (result.success) {
         setData(result);
@@ -61,7 +66,7 @@ export default function Earnings() {
   const fetchMedicineTransactions = async () => {
     setLoadingMedicine(true);
     try {
-      const res = await fetch(`${API_URL}/analytics/medicine-transactions`);
+      const res = await fetch(`${API_URL}/analytics/medicine-transactions`, { headers: getAuthHeaders() });
       const result = await res.json();
       if (result.success) {
         setMedicineData(result);
@@ -78,7 +83,7 @@ export default function Earnings() {
     try {
       const res = await fetch(`${API_URL}/analytics/verify-medicine-payment/${orderId}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
       });
       const result = await res.json();
       if (result.success) {

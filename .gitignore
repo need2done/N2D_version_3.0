@@ -19,6 +19,17 @@ __pycache__/
 
 # Environment (SENSITIVE — never commit!)
 .env
+*.env
+*.env.*
+*Copy.env*
+*vault*.pdf
+*Vault*.pdf
+*.docx
+*Partnership*.*
+*Pricing*.pdf
+*generate*.py
+scripts/*generate*.py
+uptime kuma.txt
 docs/AWS/full_data_backup.sql
 *.sql.gz
 *.sql

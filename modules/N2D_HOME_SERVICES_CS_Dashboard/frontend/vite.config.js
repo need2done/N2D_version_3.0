@@ -10,6 +10,7 @@ export default defineConfig({
     react()
   ],
   build: {
+    outDir: '../../../website/home-services',
     emptyOutDir: true
   }
 })

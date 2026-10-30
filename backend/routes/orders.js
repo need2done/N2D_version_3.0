@@ -82,7 +82,7 @@ async function sendWhatsAppButton(to, body, buttons) {
 // GET /api/orders — List all orders (Admin Dashboard)
 // Supports ?engine_type=TASK or ?engine_type=RIDE filter, and ?date=YYYY-MM-DD
 // ==========================================
-router.get('/', async (req, res) => {
+router.get('/', authenticateAdmin, async (req, res) => {
 
     try {
         const { status, engine_type, date, service, search, q } = req.query;
@@ -155,7 +155,7 @@ router.get('/', async (req, res) => {
 // ==========================================
 // GET /api/orders/:id — Single order detail with full timeline & media
 // ==========================================
-router.get('/:id', async (req, res) => {
+router.get('/:id', authenticateAdmin, async (req, res) => {
     try {
         const orderIdParam = String(req.params.id || '').trim();
         const cleanParam = orderIdParam.replace(/^#/, '');
@@ -1216,7 +1216,7 @@ router.post('/call-order', authenticateAdmin, async (req, res) => {
 // ==========================================
 // 8. GET /api/orders/:id/invoice — Retrieve or view tax invoice
 // ==========================================
-router.get('/:id/invoice', async (req, res) => {
+router.get('/:id/invoice', authenticateInternalOrToken, async (req, res) => {
     try {
         const [orders] = await db.query(`
             SELECT o.*, h.name as helper_name, h.phone as helper_phone, c.name as customer_name, c.phone as customer_phone
@@ -1248,7 +1248,7 @@ router.get('/:id/invoice', async (req, res) => {
 // ==========================================
 // 9. POST /api/orders/:id/send-invoice — Trigger invoice dispatch to customer
 // ==========================================
-router.post('/:id/send-invoice', async (req, res) => {
+router.post('/:id/send-invoice', authenticateInternalOrToken, async (req, res) => {
     try {
         const result = await sendOrderInvoiceReceipt(req.params.id);
         if (!result) {
@@ -1264,7 +1264,7 @@ router.post('/:id/send-invoice', async (req, res) => {
 // ==========================================
 // 10. GET /api/orders/:id/invoice-pdf — View / Download PDF invoice directly
 // ==========================================
-router.get('/:id/invoice-pdf', async (req, res) => {
+router.get('/:id/invoice-pdf', authenticateInternalOrToken, async (req, res) => {
     try {
         const [rows] = await db.query(`
             SELECT o.*, h.name as helper_name, h.phone as helper_phone, c.name as customer_name, c.phone as customer_phone

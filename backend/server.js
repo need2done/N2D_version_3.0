@@ -9,6 +9,7 @@ const fs = require('fs');
 const { apiRateLimiter } = require('./middleware/rateLimiter');
 
 const app = express();
+app.disable('x-powered-by');
 app.set('trust proxy', 1); // Trust first proxy (Nginx)
 
 // Set secure allowed origins

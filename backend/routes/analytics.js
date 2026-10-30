@@ -2,7 +2,11 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 const db = require('../config/db');
+const { authenticateAdmin } = require('../middleware/auth');
 const { sendOrderInvoiceReceipt } = require('../services/invoiceService');
+
+// All analytics routes require admin authentication
+router.use(authenticateAdmin);
 
 async function sendWhatsAppText(to, text) {
     const token = process.env.WA_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN || '';

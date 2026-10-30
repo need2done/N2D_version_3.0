@@ -48,6 +48,13 @@ def log_event(order_id: int, event_type: str, text: str, by: str):
 
         db.commit()
 
+        # 🚀 Multi-Channel Slack Status Dispatcher
+        try:
+            from utils.slack_notifier import notify_slack_order
+            notify_slack_order(order_id, event_type, text)
+        except Exception:
+            pass
+
     except Exception:
         traceback.print_exc()
         db.rollback()
@@ -55,3 +62,4 @@ def log_event(order_id: int, event_type: str, text: str, by: str):
     finally:
         cur.close()
         db.close()
+

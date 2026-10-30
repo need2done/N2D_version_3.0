@@ -46,7 +46,7 @@ def handle(session: dict, text: str, raw: dict):
             }
 
             if is_anywork:
-                header = "⚡ *N2D AnyWork Service* 🛠️"
+                header = "⚡ *N2D Custom Work Service* 🛠️"
                 desc = "Send parcels, run errands, or any custom task."
                 prompt = "📝 *How would you like to describe your task?*"
                 buttons = [
@@ -844,7 +844,7 @@ def handle(session: dict, text: str, raw: dict):
                 session["edit_mode"] = "REPLACE_ITEMS"
                 session["case_state"] = "ITEM_MODE"
                 
-                header = "✏️ *Let's reset and edit your Order* 🛒" if not is_anywork else "✏️ *Let's reset and edit your AnyWork Order* 🛠️"
+                header = "✏️ *Let's reset and edit your Order* 🛒" if not is_anywork else "✏️ *Let's reset and edit your Custom Work Order* 🛠️"
                 prompt = "🛒 *How would you like to add items?*" if not is_anywork else "📝 *How would you like to describe your task?*"
                 
                 buttons = [
@@ -898,7 +898,7 @@ def _summary(session: dict) -> str:
     is_anywork = service_id in (3, 5)
 
     if is_anywork:
-        header = "🛠️ *Order Summary - AnyWork*"
+        header = "🛠️ *Order Summary - Custom Work*"
         label  = "📝 *Task Details:*"
         cost_label = None  # AnyWork hides cost from summary
     elif service_id == 9:

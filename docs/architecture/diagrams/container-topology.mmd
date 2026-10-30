@@ -1,0 +1,92 @@
+flowchart TB
+    subgraph Clients["Client Tier"]
+        CustomerWA["Customer WhatsApp App\n(Mobile / Web)"]
+        CustomerBrowser["Customer Web Browser\n(/track/:token, SPAs)"]
+        HelperApp["Flutter Helper Tracking App\n(Android / iOS / n2d://)"]
+        AdminBrowser["Admin Operations Web App\n(React 19 / Vite SPA)"]
+    end
+
+    subgraph Edge["Edge & Ingress (AWS EC2 / Ubuntu 22.04)"]
+        Nginx["Nginx Reverse Proxy & SSL Engine\n(:80 -> :443 TLS Let's Encrypt)\nFile: nginx/need2done.conf"]
+    end
+
+    subgraph AppServer["Application Services Tier"]
+        subgraph NodeBackend["Node.js Express Server (:5000)"]
+            ExpressCore["Express v5.2 Core API Router\nFile: backend/server.js"]
+            WebhookProxy["Webhook Reverse Proxy\nForwarder to :8000"]
+            TrackingIngest["GPS Ingestion & Token Engine\nFile: backend/routes/tracking.js"]
+            OrderRoutes["Order & Billing Approvals API\nFile: backend/routes/orders.js"]
+            PaymentAPI["Razorpay Integration API\nFile: backend/routes/payments.js"]
+            CustomWorkAPI["Custom Work / Ola Distance Pricing\nFile: backend/routes/customWork.js"]
+            VerticalsAPI["Subsystem Routers (Food, Grocery, Home, etc.)\nFile: backend/routes/*"]
+        end
+
+        subgraph PythonBot["Python FastAPI Bot Engine (:8000)"]
+            FastAPICore["FastAPI v0.135 Core & Dedup\nFile: N2D_whatsapp_bot/app.py"]
+            RoleRouter["Role-Based Message Router\nFile: N2D_whatsapp_bot/core/role_router.py"]
+            CaseEngines["Service Case Engines (Ride, Veg, Home, AnyWork)\nFile: N2D_whatsapp_bot/cases/*"]
+            AutoAssigner["Auto-Assigner Daemon (30s Polling Thread)\nFile: N2D_whatsapp_bot/auto_assigner.py"]
+            HomeTimers["Home Service Timers (Asyncio Task)\nFile: N2D_whatsapp_bot/background_jobs.py"]
+            WAClient["WhatsApp Cloud API Client (v19.0)\nFile: N2D_whatsapp_bot/whatsapp_client.py"]
+        end
+    end
+
+    subgraph DataTier["Data & Persistence Tier"]
+        MySQL[("MySQL 8.0 Engine (:3306)\nDB: N2D (InnoDB / utf8mb4)\nFile: docs/AWS/schema_live_full.sql")]
+        LocalUploads["Local Filesystem Storage\n- Bill Uploads: N2D_whatsapp_bot/uploads/bills/\n- Backend Uploads: backend/public/uploads/"]
+    end
+
+    subgraph MonitoringTier["Observability & Operations Tier"]
+        UptimeKuma["Uptime Kuma Docker Container (:3001)\nFile: docker-compose.monitoring.yml"]
+        Logrotate["Logrotate & Shell Health Monitors\nFile: scripts/monitor_expirations.sh"]
+    end
+
+    subgraph ExternalServices["Third-Party External Services"]
+        MetaGraph["Meta WhatsApp Cloud API\n(graph.facebook.com/v19.0)"]
+        RazorpayGateway["Razorpay Payments API\n(api.razorpay.com/v1)"]
+        OlaMapsAPI["Ola Maps API & OAuth2 Token Server\n(api.olamaps.io)"]
+        OSM["OpenStreetMap Tiles\n(tile.openstreetmap.org)"]
+        TelegramBot["Telegram Incident Alerts API"]
+    end
+
+    %% Client Ingress Flow
+    CustomerWA -->|Messages / Buttons| MetaGraph
+    MetaGraph -->|POST /webhook| Nginx
+    CustomerBrowser -->|HTTPS GET /track, /groceries, etc.| Nginx
+    HelperApp -->|POST /api/tracking/update| Nginx
+    AdminBrowser -->|HTTPS API & Static App| Nginx
+
+    %% Nginx Routing
+    Nginx -->|/webhook, /api/*, /track/*| ExpressCore
+    Nginx -->|/status, /dashboard, /socket.io/| UptimeKuma
+    Nginx -->|Static /admin| AdminBrowser
+    Nginx -->|Static /groceries, /food, /| CustomerBrowser
+
+    %% Backend to Bot Internal Communication
+    WebhookProxy -->|HTTP POST :8000/webhook| FastAPICore
+    ExpressCore -->|POST :8000/internal/payment-success| FastAPICore
+    ExpressCore -->|POST :8000/api/bot/notify-surge| FastAPICore
+
+    %% Bot Internal Processing
+    FastAPICore --> RoleRouter
+    RoleRouter --> CaseEngines
+    CaseEngines --> WAClient
+    AutoAssigner --> WAClient
+    WAClient -->|HTTPS REST Outbound| MetaGraph
+
+    %% External Integrations
+    PaymentAPI -->|HTTPS Basic Auth| RazorpayGateway
+    CustomWorkAPI -->|OAuth2 / Directions API| OlaMapsAPI
+    CustomerBrowser -.->|Map Tiles| OSM
+    HelperApp -.->|Map Tiles| OSM
+    Logrotate -->|Alerts| TelegramBot
+
+    %% Database Operations
+    ExpressCore -->|mysql2 connection pool (10 conns)| MySQL
+    FastAPICore -->|MySQLConnectionPool (32 conns)| MySQL
+    AutoAssigner -->|Order polling & helper matching| MySQL
+    HomeTimers -->|Timer tracking & state expiry| MySQL
+
+    %% Local File I/O
+    CaseEngines -->|Write receipt images| LocalUploads
+    ExpressCore -->|Read & serve media / uploads| LocalUploads

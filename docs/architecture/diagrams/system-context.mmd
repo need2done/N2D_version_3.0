@@ -1,0 +1,31 @@
+C4Context
+    title System Context Diagram — Need2Done (N2D) Platform
+
+    Person(customer, "Customer / Citizen", "Interacts via WhatsApp and Web SPAs to request hyperlocal services, groceries, produce, rides, and home maintenance.")
+    Person(helper, "Field Agent / Helper", "Receives dispatches via WhatsApp & Flutter Tracking App, executes orders, uploads bill proofs, and streams live GPS.")
+    Person(vendor, "Merchant / Vendor", "Receives order items & dispatch alerts via WhatsApp, prepares orders for helper pickup.")
+    Person(admin, "Platform Operations Admin", "Oversees live dispatch, verifies shopping bills, configures surge pricing, monitors fleet & infrastructure.")
+
+    Enterprise_Boundary(b0, "Need2Done (N2D) System Boundary") {
+        System(n2d_system, "Need2Done Hyperlocal Commerce Platform", "Handles conversational ordering, automated agent dispatch, bill verification, dynamic pricing, live GPS telemetry, and payment collection.")
+    }
+
+    System_Ext(meta_whatsapp, "Meta WhatsApp Cloud API", "Official WhatsApp Business Platform for two-way transactional messaging, interactive buttons, and webhooks.")
+    System_Ext(razorpay, "Razorpay Payment Gateway", "UPI, card, and net-banking payment processing, order generation, and payment webhook callbacks.")
+    System_Ext(ola_maps, "Ola Maps Routing & Geocoding API", "OAuth 2.0 road-distance routing, estimated travel duration, and geocoding services.")
+    System_Ext(osm_tiles, "OpenStreetMap Tile Servers", "Free web mapping tile service for customer live tracking and helper app map rendering.")
+    System_Ext(telegram, "Telegram Alert Bot", "Operational uptime alerts and incident notifications for engineering and DevOps.")
+
+    Rel(customer, meta_whatsapp, "Sends messages, selects services, approves quotes, and confirms OTPs", "WhatsApp Client / HTTPS")
+    Rel(customer, n2d_system, "Views live GPS tracking & orders via web dashboards", "HTTPS / Web Browser")
+    Rel(helper, meta_whatsapp, "Receives order alerts, accepts bids, and uploads bill photos", "WhatsApp Client / HTTPS")
+    Rel(helper, n2d_system, "Streams continuous real-time GPS telemetry & views navigation", "n2d:// Deep Links & REST HTTPS")
+    Rel(vendor, meta_whatsapp, "Receives grocery/food prep notifications and updates item availability", "WhatsApp Client / HTTPS")
+    Rel(admin, n2d_system, "Approves bills, manages helpers, monitors health, adjusts pricing", "HTTPS / Admin React Dashboard")
+
+    Rel(meta_whatsapp, n2d_system, "Forwards inbound customer/helper messages via webhooks", "HTTPS Webhook (port 443)")
+    Rel(n2d_system, meta_whatsapp, "Dispatches interactive messages, templates, buttons, and media", "REST HTTPS (Graph API v19.0)")
+    Rel(n2d_system, razorpay, "Creates payment links and validates signatures", "REST HTTPS / Webhooks")
+    Rel(n2d_system, ola_maps, "Calculates driving routes and transit durations", "REST HTTPS (OAuth 2.0 Bearer)")
+    Rel(n2d_system, osm_tiles, "Fetches OpenStreetMap tiles for map interfaces", "HTTPS Tile Requests")
+    Rel(n2d_system, telegram, "Sends monitoring outage notifications", "REST HTTPS (Telegram Bot API)")

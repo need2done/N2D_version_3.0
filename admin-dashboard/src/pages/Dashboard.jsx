@@ -413,9 +413,17 @@ export default function Dashboard() {
     }
   };
 
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+  };
+
   const handleApprove = async (dbId) => {
     try {
-      const res = await fetch(`${API_URL}/orders/${dbId}/approve`, { method: 'POST' });
+      const res = await fetch(`${API_URL}/orders/${dbId}/approve`, { 
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
       const data = await res.json();
       if (data.success) {
         fetchData();
@@ -429,7 +437,10 @@ export default function Dashboard() {
 
   const handleVerifyItems = async (dbId) => {
     try {
-      const res = await fetch(`${API_URL}/orders/${dbId}/verify-items`, { method: 'POST' });
+      const res = await fetch(`${API_URL}/orders/${dbId}/verify-items`, { 
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
       const data = await res.json();
       if (data.success) {
         alert(`✅ Items verified! Payment ₹${data.total} sent to customer.`);
@@ -452,7 +463,7 @@ export default function Dashboard() {
     try {
       const res = await fetch(`${API_URL}/orders/${dbId}/cancel`, { 
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
           body: JSON.stringify({ reason })
       });
       const data = await res.json();
@@ -468,7 +479,10 @@ export default function Dashboard() {
 
   const handleUnlock = async (dbId) => {
     try {
-      const res = await fetch(`${API_URL}/orders/${dbId}/unlock`, { method: 'POST' });
+      const res = await fetch(`${API_URL}/orders/${dbId}/unlock`, { 
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
       const data = await res.json();
       if (data.success) {
         alert('✅ Ride unlocked successfully!');

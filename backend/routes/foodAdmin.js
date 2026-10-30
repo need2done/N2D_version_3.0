@@ -6,6 +6,9 @@ const fs = require('fs');
 const { authenticateAdmin } = require('../middleware/auth');
 const verifyAdminToken = authenticateAdmin;
 
+// All food admin management endpoints require admin authorization
+router.use(authenticateAdmin);
+
 
 // GET /api/food/items - Fetch all food items and restaurants
 router.get('/items', (req, res) => {

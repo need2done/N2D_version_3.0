@@ -55,17 +55,23 @@ def to_ist(dt) -> datetime:
         return None
     if isinstance(dt, str):
         try:
-            # Handle ISO string with/without Z
-            dt = datetime.fromisoformat(dt.replace('Z', '+00:00'))
+            # Handle ISO string with/without Z or offset
+            if 'Z' in dt or '+' in dt:
+                dt = datetime.fromisoformat(dt.replace('Z', '+00:00'))
+                return dt.astimezone(IST)
+            else:
+                dt = datetime.strptime(dt[:19], "%Y-%m-%d %H:%M:%S")
+                return dt.replace(tzinfo=IST)
         except Exception:
             try:
                 dt = datetime.strptime(dt[:19], "%Y-%m-%d %H:%M:%S")
+                return dt.replace(tzinfo=IST)
             except Exception:
                 return None
     if isinstance(dt, datetime):
         if dt.tzinfo is None:
-            # Naive datetime from MySQL (stored in UTC)
-            dt = dt.replace(tzinfo=timezone.utc)
+            # MySQL timestamps on server (NOW()) are ALREADY generated in IST
+            return dt.replace(tzinfo=IST)
         return dt.astimezone(IST)
     return None
 
@@ -131,7 +137,7 @@ def format_order_broadcast_timing(order, pdata=None):
     if created_at_ist:
         c_date = created_at_ist.date()
         c_time_str = created_at_ist.strftime('%I:%M %p').lstrip('0')
-        age_hours = (now_ist - created_at_ist).total_seconds() / 3600.0
+        age_hours = max(0.0, (now_ist - created_at_ist).total_seconds() / 3600.0)
 
         if not booking_date_str:
             # For non-scheduled instant orders, filter out old orders older than max age
@@ -262,7 +268,7 @@ def run_auto_assigner():
               AND engine_type = 'TASK'
               AND status IN ('CONFIRMED', 'ADMIN_APPROVED_BILL', 'PLACED', 'PACKED', 'BILL_SENT', 'PENDING')
               AND status NOT IN ('CANCELLED', 'COMPLETED', 'EXPIRED')
-              AND service NOT IN ('Medicines', 'Any Work', 'Parcel', 'Support', 'Home Services')
+              AND service NOT IN ('Medicines', 'Any Work', 'AnyWork', 'Custom Work', 'Parcel', 'Support', 'Home Services')
               AND (created_at IS NULL OR created_at >= NOW() - INTERVAL 24 HOUR)
         """)
         unassigned_vendor_orders = cur.fetchall()
@@ -385,7 +391,7 @@ def run_auto_assigner():
                 vendor_status IN ('PACKED', 'ACCEPTED', 'UNASSIGNED', 'NONE', '')
                 OR vendor_status IS NULL 
                 OR engine_type = 'RIDE'
-                OR service IN ('Any Work', 'Parcel', 'Support', 'Home Services')
+                OR service IN ('Any Work', 'AnyWork', 'Custom Work', 'Parcel', 'Support', 'Home Services')
             )
             AND helper_id IS NULL
             AND status NOT IN ('CANCELLED', 'COMPLETED', 'EXPIRED', 'DELIVERED', 'DRAFT')
@@ -436,6 +442,8 @@ def run_auto_assigner():
             if helpers:
                 logger.info(f"🚀 HELPER AUTO-ASSIGN: Broadcasting Order {order['order_id']} ({order['service']}) to {len(helpers)} nearby helpers within {radius}km radius.")
             
+            service_disp = "Custom Work" if str(order.get('service', '')).lower() in ("anywork", "any work", "custom work", "3", "5") else order['service']
+
             for h in helpers:
                 dist_val = h.get('distance', 0.0)
                 if dist_val and dist_val > 0.05:
@@ -446,7 +454,7 @@ def run_auto_assigner():
                 msg = (
                     f"📦 *New Order Available!*\n\n"
                     f"🆔 Order : {order['order_id']}\n"
-                    f"🛠 Service: {order['service']}\n"
+                    f"🛠 Service: {service_disp}\n"
                     f"{details_line}"
                     f"{timing_lines}"
                     f"📍 Distance: {dist_str}\n\n"

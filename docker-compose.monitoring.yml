@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: uptime-kuma
+    restart: always
+    ports:
+      - "127.0.0.1:3001:3001"
+    volumes:
+      - uptime-kuma-data:/app/data
+    environment:
+      - NODE_ENV=production
+      - UPTIME_KUMA_BASE_PATH=/status
+
+volumes:
+  uptime-kuma-data:
+    driver: local

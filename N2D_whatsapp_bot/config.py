@@ -199,7 +199,7 @@ def get_service_pricing(service_name_str: str) -> dict:
     elif "medicine" in svc_lower:
         hc = safe_float(env_vars.get("HELPER_CHARGE_MEDICINES"), default_hc)
         pf = safe_float(env_vars.get("PLATFORM_FEE_MEDICINES"), default_pf)
-    elif "anywork" in svc_lower or "any work" in svc_lower:
+    elif "anywork" in svc_lower or "any work" in svc_lower or "custom" in svc_lower:
         hc = safe_float(env_vars.get("HELPER_CHARGE_ANYWORK"), default_hc)
         pf = safe_float(env_vars.get("PLATFORM_FEE_ANYWORK"), default_pf)
     elif "ride" in svc_lower:

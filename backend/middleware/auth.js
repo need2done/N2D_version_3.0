@@ -151,6 +151,13 @@ function authenticateInternalOrToken(req, res, next) {
         return next();
     }
 
+    // Direct loopback calls from internal services on same host (Python bot, cron tasks)
+    const isDirectLocal = !req.headers['x-forwarded-for'] && (req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1' || req.socket?.remoteAddress === '127.0.0.1');
+    if (isDirectLocal) {
+        req.isBot = true;
+        return next();
+    }
+
     // Otherwise check JWT token
     const authHeader = req.headers.authorization;
     let token = null;

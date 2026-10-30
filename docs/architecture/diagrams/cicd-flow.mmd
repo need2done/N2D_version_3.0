@@ -1,0 +1,36 @@
+flowchart LR
+    subgraph DevWorkstation["Developer Environment (Windows / Mac / Linux)"]
+        CodeEdit["Local Development & Code Changes\n(backend, bot, tracking-app, admin)"]
+        LocalTests["Local Verification Scripts\n- tests/test_pricing.py\n- tests/test_whatsapp_flow.js\n- tests/test_ola_maps.js"]
+        GitCommit["Git Commit & Push\nBranch: main (upstream v3/main)"]
+    end
+
+    subgraph SourceControl["Remote Repository (GitHub / Inferred)"]
+        RemoteRepo["Git Remote: need2done/N2D.git\nBranch: main\nLatest Commit: a609e45d0701..."]
+    end
+
+    subgraph CIAutomation["CI / CD Automation Pipeline (AUDIT GAP)"]
+        GapNotice["⚠️ UNVERIFIED: No .github/workflows or CI runners found\nDeployments are executed manually via shell scripts."]
+    end
+
+    subgraph ProductionEC2["Production Deployment (AWS EC2 / Ubuntu 22.04)"]
+        DeployTrigger["Operator Trigger:\n./scripts/deploy_prod.sh\n(via SSH on port 22)"]
+        GitPull["Step 1: git pull origin main\nFetch latest code"]
+        ServiceStop["Step 2: ./scripts/stop_all.sh\nGracefully kill Node & Python PIDs"]
+        NginxUpdate["Step 3: Update Nginx Config\ncp nginx/need2done.conf /etc/nginx/sites-available/\nnginx -t && systemctl reload nginx"]
+        DashboardBuild["Step 4: Vite Dashboard Rebuild\ncd admin-dashboard && npm run build\nOutput: admin-dashboard/dist/"]
+        ServiceStart["Step 5: ./scripts/start_all.sh\n- start_bot.sh (:8000 via nohup)\n- wait 3s initialization\n- start_backend.sh (:5000 via nohup)\n- setup_uptime_kuma.sh (:3001)"]
+        HealthVerify["Step 6: Health Verification\ncurl https://need2done.in/api/health\nStatus: https://need2done.in/status"]
+    end
+
+    CodeEdit --> LocalTests
+    LocalTests --> GitCommit
+    GitCommit --> RemoteRepo
+    RemoteRepo -.-> GapNotice
+    RemoteRepo --> GitPull
+    DeployTrigger --> GitPull
+    GitPull --> ServiceStop
+    ServiceStop --> NginxUpdate
+    NginxUpdate --> DashboardBuild
+    DashboardBuild --> ServiceStart
+    ServiceStart --> HealthVerify

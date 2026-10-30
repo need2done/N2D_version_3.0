@@ -124,33 +124,75 @@ const Home = () => {
           </button>
         </div>
         
-        {/* 3 vertical (columns) grid for 6 items total = 3x2 grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
-          {allServices.map((service, idx) => (
-            <Link 
-              to={`/service/${service.id}`} 
-              key={idx} 
-              className="bg-white rounded-[32px] overflow-hidden shadow-[0_10px_40px_rgb(0,0,0,0.06)] hover:shadow-[0_10px_40px_rgb(0,0,0,0.12)] border border-gray-100 transition-all duration-300 group flex flex-col transform hover:-translate-y-2"
-            >
-              <div className="w-full aspect-[4/3] overflow-hidden relative">
-                <img 
-                  src={service.image} 
-                  alt={service.name} 
-                  className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700 ease-in-out" 
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              </div>
-              <div className="p-6 md:p-8 w-full text-center bg-white relative z-10 flex flex-col items-center justify-center">
-                <h3 className="font-black text-gray-900 text-lg md:text-2xl tracking-tight mb-2">
-                  {service.name}
-                </h3>
-                <div className="w-10 h-1 bg-blue-500 rounded-full mb-3 transform origin-left group-hover:scale-x-150 transition-transform duration-300"></div>
-                <span className="text-blue-600 text-sm font-bold flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
-                  Book Now <FaArrowRight className="ml-1.5 text-xs" />
-                </span>
-              </div>
-            </Link>
-          ))}
+        {/* Responsive grid: 1 col on mobile, 2 cols on tablet, 3 cols on desktop */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+          {allServices.map((service, idx) => {
+            const shortHighlight = service.short_summary || (
+              service.id === 1 ? 'Dishes • Sink Scrub • Slab Wipe • Vessels Stack' :
+              service.id === 2 ? 'Wash • Stand Dry • Steam Press • Fold' :
+              service.id === 3 ? 'Daily Clothes Wash • Machine / Bucket • Line Dry' :
+              service.id === 4 ? 'Room Sweep • Tile Floor Scrub • Wet Mop' :
+              service.id === 5 ? 'Choose Tasks: Kitchen, Wash, Sweeping & more' :
+              'Deep Clean: Bathrooms, Fans, Windows & Floors'
+            );
+
+            return (
+              <Link 
+                to={`/service/${service.id}`} 
+                key={idx} 
+                className="bg-white rounded-[28px] overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:shadow-[0_14px_45px_rgb(0,0,0,0.12)] border border-gray-100 transition-all duration-300 group flex flex-col transform hover:-translate-y-1.5 relative"
+              >
+                {service.name.includes('Full House') ? (
+                  <div className="absolute top-4 right-4 z-20 bg-indigo-600 text-white text-[11px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-md">
+                    ⭐ Deep Clean (₹1,199)
+                  </div>
+                ) : (service.is_custom || service.name.includes('Custom')) ? (
+                  <div className="absolute top-4 right-4 z-20 bg-blue-600 text-white text-[11px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-md">
+                    ⚡ Customizable
+                  </div>
+                ) : null}
+
+                <div className="w-full aspect-[16/10] overflow-hidden relative">
+                  <img 
+                    src={service.image} 
+                    alt={service.name} 
+                    className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500 ease-out" 
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                </div>
+
+                <div className="p-5 md:p-6 w-full bg-white relative z-10 flex flex-col justify-between flex-1">
+                  <div>
+                    <h3 className="font-black text-gray-950 text-xl tracking-tight mb-2 leading-snug">
+                      {service.name}
+                    </h3>
+
+                    {/* What this service covers in plain terms */}
+                    <p className="text-xs font-semibold text-gray-700 bg-gray-100/90 border border-gray-200/60 px-3 py-1.5 rounded-xl mb-4 line-clamp-1">
+                      {shortHighlight}
+                    </p>
+
+                    {/* Duration & Price Row */}
+                    <div className="flex items-center justify-between gap-2 pt-3 border-t border-gray-100 text-xs">
+                      <span className="font-bold text-gray-700 flex items-center gap-1.5">
+                        <span className="text-sm">{service.id === 2 ? '🚚' : '⏱️'}</span>
+                        <span>{service.duration}</span>
+                      </span>
+                      <span className="font-black text-blue-700 bg-blue-50 border border-blue-100 px-3 py-1 rounded-lg text-sm">
+                        ₹{service.base_price}{service.id === 2 ? '/pc' : ' onwards'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Always Visible View & Book CTA */}
+                  <div className="w-full mt-4 py-2.5 px-4 rounded-xl bg-blue-600 group-hover:bg-blue-700 text-white text-xs sm:text-sm font-black flex items-center justify-center transition-colors shadow-sm">
+                    <span>View Details & Book</span>
+                    <FaArrowRight className="ml-2 text-xs group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       </section>
 

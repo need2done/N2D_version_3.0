@@ -9,7 +9,7 @@ import {
 
 const Dashboard = () => {
   const { 
-    services, addService, updateService, deleteService, 
+    services, addService, updateService, deleteService, resetServices,
     platformFee, setPlatformFee, 
     isAdminAuth, setIsAdminAuth,
     bannerConfig, saveBannerConfig,
@@ -27,6 +27,7 @@ const Dashboard = () => {
   const [basePrice, setBasePrice] = useState('');
   const [duration, setDuration] = useState('');
   const [image, setImage] = useState('');
+  const [customOptions, setCustomOptions] = useState([]);
 
   // Fee Form State
   const [feeInput, setFeeInput] = useState(platformFee);
@@ -106,6 +107,7 @@ const Dashboard = () => {
     setBasePrice('');
     setDuration('');
     setImage('');
+    setCustomOptions([]);
     setCurrentService(null);
     setIsEditingService(false);
   };
@@ -116,9 +118,72 @@ const Dashboard = () => {
     setBasePrice(service.base_price);
     setDuration(service.duration);
     setImage(service.image);
+
+    // Initialize custom options if available or if custom service
+    if (service.custom_options && Array.isArray(service.custom_options) && service.custom_options.length > 0) {
+      setCustomOptions(JSON.parse(JSON.stringify(service.custom_options)));
+    } else if (service.id === 2 || service.name?.toLowerCase().includes('laundry')) {
+      setCustomOptions([
+        { id: 'opt_laundry_wash', name: 'Washing Everyday Clothes (Bucket / Machine)', price: 8, duration: 'Machine / Bucket Wash' },
+        { id: 'opt_laundry_dry', name: 'Proper Clothes Drying (Hangers / Lines)', price: 4, duration: 'Sun & Stand Drying' },
+        { id: 'opt_laundry_iron', name: 'Crisp Pressing / Steam Ironing', price: 10, duration: 'Crisp Steam Press' },
+        { id: 'opt_laundry_fold', name: 'Neat Wardrobe Folding & Stacking', price: 5, duration: 'Wardrobe Stacking' }
+      ]);
+    } else if (service.is_custom || service.name?.includes('Custom')) {
+      setCustomOptions([
+        { id: 'opt_kitchen', name: 'Kitchen Cleaning (Dishes, Sink & Arrange)', price: 199, duration: '45 mins' },
+        { id: 'opt_clothes', name: 'Cloth Washing (Wash & Hang on Hangers)', price: 149, duration: '30 mins' },
+        { id: 'opt_floor_clean', name: 'Floor Cleaning (Broom Sweep & Mop)', price: 149, duration: '45 mins' },
+        { id: 'opt_floor_wash', name: 'Floor Washing (Deep Water Scrub & Wash)', price: 199, duration: '45 mins' }
+      ]);
+    } else {
+      setCustomOptions([]);
+    }
+
     setCurrentService(service);
     setIsEditingService(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Custom Options Handlers for package sub-tasks (e.g. Floor Cleaning, Floor Washing, Kitchen, Laundry)
+  const handleCustomOptionPriceChange = (index, newPrice) => {
+    setCustomOptions(prev => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], price: parseFloat(newPrice) || 0 };
+      return copy;
+    });
+  };
+
+  const handleCustomOptionNameChange = (index, newName) => {
+    setCustomOptions(prev => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], name: newName };
+      return copy;
+    });
+  };
+
+  const handleCustomOptionDurationChange = (index, newDuration) => {
+    setCustomOptions(prev => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], duration: newDuration };
+      return copy;
+    });
+  };
+
+  const handleAddCustomOption = () => {
+    setCustomOptions(prev => [
+      ...prev,
+      {
+        id: `opt_${Date.now()}`,
+        name: 'New Custom Task',
+        price: 99,
+        duration: '30 mins'
+      }
+    ]);
+  };
+
+  const handleRemoveCustomOption = (index) => {
+    setCustomOptions(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleServiceSubmit = (e) => {
@@ -128,12 +193,16 @@ const Dashboard = () => {
       description,
       base_price: parseFloat(basePrice) || 0,
       duration,
-      image: image || `${import.meta.env.BASE_URL}images/dishwashing.png`
+      image: image || `${import.meta.env.BASE_URL}images/dishwashing.png`,
+      ...(customOptions && customOptions.length > 0 ? {
+        custom_options: customOptions,
+        is_custom: true
+      } : (currentService && currentService.custom_options ? { custom_options: customOptions } : {}))
     };
 
     if (currentService) {
       updateService(currentService.id, serviceData);
-      alert('Service updated successfully!');
+      alert('Service and pricing updated successfully!');
     } else {
       addService(serviceData);
       alert('New service added successfully!');
@@ -219,9 +288,14 @@ const Dashboard = () => {
           
           <div className="flex items-center gap-3">
             <button 
-              onClick={() => {
-                if(window.confirm('This will delete all custom services and restore default services. Continue?')) {
-                  localStorage.removeItem('n2d_services');
+              onClick={async () => {
+                if(window.confirm('This will restore the 6 updated Need2Done Home Services and sync with the database. Continue?')) {
+                  if (resetServices) {
+                    await resetServices();
+                  } else {
+                    localStorage.removeItem('n2d_services');
+                    localStorage.removeItem('n2d_services_v2');
+                  }
                   window.location.reload();
                 }
               }} 
@@ -314,6 +388,29 @@ const Dashboard = () => {
                 </div>
 
                 <form onSubmit={handleServiceSubmit} className="space-y-4">
+                  {/* Floor Service Guidance Banner */}
+                  {currentService && currentService.name?.toLowerCase().includes('floor') && (
+                    <div className="p-3.5 bg-amber-50/90 border-2 border-amber-200 rounded-2xl text-xs text-amber-900 shadow-xs">
+                      <div className="font-black flex items-center gap-1.5 mb-1 text-amber-950">
+                        <span className="text-base">💡</span> Floor Pricing Quick Guide:
+                      </div>
+                      <p className="text-[11px] leading-relaxed mb-2.5 text-amber-800 font-medium">
+                        The Base Price below (<strong>₹{basePrice || 299}</strong>) applies to the standalone <strong>Floor Maintenance</strong> service (full dry/wet sweep & deep scrub).<br/>
+                        To edit the individual <strong>Floor Cleaning (+₹149)</strong> or <strong>Floor Washing (+₹199)</strong> checklist prices, edit the <strong>Custom Package</strong>.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const customPkg = services.find(s => s.is_custom || s.name?.includes('Custom'));
+                          if (customPkg) handleEditServiceClick(customPkg);
+                        }}
+                        className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white font-black rounded-xl text-xs shadow-xs transition-all"
+                      >
+                        <span>👉</span> Edit Custom Package Floor Prices (₹149 / ₹199)
+                      </button>
+                    </div>
+                  )}
+
                   <div>
                     <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Service Title</label>
                     <input 
@@ -363,6 +460,99 @@ const Dashboard = () => {
                     ></textarea>
                   </div>
 
+                  {/* Custom Sub-Tasks Pricing Editor (Floor, Kitchen, Laundry) */}
+                  {(customOptions.length > 0 || (currentService && (currentService.is_custom || currentService.name?.includes('Custom')))) ? (
+                    <div className="pt-3 border-t-2 border-blue-100 bg-blue-50/50 -mx-6 px-6 py-4 rounded-2xl border border-blue-200/60 my-2">
+                      <div className="flex items-center justify-between mb-2.5">
+                        <div>
+                          <h3 className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-1.5">
+                            <span className="text-blue-600">⚡</span> Custom Sub-Task Pricing ({customOptions.length})
+                          </h3>
+                          <p className="text-[11px] text-gray-600 font-medium">Edit individual floor, kitchen & laundry task prices</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleAddCustomOption}
+                          className="text-[11px] font-black text-blue-700 bg-white hover:bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-300 transition-all flex items-center gap-1 shadow-xs"
+                        >
+                          <FaPlus size={10} /> Add Task
+                        </button>
+                      </div>
+
+                      <div className="space-y-3">
+                        {customOptions.map((opt, idx) => (
+                          <div key={opt.id || idx} className="p-3 bg-white border border-gray-200 rounded-xl shadow-xs">
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+                                Task #{idx + 1}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveCustomOption(idx)}
+                                className="text-gray-400 hover:text-red-500 text-xs p-1 transition-colors"
+                                title="Remove Task"
+                              >
+                                <FaTimes />
+                              </button>
+                            </div>
+                            <div className="space-y-2">
+                              <div>
+                                <label className="block text-[10px] font-bold text-gray-600 uppercase mb-0.5">Task Name</label>
+                                <input
+                                  type="text"
+                                  value={opt.name}
+                                  onChange={(e) => handleCustomOptionNameChange(idx, e.target.value)}
+                                  className="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg bg-gray-50/50 font-bold text-gray-900 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none"
+                                  placeholder="e.g. Floor Cleaning (Broom Sweep & Mop)"
+                                />
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="block text-[10px] font-bold text-gray-600 uppercase mb-0.5">
+                                    Price (₹{(currentService?.id === 2 || currentService?.name?.toLowerCase().includes('laundry')) ? ' per piece' : ''})
+                                  </label>
+                                  <div className="relative">
+                                    <span className="absolute left-2.5 top-1.5 text-xs text-blue-600 font-black">₹</span>
+                                    <input
+                                      type="number"
+                                      value={opt.price}
+                                      onChange={(e) => handleCustomOptionPriceChange(idx, e.target.value)}
+                                      className="w-full pl-6 pr-2 py-1.5 text-xs border-2 border-blue-200 rounded-lg bg-blue-50/30 font-black text-blue-700 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-600 outline-none"
+                                      placeholder="149"
+                                    />
+                                  </div>
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold text-gray-600 uppercase mb-0.5">Duration</label>
+                                  <input
+                                    type="text"
+                                    value={opt.duration}
+                                    onChange={(e) => handleCustomOptionDurationChange(idx, e.target.value)}
+                                    className="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg bg-gray-50/50 font-medium text-gray-700 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none"
+                                    placeholder="45 mins"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : isEditingService && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomOptions([
+                          { id: `opt_1_${Date.now()}`, name: 'Floor Cleaning (Broom Sweep & Mop)', price: 149, duration: '45 mins' },
+                          { id: `opt_2_${Date.now()}`, name: 'Floor Washing (Deep Water Scrub & Wash)', price: 199, duration: '45 mins' }
+                        ]);
+                      }}
+                      className="w-full text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 py-2.5 rounded-xl transition-all border border-dashed border-blue-300 flex items-center justify-center gap-1.5"
+                    >
+                      <FaPlus size={11} /> Enable Sub-Task Checklist (Custom Pricing)
+                    </button>
+                  )}
+
                   <div>
                     <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Service Image</label>
                     <div className="mt-1 flex items-center gap-4">
@@ -378,7 +568,7 @@ const Dashboard = () => {
                     type="submit" 
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-3.5 rounded-xl shadow-lg transition-all mt-4 text-sm"
                   >
-                    {isEditingService ? 'Update Service' : 'Add New Service'}
+                    {isEditingService ? 'Update Service & Prices' : 'Add New Service'}
                   </button>
                 </form>
               </div>
@@ -394,35 +584,76 @@ const Dashboard = () => {
                 
                 <ul className="divide-y divide-gray-100">
                   {services.map((service) => (
-                    <li key={service.id} className="p-6 hover:bg-gray-50/80 transition-colors flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-4 min-w-0">
-                        <img src={service.image} alt={service.name} className="h-16 w-16 rounded-2xl object-cover shadow-sm border border-gray-100 flex-shrink-0" />
-                        <div className="min-w-0">
-                          <h3 className="text-base font-black text-gray-900 truncate">{service.name}</h3>
-                          <p className="text-xs text-gray-500 font-bold mt-0.5">{service.duration} • <span className="text-blue-600 font-black">₹{service.base_price}</span></p>
-                          <p className="text-xs text-gray-400 truncate mt-1">{service.description}</p>
+                    <li key={service.id} className="p-6 hover:bg-gray-50/80 transition-colors">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-4 min-w-0">
+                          <img src={service.image} alt={service.name} className="h-16 w-16 rounded-2xl object-cover shadow-sm border border-gray-100 flex-shrink-0" />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="text-base font-black text-gray-900">{service.name}</h3>
+                              {service.is_custom && (
+                                <span className="bg-blue-100 text-blue-800 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
+                                  Custom Checklist
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-500 font-bold mt-0.5">
+                              {service.duration} • <span className="text-blue-600 font-black">Base ₹{service.base_price}</span>
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1 line-clamp-2">{service.description}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <button 
+                            onClick={() => handleEditServiceClick(service)} 
+                            className="p-2.5 text-blue-600 hover:bg-blue-50 rounded-xl transition-colors border border-blue-100 flex items-center gap-1.5 text-xs font-bold" 
+                            title="Edit Service & Pricing"
+                          >
+                            <FaEdit size={15} /> <span>Edit</span>
+                          </button>
+                          <button 
+                            onClick={() => {
+                              if (window.confirm(`Delete service "${service.name}"?`)) {
+                                deleteService(service.id);
+                              }
+                            }} 
+                            className="p-2.5 text-red-600 hover:bg-red-50 rounded-xl transition-colors border border-red-100" 
+                            title="Delete Service"
+                          >
+                            <FaTrash size={15} />
+                          </button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <button 
-                          onClick={() => handleEditServiceClick(service)} 
-                          className="p-2.5 text-blue-600 hover:bg-blue-50 rounded-xl transition-colors border border-blue-100" 
-                          title="Edit Service"
-                        >
-                          <FaEdit size={16} />
-                        </button>
-                        <button 
-                          onClick={() => {
-                            if (window.confirm(`Delete service "${service.name}"?`)) {
-                              deleteService(service.id);
-                            }
-                          }} 
-                          className="p-2.5 text-red-600 hover:bg-red-50 rounded-xl transition-colors border border-red-100" 
-                          title="Delete Service"
-                        >
-                          <FaTrash size={16} />
-                        </button>
-                      </div>
+
+                      {/* Sub-Task Checklist Pricing Breakdown (Floor, Kitchen, Laundry) */}
+                      {service.custom_options && service.custom_options.length > 0 && (
+                        <div className="mt-3.5 pt-3 border-t border-gray-100">
+                          <div className="text-[11px] font-black text-gray-600 mb-2 flex items-center justify-between">
+                            <span className="flex items-center gap-1 text-blue-900">
+                              <span className="text-blue-600">⚡</span> Sub-Task Prices:
+                            </span>
+                            <button
+                              onClick={() => handleEditServiceClick(service)}
+                              className="text-[10px] text-blue-600 hover:underline font-bold"
+                            >
+                              Click to Edit Task Prices ➔
+                            </button>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {service.custom_options.map((opt, i) => (
+                              <button 
+                                key={i} 
+                                onClick={() => handleEditServiceClick(service)}
+                                className="inline-flex items-center text-xs bg-blue-50/80 hover:bg-blue-100 text-blue-900 border border-blue-200/80 rounded-xl px-2.5 py-1 font-bold transition-all text-left"
+                                title="Click to edit this price"
+                              >
+                                <span>{opt.name.split('(')[0].trim()}:</span>
+                                <span className="ml-1.5 text-blue-700 font-black">₹{opt.price}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </li>
                   ))}
                   {services.length === 0 && (

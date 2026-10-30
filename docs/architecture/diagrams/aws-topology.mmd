@@ -1,0 +1,92 @@
+flowchart TB
+    %% ========================================================
+    %% Need2Done (N2D) — AWS Cloud Infrastructure Topology
+    %% ========================================================
+
+    subgraph InternetClients["Public Internet & External Actors"]
+        CustomerWA["Customer (WhatsApp Messenger)"]
+        CustomerWeb["Customer Browser (Live Tracking Map & SPAs)"]
+        HelperApp["Helper Agent (Flutter Android App)"]
+        AdminWeb["Operations Admin (React Vite Dashboard)"]
+    end
+
+    subgraph ExternalGateways["Third-Party Edge Gateways"]
+        MetaEdge["Meta WhatsApp Cloud API Gateway\n(graph.facebook.com)"]
+        RazorpayEdge["Razorpay Payment Gateway\n(api.razorpay.com)"]
+        OlaMapsEdge["Ola Maps OAuth & Directions API\n(api.olamaps.io)"]
+        OSMEdge["OpenStreetMap Tile CDN\n(tile.openstreetmap.org)"]
+        TelegramEdge["Telegram Incident Bot API\n(api.telegram.org)"]
+    end
+
+    subgraph AWSCloud["AWS Cloud Infrastructure (Region: ap-south-1 / Inferred)"]
+        subgraph VPC["Virtual Private Cloud (VPC) — Default / Custom (UNVERIFIED)"]
+            subgraph SecurityGroup["EC2 Security Group (Inbound Rules)"]
+                direction TB
+                SG_22["Port 22: SSH (Restricted to Admin IP)\nEvidence: DEPLOYMENT.md#L51"]
+                SG_80["Port 80: HTTP (0.0.0.0/0 -> Redirects 443)\nEvidence: DEPLOYMENT.md#L52"]
+                SG_443["Port 443: HTTPS (0.0.0.0/0 TLS Let's Encrypt)\nEvidence: DEPLOYMENT.md#L53"]
+                SG_Blocked["Ports 5000, 8000, 3001, 3306:\nBLOCKED from Internet\nEvidence: DEPLOYMENT.md#L55"]
+            end
+
+            subgraph EC2Host["AWS EC2 Compute Instance: Ubuntu 22.04 LTS (t3/t2 Inferred)"]
+                subgraph EdgeTier["Edge Ingress & Reverse Proxy"]
+                    Nginx["Nginx 1.18+ Reverse Proxy & SSL Engine\n- Certbot Let's Encrypt Live Certs\n- Static Assets: /website & /admin-dashboard/dist\nEvidence: nginx/need2done.conf"]
+                end
+
+                subgraph LoopbackAppTier["Application Workloads (Loopback: 127.0.0.1)"]
+                    NodeApp["Node.js Express Server (:5000)\n- REST APIs, Bill Approval, Razorpay Handshake\n- Customer Live Map HTML & GPS Ingestion\nEvidence: backend/server.js"]
+                    PythonApp["Python FastAPI WhatsApp Bot (:8000)\n- Dialog State Machine & WhatsApp Webhooks\n- Auto-Assigner Background Polling Thread\nEvidence: N2D_whatsapp_bot/app.py"]
+                end
+
+                subgraph ContainerTier["Docker Container Engine"]
+                    KumaDocker["Uptime Kuma Container (:3001)\n- 14 Automated Synthetic Health Monitors\nEvidence: docker-compose.monitoring.yml"]
+                end
+
+                subgraph PersistenceTier["Localhost Persistence & Storage"]
+                    MySQLDB[("MySQL 8.0 Server (:3306)\n- Database: N2D (utf8mb4)\n- User: n2d_user\nEvidence: docs/AWS/schema_live_full.sql")]
+                    LocalEBS["Attached EBS Volume Storage\n- /uploads/bills/ (Store Receipts)\n- /backend/public/uploads/\n- /logs/ (nginx, bot, backend, monitors)"]
+                end
+            end
+        end
+    end
+
+    %% Client Inbound Traffic
+    CustomerWA -->|HTTPS Messages| MetaEdge
+    MetaEdge -->|POST /webhook| SG_443
+    CustomerWeb -->|HTTPS GET /track/:token| SG_443
+    HelperApp -->|POST /api/tracking/update| SG_443
+    AdminWeb -->|HTTPS Admin Operations| SG_443
+
+    %% Security Group to Nginx
+    SG_80 -->|Redirect to 443| Nginx
+    SG_443 --> Nginx
+
+    %% Nginx Internal Proxying
+    Nginx -->|Proxy /webhook, /api/*, /track/*| NodeApp
+    Nginx -->|Proxy /status, /dashboard, /socket.io/| KumaDocker
+    NodeApp -->|Internal HTTP Proxy :8000/webhook| PythonApp
+    NodeApp -->|Internal Sync :8000/internal/*| PythonApp
+
+    %% Application to Persistence
+    NodeApp -->|TCP Connection Pool (10 conns)| MySQLDB
+    PythonApp -->|TCP Connection Pool (32 conns)| MySQLDB
+    PythonApp -->|Write Receipt Images| LocalEBS
+    NodeApp -->|Read/Serve Uploads| LocalEBS
+
+    %% Outbound Calls to External Integrations
+    NodeApp -->|HTTPS Basic Auth| RazorpayEdge
+    NodeApp -->|HTTPS OAuth2 & Directions| OlaMapsEdge
+    PythonApp -->|HTTPS Graph API v19.0| MetaEdge
+    KumaDocker -->|Synthetic Ping Checks| NodeApp
+    KumaDocker -->|Synthetic Ping Checks| PythonApp
+    KumaDocker -->|TCP Check :3306| MySQLDB
+    KumaDocker -->|Incident Alerts| TelegramEdge
+    CustomerWeb -.->|Map Tiles| OSMEdge
+    HelperApp -.->|Map Tiles| OSMEdge
+
+    %% Styling & Boundaries
+    style AWSCloud fill:#f8fafc,stroke:#f59e0b,stroke-width:3px
+    style VPC fill:#ffffff,stroke:#3b82f6,stroke-width:2px
+    style EC2Host fill:#f1f5f9,stroke:#0f172a,stroke-width:2px
+    style SecurityGroup fill:#fef3c7,stroke:#d97706,stroke-width:1px
+    style ExternalGateways fill:#f3f4f6,stroke:#64748b,stroke-width:1px

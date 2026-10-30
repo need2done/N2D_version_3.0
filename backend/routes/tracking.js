@@ -295,7 +295,7 @@ router.get('/live/:token', async (req, res) => {
 // ==========================================
 // GET /api/tracking/active — Admin: all active tracking
 // ==========================================
-router.get('/active', async (req, res) => {
+router.get('/active', authenticateAdmin, async (req, res) => {
     try {
         const [rows] = await db.query(`
             SELECT 

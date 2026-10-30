@@ -9,7 +9,10 @@ const { sendOrderInvoiceReceipt } = require('../services/invoiceService');
 // Helper to notify Python bot of payment success
 const notifyBotPaymentSuccess = async (orderId, paymentId) => {
   try {
-    const internalSecret = process.env.INTERNAL_SECRET || 'n2d_internal_2026_secure';
+    const internalSecret = process.env.INTERNAL_SECRET;
+    if (!internalSecret) {
+      throw new Error('INTERNAL_SECRET environment variable is not configured.');
+    }
     const botUrl = process.env.BOT_INTERNAL_URL || 'http://127.0.0.1:8000/internal/payment-success';
     await axios.post(botUrl, {
       order_code: orderId,

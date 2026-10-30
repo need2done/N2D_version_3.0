@@ -1,0 +1,55 @@
+flowchart TB
+    subgraph AWSCloud["AWS Cloud — Region: ap-south-1 (Mumbai / Inferred)"]
+        subgraph VPC["Virtual Private Cloud (VPC)"]
+            subgraph SecurityGroup["EC2 Security Group (firewall)"]
+                Port22["Port 22 (SSH - Restricted to Admin IP)"]
+                Port80["Port 80 (HTTP - 0.0.0.0/0 -> Redirects to 443)"]
+                Port443["Port 443 (HTTPS - 0.0.0.0/0 Public TLS)"]
+            end
+
+            subgraph EC2Instance["AWS EC2 Instance: Ubuntu 22.04 LTS (t3/t2)"]
+                subgraph EdgeIngress["Web Server & TLS Termination"]
+                    NginxService["Nginx System Service (systemd)\n- Domain: need2done.in\n- Certbot Let's Encrypt Fullchain\n- Static SPA Root: /website\n- Admin Root: /admin-dashboard/dist"]
+                end
+
+                subgraph InternalNetwork["Internal Loopback Network (127.0.0.1)"]
+                    subgraph SystemdManaged["Systemd Unit Services"]
+                        NodeService["need2done-backend.service\nNode.js v20.x Express API\nBinding: 127.0.0.1:5000\nPID tracking & Auto-Restart"]
+                        PythonService["need2done-bot.service\nPython 3.10+ FastAPI / Uvicorn\nBinding: 127.0.0.1:8000\nAuto-Assigner Daemon Thread"]
+                    end
+
+                    subgraph DockerContainers["Docker Container Engine"]
+                        UptimeKumaContainer["Container: uptime-kuma:1\nBinding: 127.0.0.1:3001\nVolume: uptime-kuma-data"]
+                    end
+
+                    subgraph DatabaseService["Localhost Database Engine"]
+                        MySQLDaemon["MySQL Server 8.0 (systemd)\nBinding: 127.0.0.1:3306\nDatabase: N2D\nStorage: /var/lib/mysql\nAuthentication: n2d_user"]
+                    end
+                end
+
+                subgraph LocalFilesystem["Local Persistent Storage"]
+                    LogsDir["/home/ubuntu/Need2Done/logs/\n- nginx/access.log & error.log\n- bot.log (Rotating 10MB x 10)\n- backend/logs/backend.log\n- monitor_expirations.log"]
+                    UploadsDir["/home/ubuntu/Need2Done/\n- N2D_whatsapp_bot/uploads/bills/\n- backend/public/uploads/"]
+                end
+            end
+        end
+    end
+
+    %% Network flows
+    Port80 --> NginxService
+    Port443 --> NginxService
+
+    NginxService -->|Proxy /api/*, /track/*, /webhook| NodeService
+    NodeService -->|Internal Proxy :8000/webhook| PythonService
+    NodeService -->|Internal Sync :8000/internal/*| PythonService
+    NginxService -->|Proxy /status, /dashboard| UptimeKumaContainer
+
+    NodeService -->|TCP Connection Pool (10)| MySQLDaemon
+    PythonService -->|TCP Connection Pool (32)| MySQLDaemon
+
+    PythonService -->|Write Store Receipts| UploadsDir
+    NodeService -->|Write/Read Public Media| UploadsDir
+
+    NginxService --> LogsDir
+    NodeService --> LogsDir
+    PythonService --> LogsDir

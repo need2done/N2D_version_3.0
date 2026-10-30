@@ -677,7 +677,7 @@ def handle(session: Dict[str, Any], text: Optional[str], raw: Optional[Dict[str,
                 session["data"]["cost"] = quoted
                 session["data"]["helper_charge"] = session.get("helper_charge", 25 if session.get("is_micro_errand") else 55)
                 session["data"]["isMicroErrand"] = session.get("is_micro_errand")
-                session["data"]["service_name"] = "AnyWork"
+                session["data"]["service_name"] = "Custom Work"
                 session["data"]["pickup_location"] = p_loc
                 session["data"]["drop_location"] = d_loc
                 session["data"]["location"] = d_loc

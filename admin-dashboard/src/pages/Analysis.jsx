@@ -23,7 +23,9 @@ export default function Analysis() {
       if (fromDate || toDate) {
          url += `?from=${fromDate}&to=${toDate}`;
       }
-      const res = await fetch(url);
+      const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+      const authHeader = token ? { 'Authorization': `Bearer ${token}` } : {};
+      const res = await fetch(url, { headers: authHeader });
       const result = await res.json();
       if (result.success) {
         

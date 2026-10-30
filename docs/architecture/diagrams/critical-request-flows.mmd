@@ -1,0 +1,98 @@
+sequenceDiagram
+    autonumber
+    title Critical Request Flow — End-to-End Order, Dispatch, Bill Approval & Payment
+
+    actor Customer as Customer (WhatsApp)
+    participant Meta as Meta WhatsApp Cloud API
+    participant Nginx as Nginx Proxy (:443)
+    participant Backend as Node.js Backend (:5000)
+    participant Bot as Python Bot (:8000)
+    participant DB as MySQL (N2D)
+    actor Helper as Helper Agent (App / WA)
+    actor Admin as Operations Admin (Dashboard)
+    participant Razorpay as Razorpay Gateway
+
+    %% Phase 1: Order Placement
+    rect rgb(240, 248, 255)
+    note right of Customer: Phase 1 — Order Placement via WhatsApp
+    Customer->>Meta: "Hi" / Service Selection (e.g. Groceries/Medicines/AnyWork)
+    Meta->>Nginx: POST /webhook (JSON payload)
+    Nginx->>Backend: Proxy POST /webhook
+    Backend->>Bot: Forward POST http://127.0.0.1:8000/webhook
+    Bot->>Bot: Deduplicate msg_id (TTL: 60s)
+    Bot->>DB: Fetch/Create customer record
+    Bot->>Customer: Send Interactive Menu / Service Options
+    Customer->>Meta: Selects items / shares delivery GPS location
+    Meta->>Bot: Inbound GPS Location
+    Bot->>DB: INSERT orders (status: 'CONFIRMED', tracking_status: 'NOT_STARTED')
+    Bot->>DB: INSERT order_timeline ('ORDER_PLACED', triggered_by='CUSTOMER')
+    Bot->>Customer: "Order Placed! Order ID: N2D-XXX. Searching for helper..."
+    end
+
+    %% Phase 2: Auto-Assigner & Helper Acceptance
+    rect rgb(245, 255, 250)
+    note right of Helper: Phase 2 — Auto-Assigner & Helper Dispatch
+    loop Auto-Assigner Daemon (Every 30s)
+        Bot->>DB: SELECT unassigned orders WHERE status='CONFIRMED'
+        Bot->>DB: SELECT available helpers WHERE status='AVAILABLE'
+    end
+    Bot->>Helper: Send WhatsApp Alert ("New Order N2D-XXX. Accept?")
+    Helper->>Meta: Taps "ACCEPT" Button
+    Meta->>Bot: Inbound Interactive Reply (ACCEPT_ORDER_XXX)
+    Bot->>DB: UPDATE orders SET status='HELPER_ACCEPTED', helper_id=X
+    Bot->>DB: INSERT order_tracking_tokens (role='CUSTOMER', token=UUID)
+    Bot->>Customer: "Helper Assigned! Track live: https://need2done.in/track/{token}"
+    Bot->>Helper: Send Deep Link: "Open Agent App: n2d://track?order_id=X&helper_code=Y"
+    Helper->>Nginx: Helper App Deep Link / Background GPS
+    loop Continuous Location Streaming (Every 10s)
+        Helper->>Nginx: POST /api/tracking/update (helper_id, order_id, lat, lng)
+        Nginx->>Backend: Ingest GPS coordinates
+        Backend->>DB: UPSERT helper_live_tracking & INSERT helper_location_history
+    end
+    Customer->>Nginx: GET /track/{token} (Customer Tracking Web View)
+    Nginx->>Backend: GET /api/tracking/live/{token}
+    Backend->>DB: Query helper_live_tracking for current lat/lng
+    Backend-->>Customer: Return real-time helper position on Leaflet map
+    end
+
+    %% Phase 3: Bill Upload & Admin Approval
+    rect rgb(255, 250, 240)
+    note right of Admin: Phase 3 — Store Shopping, Bill Upload & Admin Approval
+    Helper->>Meta: Uploads store receipt photo (IMAGE)
+    Meta->>Bot: Inbound photo message
+    Bot->>Bot: Download image & write to uploads/bills/bill_{id}.jpg
+    Bot->>DB: INSERT order_images (type='BILL', image_url=path)
+    Bot->>DB: UPDATE orders SET status='BILL_IMAGE_UPLOADED'
+    Admin->>Nginx: Admin opens Dashboard (https://need2done.in/admin)
+    Admin->>Backend: GET /api/orders (filters status='BILL_IMAGE_UPLOADED')
+    Admin->>Backend: POST /api/orders/{id}/approve (bill_amount, helper_charge, platform_fee)
+    Backend->>DB: UPDATE orders SET bill_amount, helper_charge, platform_fee, total_amount, status='ADMIN_APPROVED_BILL'
+    Backend->>Razorpay: POST /v1/orders (amount in paise, receipt=order_id)
+    Razorpay-->>Backend: Return razorpay_order_id
+    Backend->>Bot: Internal event / WhatsApp trigger
+    Bot->>Customer: Send Bill Breakdown & Razorpay UPI Pay Link
+    end
+
+    %% Phase 4: Customer Payment & OTP Delivery
+    rect rgb(255, 245, 245)
+    note right of Customer: Phase 4 — Payment Verification & Order Completion
+    Customer->>Razorpay: Completes UPI / Card payment
+    Razorpay->>Nginx: POST /api/payments/webhook
+    Nginx->>Backend: Verify HMAC SHA256 webhook signature
+    Backend->>DB: UPDATE orders SET payment_status='PAID', status='PAID'
+    Backend->>Bot: POST /internal/payment-success
+    Bot->>DB: Generate 6-digit delivery OTP
+    Bot->>Customer: "Payment Received! Share this Delivery OTP with your helper: 492810"
+    Bot->>Helper: "Customer paid. Deliver order and ask for OTP."
+    Helper->>Meta: Helper enters OTP on WhatsApp or App
+    Meta->>Bot: Inbound text OTP
+    Bot->>DB: Validate OTP against orders.delivery_otp
+    alt OTP Valid
+        Bot->>DB: UPDATE orders SET status='COMPLETED', completed_at=NOW()
+        Bot->>DB: INSERT helper_ledger (helper_id, amount=helper_charge, type='CREDIT')
+        Bot->>Customer: "Order Delivered Successfully! Please rate your helper (1-5)."
+        Bot->>Helper: "Order Complete! ₹XX credited to your wallet."
+    else OTP Invalid
+        Bot->>Helper: "❌ Invalid OTP. Please ask customer to verify."
+    end
+    end

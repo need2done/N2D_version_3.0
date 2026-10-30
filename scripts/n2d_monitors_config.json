@@ -1,0 +1,115 @@
+{
+  "project": "Need2Done (N2D)",
+  "version": "1.0.0",
+  "access_url": "https://need2done.in/status",
+  "internal_port": 3001,
+  "monitors": [
+    {
+      "name": "🌐 Need2Done Domain & SSL Certificate",
+      "type": "https",
+      "url": "https://need2done.in",
+      "interval": 60,
+      "maxretries": 3,
+      "expiry_notification_days": 15,
+      "description": "Monitors main HTTPS domain and SSL certificate validity."
+    },
+    {
+      "name": "⚙️ Node.js Backend API Core",
+      "type": "http",
+      "url": "http://127.0.0.1:5000/api/health",
+      "interval": 30,
+      "accepted_statuscodes": ["200"],
+      "description": "Primary REST API health check."
+    },
+    {
+      "name": "🤖 Python WhatsApp Bot",
+      "type": "http",
+      "url": "http://127.0.0.1:8000/health",
+      "interval": 30,
+      "accepted_statuscodes": ["200"],
+      "description": "Conversational AI Engine health check."
+    },
+    {
+      "name": "🗄️ MySQL Database Engine",
+      "type": "port",
+      "hostname": "127.0.0.1",
+      "port": 3306,
+      "interval": 60,
+      "description": "Checks if MySQL daemon is listening on port 3306."
+    },
+    {
+      "name": "🖥️ Nginx Reverse Proxy Web Server",
+      "type": "port",
+      "hostname": "127.0.0.1",
+      "port": 80,
+      "interval": 60,
+      "description": "Verifies Nginx HTTP port listener."
+    },
+    {
+      "name": "💬 Meta WhatsApp Cloud API Gateway",
+      "type": "http",
+      "url": "https://graph.facebook.com/v19.0/me",
+      "interval": 300,
+      "accepted_statuscodes": ["400", "401", "200"],
+      "description": "Verifies reachability of Meta Graph API."
+    },
+    {
+      "name": "🗺️ Ola Maps OAuth Authentication API",
+      "type": "http",
+      "url": "https://account.olamaps.io/realms/olamaps/protocol/openid-connect/token",
+      "interval": 300,
+      "accepted_statuscodes": ["400", "401", "200"],
+      "description": "Verifies reachability of Ola Maps OAuth server."
+    },
+    {
+      "name": "💳 Razorpay Payment Gateway Endpoint",
+      "type": "http",
+      "url": "https://api.razorpay.com/v1/orders",
+      "interval": 300,
+      "accepted_statuscodes": ["401"],
+      "description": "Verifies reachability of Razorpay API."
+    },
+    {
+      "name": "📦 Orders Subsystem API",
+      "type": "http",
+      "url": "http://127.0.0.1:5000/api/orders",
+      "interval": 60,
+      "description": "Monitors Order processing route."
+    },
+    {
+      "name": "🛵 Helpers & Dispatch Subsystem API",
+      "type": "http",
+      "url": "http://127.0.0.1:5000/api/helpers",
+      "interval": 60,
+      "description": "Monitors Helper status & tracking routes."
+    },
+    {
+      "name": "🥦 Fruits & Vegetables Catalog API",
+      "type": "http",
+      "url": "http://127.0.0.1:5000/api/fruits-vegetables",
+      "interval": 60,
+      "description": "Monitors Fruits & Vegetables store catalog."
+    },
+    {
+      "name": "🛒 Groceries Catalog API",
+      "type": "http",
+      "url": "http://127.0.0.1:5000/api/groceries/categories",
+      "interval": 60,
+      "description": "Monitors Grocery catalog categories."
+    },
+    {
+      "name": "🛠️ Home Services Subsystem API",
+      "type": "http",
+      "url": "http://127.0.0.1:5000/api/home-services",
+      "interval": 60,
+      "description": "Monitors Home Services catalog & booking."
+    },
+    {
+      "name": "🚕 Ride Booking Subsystem API",
+      "type": "http",
+      "url": "http://127.0.0.1:5000/api/ride",
+      "interval": 60,
+      "description": "Monitors Ride booking routes."
+    }
+  ]
+}
