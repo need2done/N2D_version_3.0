@@ -1264,6 +1264,7 @@ router.post('/call-order', authenticateAdmin, async (req, res) => {
             total_amount: parsedTotal,
             helper_charge: parsedHelper,
             platform_fee: parsedPlatform,
+            customer_msg: customerMsg,
             message: 'Call order created successfully and customer intimated via WhatsApp!'
         });
     } catch (err) {

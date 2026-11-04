@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   PhoneCall, X, User, MapPin, Navigation, IndianRupee, 
   CheckCircle2, AlertCircle, ArrowRight, ShieldCheck, 
-  Bike, Car, Truck, Wrench, ShoppingBag, Sparkles, Clock, Send
+  Bike, Car, Truck, Wrench, ShoppingBag, Sparkles, Clock, Send,
+  MessageSquare, ExternalLink
 } from 'lucide-react';
 import { API_URL } from '../config';
 
@@ -391,6 +392,61 @@ export default function CallOrderModal({ isOpen, onClose, onOrderCreated, initia
               <div><strong>Platform Commission:</strong> ₹{successData.platform_fee}</div>
               <div><strong>Payment Mode:</strong> {paymentMethod === 'CASH' ? 'Cash to Helper' : 'UPI Link'}</div>
             </div>
+
+            {/* Direct WhatsApp Message Action */}
+            {(() => {
+              const rawDigits = (successData.customer_phone || '').replace(/\D/g, '');
+              const waNumber = rawDigits.length === 10 ? `91${rawDigits}` : rawDigits;
+              const defaultText = successData.customer_msg || 
+                `🎉 *Need2Done Order Confirmed!*\n\nHello *${successData.customer_name}*, your booking made by phone call is confirmed.\n\n🆔 *Order ID:* #${successData.display_id}\n🛠️ *Service:* ${serviceTitle}\n💰 *Total Amount:* ₹${successData.total_amount}\n\n📲 *Live Tracking Link:*\nhttps://need2done.in/track/${successData.display_id}\n\n📞 Support: 7095849056\nThank you for choosing Need2Done!`;
+              const waLink = `https://wa.me/${waNumber}?text=${encodeURIComponent(defaultText)}`;
+
+              return (
+                <div style={{
+                  backgroundColor: '#f0fdf4',
+                  border: '1.5px solid #86efac',
+                  borderRadius: '14px',
+                  padding: '14px 18px',
+                  maxWidth: '460px',
+                  margin: '0 auto 20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px'
+                }}>
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{ fontWeight: 800, fontSize: '13px', color: '#166534', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <MessageSquare size={16} /> Send via WhatsApp
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#15803d', marginTop: '2px' }}>
+                      Click to open WhatsApp & send confirmation directly to {successData.customer_phone}
+                    </div>
+                  </div>
+                  <a
+                    href={waLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn"
+                    style={{
+                      backgroundColor: '#25D366',
+                      color: '#ffffff',
+                      fontWeight: 800,
+                      fontSize: '12px',
+                      padding: '8px 14px',
+                      borderRadius: '8px',
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      whiteSpace: 'nowrap',
+                      boxShadow: '0 2px 6px rgba(37, 211, 102, 0.35)'
+                    }}
+                  >
+                    Open WhatsApp <ExternalLink size={13} />
+                  </a>
+                </div>
+              );
+            })()}
 
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
               <button
