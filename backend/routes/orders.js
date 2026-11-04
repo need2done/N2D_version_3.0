@@ -49,6 +49,65 @@ async function sendWhatsAppText(to, text) {
     }
 }
 
+// Sends WhatsApp to a customer who may NOT have messaged Need2Done before (cold customer).
+// WhatsApp Business API only allows free-text to users with an active 24-hr session.
+// For cold customers: first send hello_world template to open the session window,
+// then immediately send the actual message as free text.
+async function sendWhatsAppToNewCustomer(to, text) {
+    const token = getWaToken();
+    const phoneId = getWaPhoneId();
+    if (!token || !phoneId) {
+        console.log('[WA MOCK - NEW CUSTOMER] To:', to, 'Text:', text);
+        return;
+    }
+    const cleanTo = to.replace(/\D/g, '');
+    try {
+        // Try free-text first (works if customer already has an open session)
+        await axios.post(getWaApiUrl(), {
+            messaging_product: "whatsapp",
+            to: cleanTo,
+            type: "text",
+            text: { body: text }
+        }, {
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+        });
+        console.log('[WA] Free-text sent to customer:', cleanTo);
+    } catch (err) {
+        const errCode = err.response?.data?.error?.code;
+        const errMsg = err.response?.data?.error?.message || err.message;
+        // Error 131047 / 131026 = message not in session window (cold customer)
+        if (errCode === 131047 || errCode === 131026 || errCode === 131021 || (errMsg && errMsg.includes('session'))) {
+            console.log(`[WA] Customer ${cleanTo} has no open session. Sending hello_world template to open window...`);
+            try {
+                // Step 1: Send hello_world template to open the 24-hr session
+                await axios.post(getWaApiUrl(), {
+                    messaging_product: "whatsapp",
+                    to: cleanTo,
+                    type: "template",
+                    template: { name: "hello_world", language: { code: "en_US" } }
+                }, {
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+                });
+                // Step 2: Now send the actual order confirmation text (session is now open)
+                await new Promise(r => setTimeout(r, 1500));
+                await axios.post(getWaApiUrl(), {
+                    messaging_product: "whatsapp",
+                    to: cleanTo,
+                    type: "text",
+                    text: { body: text }
+                }, {
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+                });
+                console.log('[WA] Session opened + order confirmation sent to new customer:', cleanTo);
+            } catch (templateErr) {
+                console.error('[WA ERROR] Failed to send template to new customer:', templateErr.response?.data || templateErr.message);
+            }
+        } else {
+            console.error('[WA ERROR] Failed to send to customer:', errMsg);
+        }
+    }
+}
+
 async function sendWhatsAppButton(to, body, buttons) {
     const token = getWaToken();
     const phoneId = getWaPhoneId();
@@ -1179,7 +1238,7 @@ router.post('/call-order', authenticateAdmin, async (req, res) => {
             `📞 Need help? Call Support: 7095849056\n` +
             `Thank you for choosing Need2Done!`;
 
-        await sendWhatsAppText(normalizedPhone, customerMsg);
+        await sendWhatsAppToNewCustomer(normalizedPhone, customerMsg);
 
         // 8. Notify Admin WhatsApp
         if (ADMIN_NUMBER) {
