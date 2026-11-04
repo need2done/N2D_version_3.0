@@ -1223,20 +1223,24 @@ router.post('/call-order', authenticateAdmin, async (req, res) => {
 
         // 7. Send WhatsApp Confirmation to Customer
         const trackUrl = `https://need2done.in/track/${orderIdStr}`;
-        const payText = payment_method === 'CASH' ? '💵 Cash to Helper on Delivery' : '💳 Online Payment (UPI)';
+        const payText = payment_method === 'CASH' ? 'Cash on Delivery' : 'Online / UPI';
         
-        const customerMsg = `🎉 *Need2Done Order Confirmed!*\n\n` +
-            `Hello *${finalCustomerName}*, your booking made by phone call is confirmed.\n\n` +
-            `🆔 *Order ID:* #${orderIdStr}\n` +
-            `🛠️ *Service:* ${service_title}\n` +
-            (pickup_location ? `📍 *Pickup:* ${pickup_location}\n` : '') +
-            (drop_location ? `🏁 *Drop:* ${drop_location}\n` : '') +
-            `💰 *Total Amount:* ₹${parsedTotal}\n` +
-            `💳 *Payment Mode:* ${payText}\n` +
-            (helperInfo ? `🛵 *Assigned Helper:* ${helperInfo.name}\n` : `🛵 *Helper:* Assigning shortly...\n`) +
-            `\n📲 *Live Tracking Link:*\n${trackUrl}\n\n` +
-            `📞 Need help? Call Support: 7095849056\n` +
-            `Thank you for choosing Need2Done!`;
+        const customerMsg = `*NEED2DONE — ORDER CONFIRMATION*\n` +
+            `━━━━━━━━━━━━━━━━━━━━━━\n` +
+            `Dear *${finalCustomerName}*,\n` +
+            `Your order has been placed successfully via phone booking.\n\n` +
+            `📋 *Booking Details*\n` +
+            `• *Order ID:* #${orderIdStr}\n` +
+            `• *Service:* ${service_title}\n` +
+            (pickup_location ? `• *Pickup:* ${pickup_location}\n` : '') +
+            (drop_location ? `• *Drop:* ${drop_location}\n` : '') +
+            `• *Total Fare:* ₹${parsedTotal}\n` +
+            `• *Payment Mode:* ${payText}\n` +
+            (helperInfo ? `• *Assigned Helper:* ${helperInfo.name}\n` : `• *Status:* Assigning helper shortly\n`) +
+            `\n📍 *Live Order Tracking:*\n${trackUrl}\n\n` +
+            `━━━━━━━━━━━━━━━━━━━━━━\n` +
+            `📞 *Need Help? Call / WhatsApp Support:*\n+91 79898 62623\n\n` +
+            `_Thank you for choosing Need2Done (N2D)_`;
 
         await sendWhatsAppToNewCustomer(normalizedPhone, customerMsg);
 

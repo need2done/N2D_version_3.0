@@ -398,7 +398,7 @@ export default function CallOrderModal({ isOpen, onClose, onOrderCreated, initia
               const rawDigits = (successData.customer_phone || '').replace(/\D/g, '');
               const waNumber = rawDigits.length === 10 ? `91${rawDigits}` : rawDigits;
               const defaultText = successData.customer_msg || 
-                `🎉 *Need2Done Order Confirmed!*\n\nHello *${successData.customer_name}*, your booking made by phone call is confirmed.\n\n🆔 *Order ID:* #${successData.display_id}\n🛠️ *Service:* ${serviceTitle}\n💰 *Total Amount:* ₹${successData.total_amount}\n\n📲 *Live Tracking Link:*\nhttps://need2done.in/track/${successData.display_id}\n\n📞 Support: 7095849056\nThank you for choosing Need2Done!`;
+                `*NEED2DONE — ORDER CONFIRMATION*\n━━━━━━━━━━━━━━━━━━━━━━\nDear *${successData.customer_name}*,\nYour order has been placed successfully via phone booking.\n\n📋 *Booking Details*\n• *Order ID:* #${successData.display_id}\n• *Service:* ${serviceTitle}\n• *Total Fare:* ₹${successData.total_amount}\n\n📍 *Live Order Tracking:*\nhttps://need2done.in/track/${successData.display_id}\n\n━━━━━━━━━━━━━━━━━━━━━━\n📞 *Need Help? Call / WhatsApp Support:*\n+91 79898 62623\n\n_Thank you for choosing Need2Done (N2D)_`;
               const waLink = `https://wa.me/${waNumber}?text=${encodeURIComponent(defaultText)}`;
 
               return (
